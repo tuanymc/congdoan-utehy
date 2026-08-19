@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
-import { Menu, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
+import { Menu, LogOut, LogIn, User as UserIcon, ChevronDown } from "lucide-react";
 import type { CategoryDto } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
@@ -12,7 +12,6 @@ import {
   SheetTitle,
   SheetTrigger
 } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NavDropdown, type NavDropdownItem } from "@/components/layout/NavDropdown";
 
 /** Mục con "Giới thiệu" — trỏ tới các #id neo đã thêm trong AboutPage.tsx (xem GROUPS ở đó), phải
@@ -51,12 +50,6 @@ function navLinkClassName({ isActive }: { isActive: boolean }): string {
   ].join(" ");
 }
 
-function getInitials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/);
-  const last = parts[parts.length - 1] ?? "";
-  return last.slice(0, 1).toUpperCase() || "?";
-}
-
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -87,11 +80,36 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      {/* Thanh trên: dòng chữ nhận diện đơn vị chủ quản */}
+      {/* Thanh trên: dòng chữ nhận diện đơn vị chủ quản + đăng nhập/tài khoản — chuyển đăng nhập lên
+       * đây (theo yêu cầu) để menu chính bên dưới chỉ còn các mục điều hướng nội dung. Thanh này ẩn
+       * dưới md nên nút đăng nhập/đăng xuất trên di động vẫn giữ ở cuối Sheet menu như cũ. */}
       <div className="hidden bg-primary text-primary-foreground md:block">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-1.5 text-xs">
-          <span>Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên</span>
-          <span>Đoàn kết – Trách nhiệm – Vì quyền lợi đoàn viên</span>
+          <div className="flex items-center gap-4">
+            <span>Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên</span>
+            <span className="hidden lg:inline">Đoàn kết – Trách nhiệm – Vì quyền lợi đoàn viên</span>
+          </div>
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-3">
+              <Link to="/cong-doan-vien" className="flex items-center gap-1.5 hover:underline">
+                <UserIcon className="size-3.5" />
+                {user.fullName}
+              </Link>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="flex items-center gap-1 hover:underline"
+              >
+                <LogOut className="size-3.5" />
+                Đăng xuất
+              </button>
+            </div>
+          ) : (
+            <Link to="/dang-nhap" className="flex items-center gap-1.5 font-medium hover:underline">
+              <LogIn className="size-3.5" />
+              Đăng nhập
+            </Link>
+          )}
         </div>
       </div>
 
@@ -139,36 +157,7 @@ export function Header() {
           <NavLink to="/tin-tuc?category=van-hoa-doc" className={navLinkClassName}>
             Văn hóa đọc
           </NavLink>
-          <NavLink to="/lien-he" className={navLinkClassName}>
-            Liên hệ
-          </NavLink>
         </nav>
-
-        <div className="hidden items-center gap-3 lg:flex">
-          {isAuthenticated && user ? (
-            <div className="flex items-center gap-3">
-              <Link
-                to="/cong-doan-vien"
-                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium hover:bg-accent"
-              >
-                <Avatar className="size-8">
-                  <AvatarFallback className="bg-primary text-xs text-primary-foreground">
-                    {getInitials(user.fullName)}
-                  </AvatarFallback>
-                </Avatar>
-                {user.fullName}
-              </Link>
-              <Button variant="outline" size="sm" onClick={() => void logout()}>
-                <LogOut />
-                Đăng xuất
-              </Button>
-            </div>
-          ) : (
-            <Button asChild size="sm">
-              <Link to="/dang-nhap">Đăng nhập</Link>
-            </Button>
-          )}
-        </div>
 
         {/* Menu mobile — Sheet đã cuộn được sẵn nên hiển thị luôn danh sách con thụt lề dưới mỗi mục
          * cha thay vì làm accordion riêng, trừ "Tin hoạt động" (danh sách động, có thể dài) vẫn thu
@@ -301,19 +290,6 @@ export function Header() {
                   {item.label}
                 </NavLink>
               ))}
-
-              <NavLink
-                to="/lien-he"
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  [
-                    "rounded-md px-3 py-2 text-sm font-medium hover:bg-accent",
-                    isActive ? "bg-accent text-primary" : "text-foreground/80"
-                  ].join(" ")
-                }
-              >
-                Liên hệ
-              </NavLink>
             </nav>
             <div className="mt-auto flex flex-col gap-2 border-t px-4 py-4">
               {isAuthenticated && user ? (
