@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mẫu web.config cho site IIS phục vụ apps/admin — giống hệt web.config.web (file tĩnh build từ
+  Vite, output tại apps/admin/dist), chỉ khác binding (subdomain admin.congdoan.utehy.edu.vn hoặc
+  subpath /admin — tuỳ quyết định domain đã chốt).
+
+  Nên đặt binding admin ở subdomain/site RIÊNG với site web công khai để dễ giới hạn truy cập
+  (ví dụ chỉ cho phép IP nội bộ trường truy cập /admin qua IP restriction của IIS nếu cần thêm một
+  lớp bảo vệ ngoài JWT).
+-->
+<configuration>
+  <system.webServer>
+    <rewrite>
+      <rules>
+        <rule name="ReactRouterSpaFallback" stopProcessing="true">
+          <match url=".*" />
+          <conditions logicalGrouping="MatchAll">
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+          </conditions>
+          <action type="Rewrite" url="/index.html" />
+        </rule>
+      </rules>
+    </rewrite>
+    <staticContent>
+      <clientCache cacheControlMode="UseMaxAge" cacheControlMaxAge="7.00:00:00" />
+    </staticContent>
+    <httpProtocol>
+      <customHeaders>
+        <add name="X-Content-Type-Options" value="nosniff" />
+        <add name="X-Frame-Options" value="SAMEORIGIN" />
+        <add name="X-Robots-Tag" value="noindex, nofollow" />
+      </customHeaders>
+    </httpProtocol>
+  </system.webServer>
+</configuration>

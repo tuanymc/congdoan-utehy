@@ -1,0 +1,181 @@
+// Prisma schema — Website Công đoàn UTEHY
+// CSDL: SQL Server (giữ nguyên loại CSDL theo bản thiết kế, không đổi sang Postgres/MySQL).
+//
+// Triển khai theo 5 domain (xem docs/CURSOR_PROMPT_Website_CongDoan_UTEHY.md mục 4):
+//   1. System      — ĐÃ triển khai đầy đủ ở đây (Phase 1: Auth & RBAC).
+//   2. Content     — ĐÃ triển khai Post/Category làm module mẫu (vertical slice minh hoạ pattern).
+//   3. Membership  — CHƯA triển khai, làm ở Phase 2 (Member, Leader, Position, Term, Department...).
+//   4. OfficialDocument — CHƯA triển khai, làm ở Phase 3.
+//   5. DigitalUtility   — CHƯA triển khai, làm ở Phase 4 (Tiện ích số Công đoàn).
+//
+// Không xoá comment TODO bên dưới khi bổ sung domain mới — đó là điểm neo cho các phase tiếp theo.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// DOMAIN: SYSTEM — người dùng, vai trò, quyền, nhật ký thao tác
+// ============================================================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  fullName      String
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  authoredPosts Post[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  /// Mã vai trò cố định dùng trong code (ADMIN | UNION_CLERK | DEPARTMENT_OFFICER | MEMBER).
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  /// Định dạng "module:action", vd "post:create", "member:approve" — xem packages/types/src/system.ts
+  key         String   @unique
+  module      String
+  action      String
+  description String?
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  /// Lưu SHA-256 hash của refresh token, không lưu token gốc.
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorUserId  String
+  action       String
+  entityType   String
+  entityId     String
+  /// JSON dạng { field: { before, after } } — xem packages/types/src/system.ts AuditLogDto.
+  changesJson  String?
+  createdAt    DateTime @default(now())
+
+  actor User @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// DOMAIN: CONTENT — bài viết + chuyên mục (module mẫu, thay 12 bảng NewsXxx cũ)
+// ============================================================================
+
+model Category {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts Post[]
+
+  @@map("categories")
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Post {
+  id            String     @id @default(uuid())
+  slug          String     @unique
+  title         String
+  excerpt       String?
+  content       String     @db.NVarChar(Max)
+  coverImageUrl String?
+  status        PostStatus @default(DRAFT)
+  publishedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  @@index([categoryId])
+  @@index([status, publishedAt])
+  @@map("posts")
+}
+
+// ============================================================================
+// TODO Phase 2 — DOMAIN: MEMBERSHIP
+//   model Member, Leader, Position, Term, Department, ManagementUnit, EducationLevel
+//   (xem mục 4 CURSOR_PROMPT_Website_CongDoan_UTEHY.md để lấy đúng tên field)
+//
+// TODO Phase 3 — DOMAIN: OFFICIALDOCUMENT
+//   model IncomingDocument, OutgoingDocument, DocumentWorkflowStep, Attachment
+//
+// TODO Phase 4 — DOMAIN: DIGITALUTILITY ("Tiện ích số Công đoàn")
+//   model EForm, EFormSubmission, UnionFeeLedger, SupportBooking,
+//         ChatbotConversation, ChatbotMessage, SurveyForm, SurveyResponse,
+//         Event, EventRegistration
+// ============================================================================

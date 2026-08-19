@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mẫu web.config cho site IIS phục vụ apps/web (cổng công khai + cổng đoàn viên) — file tĩnh build
+  ra từ Vite (`pnpm --filter @congdoan/web build`, output tại apps/web/dist).
+
+  Cách dùng: sau khi build, copy TOÀN BỘ nội dung apps/web/dist/ vào physical path của site IIS,
+  rồi copy file này vào đó, đổi tên thành "web.config". Script deploy/scripts/deploy.ps1 tự làm
+  việc này.
+
+  Rule bên dưới xử lý client-side routing của React Router: mọi request không khớp file/thư mục
+  tĩnh có sẵn sẽ được trả về index.html để React Router tự điều hướng phía client.
+-->
+<configuration>
+  <system.webServer>
+    <rewrite>
+      <rules>
+        <rule name="ReactRouterSpaFallback" stopProcessing="true">
+          <match url=".*" />
+          <conditions logicalGrouping="MatchAll">
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+          </conditions>
+          <action type="Rewrite" url="/index.html" />
+        </rule>
+      </rules>
+    </rewrite>
+    <staticContent>
+      <remove fileExtension=".json" />
+      <mimeMap fileExtension=".json" mimeType="application/json" />
+      <clientCache cacheControlMode="UseMaxAge" cacheControlMaxAge="7.00:00:00" />
+    </staticContent>
+    <httpProtocol>
+      <customHeaders>
+        <add name="X-Content-Type-Options" value="nosniff" />
+        <add name="X-Frame-Options" value="SAMEORIGIN" />
+      </customHeaders>
+    </httpProtocol>
+  </system.webServer>
+</configuration>

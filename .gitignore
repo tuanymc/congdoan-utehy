@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.output/
+.turbo/
+*.log
+.env
+.env.local
+.env.*.local
+.DS_Store
+coverage/
+.vscode/*
+!.vscode/extensions.json
+prisma/migrations/dev.db
+
+# Hệ thống cũ (ASP.NET Web Forms) chỉ giữ để tham chiếu/ETL, KHÔNG deploy trong hệ thống mới —
+# không đưa vào Git để repo nhẹ, clone/push nhanh. Vẫn nằm nguyên trên đĩa, chỉ không theo dõi.
+web_cu/
+
+# Dự án tham chiếu thiết kế Figma-Make dùng để copy component lúc build, không phải code sản phẩm.
+_reference/
+
+# Thư mục tạm dùng khi dọn dẹp file chuyển giao (device_bash không xoá được file, chỉ mv vào đây).
+_archive_delete_me/
+_to_delete/

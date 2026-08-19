@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mẫu web.config cho site IIS trỏ tới apps/api (reverse proxy sang tiến trình Node.js do PM2 quản
+  lý, mặc định lắng nghe cổng nội bộ 3000 — khớp API_PORT trong .env).
+
+  YÊU CẦU CÀI ĐẶT TRƯỚC trên Windows Server (một lần, không phải mỗi lần deploy):
+    1. Cài "Application Request Routing" (ARR) và "URL Rewrite" module cho IIS.
+    2. Trong IIS Manager -> chọn Server (cấp cao nhất) -> Application Request Routing Cache ->
+       Server Proxy Settings... -> tick "Enable proxy" -> Apply.
+       (Nếu không bật bước này, mọi rule reverse proxy bên dưới sẽ báo lỗi 502.)
+    3. Tạo site IIS mới, ví dụ "congdoan-api", binding https://api.congdoan.utehy.edu.vn (hoặc
+       subpath /api trên site chính — tuỳ bạn chốt ở câu hỏi domain/subpath đã nêu trước đó),
+       Physical path trỏ tới thư mục chứa file web.config này (copy từ template, đổi tên thành
+       "web.config" tại thư mục gốc site — KHÔNG cần trỏ vào apps/api/dist, chỉ cần 1 site rỗng
+       làm proxy).
+    4. Cấu hình HTTPS binding + chứng chỉ SSL cho site này qua IIS Manager như bình thường.
+
+  Đổi PORT bên dưới nếu bạn đổi API_PORT trong .env khác 3000.
+-->
+<configuration>
+  <system.webServer>
+    <rewrite>
+      <rules>
+        <rule name="ReverseProxyToNodeApi" stopProcessing="true">
+          <match url="(.*)" />
+          <action type="Rewrite" url="http://127.0.0.1:3000/{R:1}" />
+        </rule>
+      </rules>
+    </rewrite>
+    <!-- Giới hạn kích thước request body cho upload file (điều chỉnh theo nhu cầu, đơn vị byte). -->
+    <security>
+      <requestFiltering>
+        <requestLimits maxAllowedContentLength="52428800" />
+      </requestFiltering>
+    </security>
+  </system.webServer>
+</configuration>

@@ -1,0 +1,79 @@
+name: CI/CD — Website Công đoàn UTEHY
+
+# Chạy trên self-hosted runner cài trực tiếp trên Windows Server (xem deploy/README.md) — KHÔNG
+# build/push Docker image ở bất kỳ bước nào. Đây là quyết định đã chốt.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Môi trường deploy (chỉ dùng khi chạy thủ công)"
+        required: false
+        default: staging
+        type: choice
+        options: [staging, production]
+
+jobs:
+  build-and-test:
+    # Runner Windows tự đăng ký trên chính server — xem deploy/README.md mục cài đặt.
+    runs-on: [self-hosted, windows, congdoan]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cài pnpm
+        run: corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+      - name: Cài dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm prisma:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build (api, web, admin)
+        run: pnpm build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            apps/api/dist
+            apps/web/dist
+            apps/admin/dist
+          retention-days: 7
+
+  deploy:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, windows, congdoan]
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .
+
+      - name: Deploy lên IIS + PM2
+        shell: powershell
+        run: |
+          powershell -File deploy/scripts/deploy.ps1 -Environment ${{ github.event.inputs.environment || 'staging' }}
