@@ -268,10 +268,11 @@ model OfficialDocument {
 
   documentTypeId String
   /// onUpdate: NoAction bắt buộc — cùng lý do như DocumentType.parent ở trên (SQL Server chặn cascade
-  /// path đi qua bảng có self-relation). onDelete giữ Restrict (mặc định gần nhất với hành vi cũ):
-  /// service.remove() đã tự chặn xoá DocumentType còn công văn thuộc loại đó, nên FK Restrict chỉ là
-  /// lớp bảo vệ thứ 2 ở tầng CSDL.
-  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  /// path đi qua bảng có self-relation). onDelete: NoAction (connector SQL Server của Prisma KHÔNG hỗ
+  /// trợ `Restrict` — chỉ Cascade/NoAction/SetNull/SetDefault; NoAction có hành vi tương đương Restrict
+  /// trên SQL Server, tức là chặn xoá nếu còn công văn tham chiếu). service.remove() đã tự chặn xoá
+  /// DocumentType còn công văn thuộc loại đó ở tầng ứng dụng — FK NoAction chỉ là lớp bảo vệ thứ 2.
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   attachments DocumentAttachment[]
 
