@@ -424,10 +424,16 @@ khác với cờ `/MIR` sẽ xoá — nên chạy đúng 3 lần liên tiếp nh
    tra qua Swagger `/api/docs` hoặc query thẳng CSDL `official_documents` để xác nhận đã nhập đủ
    2.494 dòng.
 
-**Lưu ý ảnh bài viết:** script giữ nguyên đường dẫn ảnh gốc (`Image`) từ web cũ — ảnh **chưa được
-copy sang server mới** (khác với file đính kèm công văn, ảnh bài viết web cũ không có sẵn trong bản
-upload để tôi xác nhận đường dẫn thật), cần copy thủ công thư mục Upload ảnh của web cũ sang server
-mới nếu muốn ảnh cũ hiển thị đúng trên web mới.
+**Ảnh bài viết** (`Post.coverImageUrl`, cột `Image` ở web cũ): xác nhận thật trên production, đường
+dẫn dạng `/upload/images/...` (root-relative, KHÔNG nhất quán có dấu "/" đầu hay không — script tự
+chuẩn hoá qua `normalizeAssetPath`, thiếu "/" đầu sẽ khiến ảnh vỡ do trình duyệt resolve nhầm theo URL
+trang hiện tại thay vì gốc site). Physical path trên web cũ là `C:\inetpub\CongDoan\upload\images`
+(đã xác nhận thật). Cần copy sang physical path web mới, giữ nguyên cấu trúc con, để URL tự khớp
+không cần sửa code:
+
+```powershell
+robocopy "C:\inetpub\CongDoan\upload\images" "C:\inetpub\congdoan2026\web\upload\images" /E /R:2 /W:2
+```
 
 ---
 

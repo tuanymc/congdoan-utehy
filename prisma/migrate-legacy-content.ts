@@ -113,6 +113,19 @@ function str(raw: unknown): string {
   return String(raw).trim();
 }
 
+/** Ảnh bài viết web cũ (cột tblPost.Image) lưu đường dẫn tương đối tới gốc site, nhưng KHÔNG nhất
+ * quán có dấu "/" ở đầu hay không (dữ liệu nhập qua nhiều đời CMS/người dùng khác nhau) — gặp thật:
+ * phần lớn dòng có dạng "/upload/images/...", một số dòng lại thiếu dấu "/" thành "upload/images/...".
+ * Thiếu "/" đầu khiến trình duyệt resolve SAI thành đường dẫn tương đối theo URL trang hiện tại (vd ở
+ * trang "/tin-tuc/xyz" sẽ thành "/tin-tuc/upload/images/..." — sai, ảnh vỡ vì bị SPA fallback rewrite
+ * trả về index.html) thay vì đúng theo gốc site "/upload/images/...". Chuẩn hoá luôn thêm "/" đầu nếu
+ * thiếu, trừ khi đã là URL tuyệt đối (http/https) hoặc rỗng. */
+function normalizeAssetPath(raw: string): string | null {
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw) || raw.startsWith("/")) return raw;
+  return `/${raw}`;
+}
+
 function uniqueSlug(base: string, used: Set<string>, legacyId: string): string {
   let candidate = base || `bai-viet-${legacyId}`;
   let n = 2;
@@ -272,7 +285,7 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
         title,
         content,
         excerpt,
-        coverImageUrl: str(row.Image) || null,
+        coverImageUrl: normalizeAssetPath(str(row.Image)),
         categoryId,
         status: isPublished ? "PUBLISHED" : "DRAFT",
         publishedAt: isPublished ? createdAt : null
@@ -282,7 +295,7 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
         title,
         content,
         excerpt,
-        coverImageUrl: str(row.Image) || null,
+        coverImageUrl: normalizeAssetPath(str(row.Image)),
         categoryId,
         authorId,
         status: isPublished ? "PUBLISHED" : "DRAFT",
@@ -298,8 +311,9 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
     console.warn(`  -> CẢNH BÁO: ${unparsedDates} bài không đọc được CreateDate gốc, đã dùng ngày hiện tại thay thế.`);
   }
   console.warn(
-    "  -> LƯU Ý: coverImageUrl giữ nguyên đường dẫn ảnh từ web cũ (vd /Uploads/...) — ẢNH CHƯA ĐƯỢC COPY SANG SERVER MỚI. " +
-      "Cần copy thư mục ảnh web cũ sang server mới và/hoặc viết thêm bước xử lý riêng nếu muốn ảnh hiển thị đúng."
+    "  -> LƯU Ý: coverImageUrl giữ nguyên đường dẫn ảnh từ web cũ (vd /upload/images/...), đã chuẩn hoá " +
+      "luôn có dấu \"/\" đầu (xem normalizeAssetPath). Ảnh chỉ hiển thị đúng nếu đã copy thư mục " +
+      "upload/images của web cũ sang đúng vị trí tương ứng trên physical path web mới (xem deploy guide Bước 6.5)."
   );
 }
 
