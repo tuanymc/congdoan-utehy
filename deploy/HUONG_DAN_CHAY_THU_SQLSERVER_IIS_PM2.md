@@ -323,29 +323,37 @@ dở, không phải nguồn dữ liệu thật, không migrate.
 
 ### 1. Migrate schema Phase 3 lên CSDL production (thêm bảng, KHÔNG đụng dữ liệu cũ)
 
-Dùng đúng "Cách B" đã làm ở Bước 3 (không cần quyền tạo shadow database), lần này diff từ migration
-history hiện có (không phải `--from-empty`, vì CSDL đã có bảng users/posts/categories... từ trước):
+**Không dùng `--from-migrations`** ở đây — cờ này bắt Prisma tạo một shadow database tạm để replay
+lại toàn bộ lịch sử migration rồi mới so sánh, tức là vẫn cần quyền `CREATE DATABASE`. User CSDL trên
+server này chỉ có quyền trong riêng database `CongDoanUtehy` (đúng lý do "Cách B" ở Bước 3 tồn tại) —
+chạy `--from-migrations` sẽ báo `You must pass the --shadow-database-url`.
+
+Dùng `--from-schema-datasource` thay thế: cờ này chỉ **đọc trực tiếp** schema hiện có của CSDL đích
+qua chính `DATABASE_URL` (introspect, không tạo database tạm nào), rồi so với `schema.prisma` đích —
+không cần quyền tạo database, chỉ cần quyền đọc catalog trên `CongDoanUtehy` (user hiện có sẵn):
 
 ```powershell
 cd "D:\WEBSITE DA HOAN THANH\WebsiteCongDoan\CongDoan.utehy.edu.vn"
 npx prisma migrate diff `
-  --from-migrations prisma/migrations `
+  --from-schema-datasource prisma/schema.prisma `
   --to-schema-datamodel prisma/schema.prisma `
   --script `
   --output prisma/migrations/tmp_diff.sql
 
 # Kiểm tra file tmp_diff.sql chỉ chứa CREATE TABLE document_types/official_documents/
 # document_attachments (+ FK) — KHÔNG được có DROP/ALTER trên bảng cũ. Nếu đúng, đổi tên đúng chuẩn
-# Prisma migration rồi deploy:
+# Prisma migration rồi deploy (dùng Get-Content|Set-Content -Encoding ascii để tránh BOM, KHÔNG dùng
+# Move-Item — Move-Item không có tham số -Encoding, chỉ đổi tên file nguyên trạng):
 $name = "$(Get-Date -Format yyyyMMddHHmmss)_add_official_document"
 New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
-Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql" -Encoding ascii
+Get-Content "prisma/migrations/tmp_diff.sql" | Set-Content -Encoding ascii "prisma/migrations/$name/migration.sql"
+Remove-Item "prisma/migrations/tmp_diff.sql"
 npx prisma migrate deploy --schema=prisma/schema.prisma
 ```
 
 **Lưu ý encoding:** nếu PowerShell tạo `migration.sql` với BOM (lỗi quen thuộc từ Bước 3 —
 `Incorrect syntax near '﻿'`), dùng `Get-Content tmp_diff.sql | Set-Content migration.sql -Encoding ascii`
-thay vì `Move-Item` để đảm bảo không có BOM.
+thay vì copy/move nguyên trạng để đảm bảo không có BOM.
 
 ### 2. Chạy lại seed (an toàn, chỉ thêm quyền mới, không đổi dữ liệu cũ)
 
