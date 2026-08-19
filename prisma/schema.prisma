@@ -203,7 +203,11 @@ model DocumentType {
   description String?
   /// Tự tham chiếu — khớp cột DocumentKindParent ở tblDocumentKind (loại công văn có thể có loại cha).
   parentId  String?
-  parent    DocumentType?  @relation("DocumentTypeParent", fields: [parentId], references: [id])
+  /// SQL Server không cho phép cascade tự động qua self-relation (nguy cơ multiple cascade paths) —
+  /// Prisma bắt buộc khai rõ onDelete/onUpdate = NoAction ở đây, KHÔNG được để mặc định. Nếu xoá 1
+  /// "loại cha", các "loại con" chỉ mất liên kết cha (parentId phải tự set null qua code nếu cần) —
+  /// nhưng thực tế service.remove() đã chặn xoá khi còn loại con (xem document-types.service.ts).
+  parent    DocumentType?  @relation("DocumentTypeParent", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children  DocumentType[] @relation("DocumentTypeParent")
   /// Mã gốc (DocumentKindID) từ web cũ — dùng để script ETL tra cứu bản ghi đã nhập trước đó và
   /// upsert an toàn khi chạy lại nhiều lần. KHÔNG đặt @unique: SQL Server chỉ cho phép 1 NULL trong
@@ -263,7 +267,11 @@ model OfficialDocument {
   updatedAt  DateTime @updatedAt
 
   documentTypeId String
-  documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
+  /// onUpdate: NoAction bắt buộc — cùng lý do như DocumentType.parent ở trên (SQL Server chặn cascade
+  /// path đi qua bảng có self-relation). onDelete giữ Restrict (mặc định gần nhất với hành vi cũ):
+  /// service.remove() đã tự chặn xoá DocumentType còn công văn thuộc loại đó, nên FK Restrict chỉ là
+  /// lớp bảo vệ thứ 2 ở tầng CSDL.
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   attachments DocumentAttachment[]
 
@@ -288,7 +296,9 @@ model DocumentAttachment {
   legacyCode  String?
 
   documentId String
-  document   OfficialDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  /// onUpdate: NoAction bắt buộc (cùng lý do các relation khác trong domain này) — onDelete: Cascade
+  /// giữ nguyên có chủ đích: xoá 1 công văn thì xoá luôn file đính kèm của nó.
+  document   OfficialDocument @relation(fields: [documentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([documentId])
   @@index([legacyCode])
