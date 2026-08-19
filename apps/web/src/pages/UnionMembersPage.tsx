@@ -32,7 +32,8 @@ export function UnionMembersPage() {
 
   useEffect(() => {
     apiFetch<UnionDepartmentDto[]>("/union-departments")
-      .then(setDepartments)
+      // "?? []" phòng apiFetch trả về null — departments.map bên dưới không tự chống null.
+      .then((data) => setDepartments(data ?? []))
       .catch(() => {
         // Không chặn trang khi lỗi tải bộ phận — chỉ ẩn bộ lọc.
       });

@@ -20,7 +20,8 @@ export function NewsListPage() {
 
   useEffect(() => {
     apiFetch<CategoryDto[]>("/categories")
-      .then(setCategories)
+      // "?? []" phòng apiFetch trả về null — categories.length bên dưới không tự chống null.
+      .then((data) => setCategories(data ?? []))
       .catch(() => {
         // Không chặn trang khi lỗi tải chuyên mục — chỉ ẩn bộ lọc.
       });

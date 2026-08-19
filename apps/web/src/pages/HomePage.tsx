@@ -72,7 +72,9 @@ export function HomePage() {
 
   useEffect(() => {
     apiFetch<HomeSlideDto[]>("/home-slides")
-      .then(setSlides)
+      // "?? []" phòng trường hợp apiFetch trả về null (vd response 200 nhưng body rỗng bất thường) —
+      // slides.length ở JSX bên dưới không tự chống null, để state lọt null vào sẽ crash trắng trang.
+      .then((data) => setSlides(data ?? []))
       .catch(() => {
         // Không có banner nào (hoặc lỗi tải) -> chỉ ẩn slider, vẫn hiển thị phần còn lại của trang chủ.
       });
