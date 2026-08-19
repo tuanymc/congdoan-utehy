@@ -322,18 +322,29 @@ thống mới cũng **chưa có bảng đích** cho hồ sơ đoàn viên (Phase
 **Trước khi quyết định có xây Phase 2/3 hay không**, chạy thử truy vấn sau trực tiếp trên CSDL
 production cũ (SSMS hoặc `sqlcmd`, không phải đọc code) để biết chắc có dữ liệu thật hay không:
 
+**LƯU Ý:** không dùng `UNION ALL` để gộp chung — SQL Server parse/bind toàn bộ batch trước khi chạy,
+nên chỉ cần 1 bảng không tồn tại là "Invalid object name" làm hỏng luôn cả câu lệnh, không cho biết
+gì về 5 bảng còn lại. Dùng script dưới đây (kiểm tra tồn tại bằng `OBJECT_ID` trước, bảng nào không
+có thì tự bỏ qua, không báo lỗi):
+
 ```sql
-SELECT 'tblNguoiDung' AS TableName, COUNT(*) AS SoDong FROM tblNguoiDung
-UNION ALL SELECT 'tblCongDoanVien', COUNT(*) FROM tblCongDoanVien
-UNION ALL SELECT 'tblPostCongVan', COUNT(*) FROM tblPostCongVan
-UNION ALL SELECT 'tblNoiDungCV', COUNT(*) FROM tblNoiDungCV
-UNION ALL SELECT 'tblLoaiCV', COUNT(*) FROM tblLoaiCV
-UNION ALL SELECT 'tblFileDinhKem', COUNT(*) FROM tblFileDinhKem;
+DECLARE @sql nvarchar(max) = '';
+SELECT @sql = @sql +
+  'IF OBJECT_ID(''' + name + ''', ''U'') IS NOT NULL ' +
+  'EXEC(''SELECT ''''' + name + ''''' AS TableName, COUNT(*) AS SoDong FROM ' + QUOTENAME(name) + ''');' +
+  ' ELSE SELECT ''' + name + ''' AS TableName, -1 AS SoDong;' + CHAR(10)
+FROM (VALUES ('tblNguoiDung'),('tblCongDoanVien'),('tblPostCongVan'),
+             ('tblNoiDungCV'),('tblLoaiCV'),('tblFileDinhKem')) AS t(name);
+EXEC sp_executesql @sql;
 ```
 
-(Nếu bảng nào không tồn tại, câu lệnh sẽ báo lỗi "Invalid object name" cho đúng bảng đó — cũng là
-thông tin hữu ích.) Gửi lại kết quả — nếu có dữ liệu thật đáng kể thì mới đáng để xây thêm Phase
-2/3 (model Prisma mới + API + trang admin mới) trước khi viết tiếp ETL cho phần đó.
+Đọc kết quả: mỗi dòng là 1 bảng; `SoDong = -1` nghĩa là bảng **không tồn tại** trong CSDL này (đúng
+như trường hợp `tblCongDoanVien` đã gặp — "Invalid object name" ở lần chạy UNION ALL trước đó chính
+là bằng chứng đầu tiên xác nhận bảng này không tồn tại trên production, khớp với việc code web cũ
+không có DAL nào gọi tới nó). Gửi lại toàn bộ kết quả (6 dòng) — nếu bảng nào tồn tại VÀ có dữ liệu
+thật đáng kể thì mới đáng để xây thêm Phase 2/3 (model Prisma mới + API + trang admin mới) trước khi
+viết tiếp ETL cho phần đó; bảng nào báo -1 hoặc 0 dòng thì coi như xác nhận là scaffold chưa dùng,
+không cần migrate.
 
 ### Chạy ETL tin tức/chuyên mục (Post/Category — làm được ngay)
 
