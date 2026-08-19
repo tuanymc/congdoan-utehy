@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
-import { Menu, LogOut, User as UserIcon } from "lucide-react";
+import { Menu, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
+import type { CategoryDto } from "@congdoan/types";
+import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,14 +13,35 @@ import {
   SheetTrigger
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NavDropdown, type NavDropdownItem } from "@/components/layout/NavDropdown";
 
-const NAV_ITEMS = [
+/** Mục con "Giới thiệu" — trỏ tới các #id neo đã thêm trong AboutPage.tsx (xem GROUPS ở đó), phải
+ * giữ khớp id khi đổi 1 trong 2 nơi. */
+const ABOUT_ITEMS: NavDropdownItem[] = [
+  { to: "/gioi-thieu#gioi-thieu-chung", label: "Giới thiệu chung" },
+  { to: "/gioi-thieu#ban-chap-hanh-cong-doan", label: "Ban Chấp hành Công đoàn" },
+  { to: "/gioi-thieu#cac-ban-chuyen-mon", label: "Các ban chuyên môn" },
+  { to: "/lien-he", label: "Liên hệ" }
+];
+
+/** Mục con "Văn bản" — khớp query param `direction` mà DocumentsPage.tsx đọc (xem
+ * packages/types/src/official-document.ts: DocumentDirection). */
+const DOCUMENT_ITEMS: NavDropdownItem[] = [
+  { to: "/van-ban", label: "Tất cả văn bản" },
+  { to: "/van-ban?direction=OUTGOING", label: "Công văn đi" },
+  { to: "/van-ban?direction=INCOMING", label: "Công văn đến" }
+];
+
+/** Category slug không thuộc "Tin hoạt động" — hoặc vì đã có mục menu riêng (Giới thiệu, Văn bản,
+ * Ý kiến Công đoàn viên, Văn hoá đọc), hoặc vì là category mặc định lúc seed không thuộc web cũ
+ * ("tin-chung"). Category có isAboutSection=true cũng bị loại (đã hiển thị dưới "Giới thiệu"). */
+const ACTIVITY_EXCLUDED_SLUGS = new Set(["gioi-thieu", "van-ban", "tin-chung", "tin-tuc-khac", "van-hoa-doc"]);
+
+const STANDALONE_ITEMS = [
   { to: "/", label: "Trang chủ", end: true },
-  { to: "/tin-tuc", label: "Tin tức", end: false },
-  { to: "/gioi-thieu", label: "Giới thiệu", end: false },
-  { to: "/van-ban", label: "Văn bản", end: false },
   { to: "/danh-ba-cong-doan-vien", label: "Công đoàn viên", end: false },
-  { to: "/lien-he", label: "Liên hệ", end: false }
+  { to: "/tin-tuc?category=tin-tuc-khac", label: "Ý kiến Công đoàn viên", end: false },
+  { to: "/tin-tuc?category=van-hoa-doc", label: "Văn hóa đọc", end: false }
 ] as const;
 
 function navLinkClassName({ isActive }: { isActive: boolean }): string {
@@ -37,6 +60,30 @@ function getInitials(fullName: string): string {
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activityItems, setActivityItems] = useState<NavDropdownItem[]>([]);
+  const [mobileActivityOpen, setMobileActivityOpen] = useState(false);
+
+  useEffect(() => {
+    // "Tin hoạt động" lấy động theo Category thật (loại các category thuộc "Giới thiệu" +
+    // các category đã có mục menu riêng) — khớp cấu trúc menu web cũ, không hard-code danh sách
+    // chuyên mục vì admin có thể thêm/sửa category qua trang quản trị.
+    apiFetch<CategoryDto[]>("/categories")
+      .then((data) => {
+        const items = (data ?? [])
+          .filter((category) => !category.isAboutSection && !ACTIVITY_EXCLUDED_SLUGS.has(category.slug))
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((category) => ({ to: `/tin-tuc?category=${category.slug}`, label: category.name }));
+        setActivityItems(items);
+      })
+      .catch(() => {
+        // Không chặn header khi lỗi tải chuyên mục — dropdown "Tin hoạt động" chỉ còn link "Tất cả tin tức".
+      });
+  }, []);
+
+  const activityDropdownItems: NavDropdownItem[] = [
+    { to: "/tin-tuc", label: "Tất cả tin tức" },
+    ...activityItems
+  ];
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -74,13 +121,27 @@ export function Header() {
           </span>
         </Link>
 
-        {/* Menu desktop */}
+        {/* Menu desktop — cấu trúc phân cấp giống web cũ (congdoan.utehy.edu.vn): "Giới thiệu",
+         * "Tin hoạt động", "Văn bản" là dropdown; các mục còn lại là link phẳng như cũ. */}
         <nav className="hidden items-center gap-4 lg:flex lg:gap-6">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClassName}>
-              {item.label}
-            </NavLink>
-          ))}
+          <NavLink to="/" end className={navLinkClassName}>
+            Trang chủ
+          </NavLink>
+          <NavDropdown label="Giới thiệu" homeTo="/gioi-thieu" items={ABOUT_ITEMS} />
+          <NavDropdown label="Tin hoạt động" homeTo="/tin-tuc" items={activityDropdownItems} />
+          <NavDropdown label="Văn bản" homeTo="/van-ban" items={DOCUMENT_ITEMS} />
+          <NavLink to="/danh-ba-cong-doan-vien" className={navLinkClassName}>
+            Công đoàn viên
+          </NavLink>
+          <NavLink to="/tin-tuc?category=tin-tuc-khac" className={navLinkClassName}>
+            Ý kiến Công đoàn viên
+          </NavLink>
+          <NavLink to="/tin-tuc?category=van-hoa-doc" className={navLinkClassName}>
+            Văn hóa đọc
+          </NavLink>
+          <NavLink to="/lien-he" className={navLinkClassName}>
+            Liên hệ
+          </NavLink>
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
@@ -109,7 +170,9 @@ export function Header() {
           )}
         </div>
 
-        {/* Menu mobile */}
+        {/* Menu mobile — Sheet đã cuộn được sẵn nên hiển thị luôn danh sách con thụt lề dưới mỗi mục
+         * cha thay vì làm accordion riêng, trừ "Tin hoạt động" (danh sách động, có thể dài) vẫn thu
+         * gọn được bằng nút bấm để đỡ dài trang khi có nhiều chuyên mục. */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Mở menu">
@@ -120,8 +183,8 @@ export function Header() {
             <SheetHeader>
               <SheetTitle>Công đoàn UTEHY</SheetTitle>
             </SheetHeader>
-            <nav className="flex flex-col gap-1 px-4">
-              {NAV_ITEMS.map((item) => (
+            <nav className="flex flex-col gap-1 overflow-y-auto px-4">
+              {STANDALONE_ITEMS.slice(0, 1).map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -137,6 +200,120 @@ export function Header() {
                   {item.label}
                 </NavLink>
               ))}
+
+              {/* Giới thiệu (luôn hiện đủ 4 mục con — danh sách cố định, ngắn) */}
+              <div className="px-3 py-2">
+                <Link
+                  to="/gioi-thieu"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-sm font-medium text-foreground/80 hover:text-primary"
+                >
+                  Giới thiệu
+                </Link>
+                <div className="mt-1 flex flex-col gap-1 border-l pl-3">
+                  {ABOUT_ITEMS.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-primary"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tin hoạt động (danh sách động, có thể dài — thu gọn mặc định) */}
+              <div className="px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <Link
+                    to="/tin-tuc"
+                    onClick={() => setMobileOpen(false)}
+                    className="text-sm font-medium text-foreground/80 hover:text-primary"
+                  >
+                    Tin hoạt động
+                  </Link>
+                  {activityItems.length > 0 ? (
+                    <button
+                      type="button"
+                      aria-label="Mở danh sách chuyên mục Tin hoạt động"
+                      aria-expanded={mobileActivityOpen}
+                      onClick={() => setMobileActivityOpen((current) => !current)}
+                      className="rounded p-0.5 text-foreground/60 hover:text-primary"
+                    >
+                      <ChevronDown className={mobileActivityOpen ? "size-3.5 rotate-180" : "size-3.5"} />
+                    </button>
+                  ) : null}
+                </div>
+                {mobileActivityOpen && activityItems.length > 0 ? (
+                  <div className="mt-1 flex flex-col gap-1 border-l pl-3">
+                    {activityItems.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        className="rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-primary"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Văn bản (luôn hiện đủ 3 mục con — danh sách cố định, ngắn) */}
+              <div className="px-3 py-2">
+                <Link
+                  to="/van-ban"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-sm font-medium text-foreground/80 hover:text-primary"
+                >
+                  Văn bản
+                </Link>
+                <div className="mt-1 flex flex-col gap-1 border-l pl-3">
+                  {DOCUMENT_ITEMS.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-primary"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {STANDALONE_ITEMS.slice(1).map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    [
+                      "rounded-md px-3 py-2 text-sm font-medium hover:bg-accent",
+                      isActive ? "bg-accent text-primary" : "text-foreground/80"
+                    ].join(" ")
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+
+              <NavLink
+                to="/lien-he"
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  [
+                    "rounded-md px-3 py-2 text-sm font-medium hover:bg-accent",
+                    isActive ? "bg-accent text-primary" : "text-foreground/80"
+                  ].join(" ")
+                }
+              >
+                Liên hệ
+              </NavLink>
             </nav>
             <div className="mt-auto flex flex-col gap-2 border-t px-4 py-4">
               {isAuthenticated && user ? (
