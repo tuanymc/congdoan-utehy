@@ -14,6 +14,20 @@
   <system.webServer>
     <rewrite>
       <rules>
+        <!-- Phát hiện thật trên production: ảnh bài viết nhập từ web cũ (thư mục upload/images) có
+             tên thư mục con chứa khoảng trắng (vd "cong tac to chuc"). Với các đường dẫn này, điều
+             kiện IsFile bên dưới đôi khi không nhận ra file THẬT SỰ ĐÃ TỒN TẠI trên đĩa (lệch giữa
+             URL đã mã hoá "%20" và tên file có khoảng trắng thật khi IIS Rewrite module đánh giá
+             {REQUEST_FILENAME}), khiến rule SPA fallback "nuốt" luôn request ảnh và trả về
+             index.html (status 200 nhưng Content-Type text/html) thay vì trả file ảnh thật — ảnh vỡ
+             trên giao diện dù file vật lý có thật và đã copy đúng. Vì toàn bộ nội dung do người dùng
+             tải lên (không phải asset build của Vite) chỉ nằm trong "upload/", loại trừ hẳn nhánh
+             này khỏi rule SPA fallback — để IIS tự phục vụ file tĩnh bình thường (hoặc 404 thật nếu
+             file thật sự không tồn tại), không qua rewrite nữa. -->
+        <rule name="SkipSpaFallbackForUploads" stopProcessing="true">
+          <match url="^upload/" />
+          <action type="None" />
+        </rule>
         <rule name="ReactRouterSpaFallback" stopProcessing="true">
           <match url=".*" />
           <conditions logicalGrouping="MatchAll">
