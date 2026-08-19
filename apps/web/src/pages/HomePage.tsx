@@ -9,6 +9,14 @@ import { PostCard } from "@/components/PostCard";
 import { HomeSlider } from "@/components/HomeSlider";
 import { Newspaper, Info, FileText, Users, Phone, LogIn } from "lucide-react";
 
+/** Số liệu truyền thống — xác thực từ trang Giới thiệu chung web cũ (huân chương Lao động hạng Ba
+ * 1986/hạng Nhất 1996, huân chương Độc lập hạng Ba 2001) — trùng nguồn với STATS trong AboutPage.tsx. */
+const HERO_STATS = [
+  { value: "1966", label: "Năm thành lập" },
+  { value: "60+", label: "Năm truyền thống" },
+  { value: "3", label: "Huân chương" }
+];
+
 const SHORTCUTS = [
   {
     to: "/tin-tuc",
@@ -84,8 +92,10 @@ export function HomePage() {
     <div>
       {slides.length > 0 ? <HomeSlider slides={slides} /> : null}
 
-      {/* Banner giới thiệu */}
-      <section className="bg-gradient-to-br from-primary to-[#78171b] text-primary-foreground">
+      {/* Banner giới thiệu — gradient xanh dương đậm dần, khớp bảng màu mới (xem apps/web/src/index.css,
+       * --chart-5 cùng tông #0f2a6b). Trước là "to-[#78171b]" (đỏ) sót lại từ bảng màu cũ, gây lệch
+       * tông khi đổi sang xanh dương làm màu chủ đạo. */}
+      <section className="bg-gradient-to-br from-primary to-[#0f2a6b] text-primary-foreground">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
           <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
             Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên
@@ -109,6 +119,17 @@ export function HomePage() {
             >
               <Link to="/gioi-thieu">Giới thiệu Công đoàn</Link>
             </Button>
+          </div>
+
+          {/* Số liệu truyền thống — xác thực từ trang Giới thiệu chung web cũ (xem chú thích STATS
+           * trong AboutPage.tsx, cùng nguồn số liệu, giữ khớp 2 nơi). */}
+          <div className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-primary-foreground/20 pt-6">
+            {HERO_STATS.map((stat) => (
+              <div key={stat.label}>
+                <p className="text-2xl font-bold text-secondary sm:text-3xl">{stat.value}</p>
+                <p className="mt-1 text-xs text-primary-foreground/80 sm:text-sm">{stat.label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
