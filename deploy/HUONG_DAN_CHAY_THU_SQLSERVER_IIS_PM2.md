@@ -207,13 +207,18 @@ cần đụng đến IIS — xem `pm2 logs congdoan-api` để biết lỗi th�
 
 ## Bước 5 — Tạo 1 site IIS + 2 sub-application (1 domain duy nhất)
 
-Đã chốt dùng **1 domain duy nhất** `congdoan.utehy.edu.vn` cho cả 3 phần, chia theo đường dẫn:
+Đã chốt dùng **1 domain duy nhất** `congdoan.utehy.edu.vn` cho cả 3 phần, chia theo đường dẫn.
+
+Server này đang có sẵn **web cũ** đang chạy thật — physical path và tên site IIS bên dưới dùng
+`congdoan2026` (không phải `congdoan`) để deploy bản thử nghiệm **song song**, không đụng tới/đè lên
+web cũ đang phục vụ người dùng thật. Đổi lại thành tên khác nếu bạn muốn, miễn nhất quán ở mọi lệnh
+bên dưới.
 
 | Đường dẫn | Nội dung | Physical path | Nguồn web.config |
 |---|---|---|---|
-| `/` | apps/web (site chính) | `C:\inetpub\congdoan\web` (chứa `apps\web\dist`) | `deploy\iis\web.config.web` |
-| `/admin` | apps/admin (IIS Application nested) | `C:\inetpub\congdoan\admin` (chứa `apps\admin\dist`) | `deploy\iis\web.config.admin` |
-| `/api` | apps/api (IIS Application nested, reverse proxy) | thư mục rỗng, ví dụ `C:\inetpub\congdoan\api` | `deploy\iis\web.config.api` |
+| `/` | apps/web (site chính) | `C:\inetpub\congdoan2026\web` (chứa `apps\web\dist`) | `deploy\iis\web.config.web` |
+| `/admin` | apps/admin (IIS Application nested) | `C:\inetpub\congdoan2026\admin` (chứa `apps\admin\dist`) | `deploy\iis\web.config.admin` |
+| `/api` | apps/api (IIS Application nested, reverse proxy) | thư mục rỗng, ví dụ `C:\inetpub\congdoan2026\api` | `deploy\iis\web.config.api` |
 
 `/admin` và `/api` phải là **IIS Application** nested dưới site chính (không phải site/binding
 riêng) — đây là điểm khác so với mô hình 3 site độc lập. apps/admin đã được build sẵn với
@@ -221,21 +226,23 @@ riêng) — đây là điểm khác so với mô hình 3 site độc lập. apps
 `apps/admin/vite.config.ts`, `apps/admin/src/App.tsx`) — **không cần build lại** nếu bạn đã chạy
 `pnpm build` sau khi đồng bộ code mới nhất từ Git.
 
-**Copy dữ liệu build vào đúng physical path trước** (nếu chưa làm ở Bước 3):
+**Copy dữ liệu build vào đúng physical path:**
 
 ```powershell
-New-Item -ItemType Directory -Force -Path C:\inetpub\congdoan\api, C:\inetpub\congdoan\web, C:\inetpub\congdoan\admin
+New-Item -ItemType Directory -Force -Path C:\inetpub\congdoan2026\api, C:\inetpub\congdoan2026\web, C:\inetpub\congdoan2026\admin
 
-Copy-Item deploy\iis\web.config.api   -Destination C:\inetpub\congdoan\api\web.config -Force
-Copy-Item apps\web\dist\*             -Destination C:\inetpub\congdoan\web -Recurse -Force
-Copy-Item deploy\iis\web.config.web   -Destination C:\inetpub\congdoan\web\web.config -Force
-Copy-Item apps\admin\dist\*           -Destination C:\inetpub\congdoan\admin -Recurse -Force
-Copy-Item deploy\iis\web.config.admin -Destination C:\inetpub\congdoan\admin\web.config -Force
+Copy-Item deploy\iis\web.config.api   -Destination C:\inetpub\congdoan2026\api\web.config -Force
+Copy-Item apps\web\dist\*             -Destination C:\inetpub\congdoan2026\web -Recurse -Force
+Copy-Item deploy\iis\web.config.web   -Destination C:\inetpub\congdoan2026\web\web.config -Force
+Copy-Item apps\admin\dist\*           -Destination C:\inetpub\congdoan2026\admin -Recurse -Force
+Copy-Item deploy\iis\web.config.admin -Destination C:\inetpub\congdoan2026\admin\web.config -Force
 ```
 
-(Đây chính xác là những gì `deploy\scripts\deploy.ps1` tự động hoá cho các lần deploy sau — xem
-Bước 7. Với `congdoan\api`, **không** copy `apps\api\dist` vào đó — thư mục này chỉ cần đúng 1 file
-`web.config` để làm proxy sang tiến trình Node do PM2 quản lý ở `127.0.0.1:3000`.)
+(Đây gần giống những gì `deploy\scripts\deploy.ps1` tự động hoá cho các lần deploy sau — script đó
+có tham số `-WebSitePath`/`-AdminSitePath`/`-ApiSitePath`/`-ApiEnvFile` để trỏ tới `congdoan2026`
+thay vì mặc định, xem Bước 7. Với `congdoan2026\api`, **không** copy `apps\api\dist` vào đó — thư
+mục này chỉ cần đúng 1 file `web.config` để làm proxy sang tiến trình Node do PM2 quản lý ở
+`127.0.0.1:3000`.)
 
 **Tạo site + 2 sub-application bằng PowerShell** (module `WebAdministration` có sẵn trên mọi
 Windows Server đã cài IIS):
@@ -243,18 +250,22 @@ Windows Server đã cài IIS):
 ```powershell
 Import-Module WebAdministration
 
-# Site chính — binding domain thật. Nếu server staging chưa có DNS trỏ vào, có thể tạm bỏ
-# -HostHeader (site nghe mọi domain trên cổng đó) và test qua http://localhost/ hoặc IP server.
-New-Website -Name "congdoan" -PhysicalPath "C:\inetpub\congdoan\web" -Port 80 -HostHeader "congdoan.utehy.edu.vn"
+# QUAN TRỌNG: web cũ nhiều khả năng ĐÃ bind sẵn hostname "congdoan.utehy.edu.vn" trên cổng 80/443 —
+# một hostname không thể gắn cho 2 site IIS cùng lúc trên cùng cổng. Vì đây là bản thử nghiệm song
+# song, tạm bind qua CỔNG RIÊNG (vd 8080) thay vì -HostHeader, test qua http://localhost:8080/ hoặc
+# http://<IP-server>:8080/. Chỉ chuyển sang -HostHeader "congdoan.utehy.edu.vn" (đổi cổng thật
+# 80/443) khi đã sẵn sàng CẮT hẳn sang bản mới (tắt/gỡ binding cũ trước để tránh xung đột).
+New-Website -Name "congdoan2026" -PhysicalPath "C:\inetpub\congdoan2026\web" -Port 8080
 
-# 2 Application nested — "-Site congdoan" gắn chúng vào ĐÚNG site vừa tạo, không phải site riêng.
-New-WebApplication -Name "admin" -Site "congdoan" -PhysicalPath "C:\inetpub\congdoan\admin"
-New-WebApplication -Name "api"   -Site "congdoan" -PhysicalPath "C:\inetpub\congdoan\api"
+# 2 Application nested — "-Site congdoan2026" gắn chúng vào ĐÚNG site vừa tạo, không phải site riêng.
+New-WebApplication -Name "admin" -Site "congdoan2026" -PhysicalPath "C:\inetpub\congdoan2026\admin"
+New-WebApplication -Name "api"   -Site "congdoan2026" -PhysicalPath "C:\inetpub\congdoan2026\api"
 ```
 
-Cấu hình HTTPS: mở **IIS Manager** → site `congdoan` → **Bindings...** → **Add** → type `https`,
-chọn chứng chỉ SSL của trường → **OK**. Cả `/admin` và `/api` tự động dùng chung binding/chứng chỉ
-của site cha, không cần cấu hình HTTPS riêng cho từng Application.
+Cấu hình HTTPS (khi cần thật, thường để sau khi đã cắt sang domain thật): mở **IIS Manager** → site
+`congdoan2026` → **Bindings...** → **Add** → type `https`, chọn chứng chỉ SSL của trường → **OK**.
+Cả `/admin` và `/api` tự động dùng chung binding/chứng chỉ của site cha, không cần cấu hình HTTPS
+riêng cho từng Application.
 
 Nếu IIS Manager báo lỗi khi tạo Application do App Pool mặc định đang chạy chế độ "Managed Code"
 không phù hợp (thường không xảy ra với 2 lệnh trên vì mặc định dùng lại App Pool của site cha), tạo
@@ -264,22 +275,22 @@ riêng 1 App Pool "No Managed Code" và gán qua tham số `-ApplicationPool` c�
 
 ## Bước 6 — Kiểm tra end-to-end
 
-Toàn bộ đều trên cùng domain `congdoan.utehy.edu.vn` (thay bằng `http://localhost` nếu server
-staging chưa có DNS thật):
+Đang chạy song song ở cổng riêng `http://localhost:8080` (xem lưu ý ở Bước 5) — đổi thành
+`https://congdoan.utehy.edu.vn` sau khi cắt hẳn sang domain thật:
 
-1. Mở `https://congdoan.utehy.edu.vn/` — phải thấy trang chủ Công đoàn tải được.
-2. Mở `https://congdoan.utehy.edu.vn/admin/login` — đăng nhập bằng `SEED_ADMIN_EMAIL` /
+1. Mở `http://localhost:8080/` — phải thấy trang chủ Công đoàn tải được.
+2. Mở `http://localhost:8080/admin/login` — đăng nhập bằng `SEED_ADMIN_EMAIL` /
    `SEED_ADMIN_PASSWORD` đã đặt ở Bước 2.
 3. Trong trang admin, thử tạo 1 bài viết (Post) mới — nếu lưu thành công và hiện lại trên trang
    web công khai, tức là chuỗi Admin → API → SQL Server → Web đã thông toàn bộ.
-4. Mở `https://congdoan.utehy.edu.vn/api/docs` — phải thấy Swagger UI liệt kê đầy đủ endpoint.
+4. Mở `http://localhost:8080/api/docs` — phải thấy Swagger UI liệt kê đầy đủ endpoint.
 5. Kiểm tra route SPA fallback: mở thẳng một URL con bất kỳ trên web/admin (ví dụ
    `/gioi-thieu` hoặc `/admin/posts`) rồi bấm F5 reload — nếu ra lỗi 404 của IIS thay vì tải đúng
    trang, nghĩa là rule `ReactRouterSpaFallback` trong web.config chưa được áp dụng (kiểm tra lại
    module URL Rewrite đã cài đúng chưa, và đảm bảo `/admin` được tạo bằng `New-WebApplication`
    chứ không phải chỉ là 1 thư mục con thường trong site — nếu chỉ là thư mục con, IIS sẽ không áp
    dụng web.config riêng của nó đúng cách).
-6. Mở thẳng `https://congdoan.utehy.edu.vn/api/health` — phải trả JSON `status: ok`, xác nhận
+6. Mở thẳng `http://localhost:8080/api/health` — phải trả JSON `status: ok`, xác nhận
    reverse-proxy `/api` hoạt động đúng qua IIS (khác với `curl 127.0.0.1:3000/health` ở Bước 4 vốn
    chỉ kiểm tra thẳng Node, chưa qua IIS).
 
