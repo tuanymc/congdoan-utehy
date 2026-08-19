@@ -147,8 +147,12 @@ provider = "mssql"
 
 $ts = Get-Date -Format "yyyyMMddHHmmss"
 mkdir "prisma\migrations\${ts}_init" -Force | Out-Null
+# QUAN TRỌNG: "-Encoding utf8" trên Windows PowerShell tự chèn BOM (byte-order-mark) đầu file, SQL
+# Server đọc phải BOM đó sẽ báo "Incorrect syntax" ngay câu lệnh đầu tiên. Nội dung SQL sinh ra ở
+# đây thuần ASCII (tên bảng/cột lấy từ schema.prisma đều là tiếng Anh) nên dùng "-Encoding ascii" —
+# không bao giờ có BOM, an toàn tuyệt đối cho trường hợp này.
 pnpm exec prisma migrate diff --from-empty --to-schema-datamodel=prisma/schema.prisma --script |
-  Set-Content -Encoding utf8 "prisma\migrations\${ts}_init\migration.sql"
+  Out-File -Encoding ascii -FilePath "prisma\migrations\${ts}_init\migration.sql"
 ```
 
 Cả 2 cách, bước tiếp theo giống nhau — áp dụng (Cách B chưa áp dụng gì, cần chạy `prisma:deploy`;
@@ -273,3 +277,9 @@ thứ 2 trở đi bạn không cần lặp lại các lệnh Copy-Item thủ cô
 - **Không đăng nhập được admin dù đúng mật khẩu seed**: kiểm tra `pnpm prisma:seed` đã chạy thành
   công chưa (xem log lúc chạy, phải báo tạo user + gán role ADMIN); có thể chạy lại an toàn (script
   seed idempotent, không tạo trùng nếu email đã tồn tại).
+- **`prisma:deploy` báo lỗi `P3018 ... Incorrect syntax near '﻿'`** (Cách B ở Bước 3): file
+  `migration.sql` bị ghi kèm BOM do dùng `-Encoding utf8` trên Windows PowerShell — xem lại đã dùng
+  đúng `-Encoding ascii` chưa. Sau khi sửa lại file, migration cũ đã bị Prisma đánh dấu "failed",
+  phải gỡ trước khi thử lại: `pnpm exec prisma migrate resolve --rolled-back <tên-migration>
+  --schema=prisma/schema.prisma` (lấy `<tên-migration>` từ tên thư mục trong `prisma/migrations/`,
+  ví dụ `20260819085744_init`), rồi chạy lại `pnpm prisma:deploy`.
