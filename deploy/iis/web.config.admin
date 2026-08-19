@@ -36,6 +36,10 @@
     </staticContent>
     <httpProtocol>
       <customHeaders>
+        <!-- <clear /> cùng lý do như <rules> ở trên — web.config.web (site cha) cũng khai 2 header
+             X-Content-Type-Options/X-Frame-Options, không clear sẽ lỗi 500.19 "duplicate collection
+             entry ... key X-Content-Type-Options" khi 2 bên kế thừa gộp lại. -->
+        <clear />
         <add name="X-Content-Type-Options" value="nosniff" />
         <add name="X-Frame-Options" value="SAMEORIGIN" />
         <add name="X-Robots-Tag" value="noindex, nofollow" />
