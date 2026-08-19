@@ -137,8 +137,17 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // legacyCode = tblCategory.Id (web cũ), dùng để ETL nhận diện đúng bản ghi đã nhập ở lần chạy
+  // trước — KHÔNG @unique (SQL Server chỉ cho 1 NULL/UNIQUE thường, mà bản ghi tạo tay trên admin
+  // luôn có legacyCode=NULL, xem prisma/migrate-legacy-content.ts hàm upsertByLegacyCode()). Thêm
+  // sau khi phát hiện thật trên production: ETL trước đây chỉ khớp theo "slug", chạy ETL lần 2 (vá
+  // lỗi coverImageUrl) đã hiểu nhầm slug đã tồn tại (của chính bản ghi đó) là bị "chiếm" bởi bản ghi
+  // khác, tự thêm hậu tố "-2" và TẠO MỚI thay vì cập nhật — gây trùng dữ liệu.
+  legacyCode String?
+
   posts Post[]
 
+  @@index([legacyCode])
   @@map("categories")
 }
 
@@ -164,8 +173,12 @@ model Post {
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
 
+  // legacyCode = tblPost.Id (web cũ) — cùng lý do/cách dùng như Category.legacyCode ở trên.
+  legacyCode String?
+
   @@index([categoryId])
   @@index([status, publishedAt])
+  @@index([legacyCode])
   @@map("posts")
 }
 

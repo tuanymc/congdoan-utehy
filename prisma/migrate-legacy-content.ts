@@ -30,8 +30,12 @@
  *        LEGACY_MIGRATE_DRY_RUN=true pnpm migrate:legacy
  *   3. Chạy thật:
  *        pnpm migrate:legacy
- * Script dùng upsert (theo slug với Post/Category, theo tra cứu legacyCode với DocumentType/
- * OfficialDocument/DocumentAttachment) nên chạy lại nhiều lần là AN TOÀN (idempotent), không tạo trùng.
+ * Toàn bộ 5 model (Category/Post/DocumentType/OfficialDocument/DocumentAttachment) đều tra cứu bản
+ * ghi đã nhập qua cột legacyCode (KHÔNG qua slug) trước khi upsert, nên chạy lại script nhiều lần là
+ * AN TOÀN (idempotent) — không tạo trùng, không đổi slug/URL đã công khai của bản ghi đã có. Trước
+ * đây Category/Post tra theo slug, gây trùng dữ liệu thật trên production khi chạy ETL lần 2 (slug
+ * của chính bản ghi cũ bị hiểu nhầm là "đã bị chiếm", tự thêm hậu tố "-2" rồi tạo mới) — đã sửa bằng
+ * cách thêm cột legacyCode cho Category/Post giống 3 model công văn.
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
@@ -170,7 +174,11 @@ async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, 
   const legacyToNewId = new Map<string, string>();
   const usedSlugs = new Set<string>();
 
-  // Nạp trước slug đã tồn tại trong CSDL mới để tránh đụng độ với dữ liệu đã có (vd chuyên mục seed sẵn).
+  // Nạp trước slug đã tồn tại trong CSDL mới để tránh đụng độ với dữ liệu đã có (vd chuyên mục seed
+  // sẵn, hoặc chuyên mục khác đã nhập trong CHÍNH lần chạy này). KHÔNG dùng để quyết định slug MỚI
+  // cho một chuyên mục ĐÃ nhập ở lần chạy trước — việc đó tra theo legacyCode bên dưới, không đoán
+  // qua slug (lỗi thật gặp trên production: chạy ETL lần 2 hiểu nhầm slug của chính bản ghi cũ là bị
+  // "chiếm", tự thêm hậu tố "-2" và tạo trùng thay vì cập nhật).
   if (!DRY_RUN) {
     const existing = await prisma.category.findMany({ select: { slug: true } });
     existing.forEach((c) => usedSlugs.add(c.slug));
@@ -179,27 +187,26 @@ async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, 
   let sortOrder = 0;
   for (const row of rows) {
     const name = str(row.Name) || `Chuyên mục ${row.Id}`;
-    const slug = uniqueSlug(slugify(name), usedSlugs, row.Id);
+    const legacyCode = String(row.Id);
 
     if (DRY_RUN) {
+      const slug = uniqueSlug(slugify(name), usedSlugs, row.Id);
       console.log(`  [dry-run] Category "${name}" -> slug "${slug}"`);
       legacyToNewId.set(row.Id, `dry-run-${row.Id}`);
       sortOrder += 1;
       continue;
     }
 
-    const category = await prisma.category.upsert({
-      where: { slug },
-      update: {
-        name,
-        description: str(row.MetaDescription) || null
-      },
-      create: {
-        slug,
-        name,
-        description: str(row.MetaDescription) || null,
-        sortOrder
-      }
+    // Đã nhập ở lần chạy trước (khớp legacyCode) -> GIỮ NGUYÊN slug hiện có (không đổi URL đã công
+    // khai), chỉ tạo slug MỚI khi đây thực sự là chuyên mục chưa từng nhập.
+    const existingCategory = await prisma.category.findFirst({ where: { legacyCode } });
+    const slug = existingCategory ? existingCategory.slug : uniqueSlug(slugify(name), usedSlugs, row.Id);
+
+    const category = await upsertByLegacyCode(prisma.category, legacyCode, {
+      slug,
+      name,
+      description: str(row.MetaDescription) || null,
+      sortOrder
     });
     legacyToNewId.set(row.Id, category.id);
     sortOrder += 1;
@@ -234,6 +241,8 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
   }>;
   console.log(`  -> Tìm thấy ${rows.length} bài viết ở web cũ.`);
 
+  // Nạp trước slug đã có để tránh đụng độ khi tạo MỚI — KHÔNG dùng để quyết định slug cho bài ĐÃ
+  // nhập ở lần chạy trước (tra theo legacyCode bên dưới), cùng lý do như migrateCategories() ở trên.
   const usedSlugs = new Set<string>();
   if (!DRY_RUN) {
     const existing = await prisma.post.findMany({ select: { slug: true } });
@@ -258,8 +267,7 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
       continue;
     }
 
-    const baseSlugSource = str(row.Link) || title;
-    const slug = uniqueSlug(slugify(baseSlugSource), usedSlugs, row.Id);
+    const legacyCode = String(row.Id);
 
     // Toàn bộ 329 bài ở web cũ đều đang hiển thị công khai thật (đã xác nhận qua log dry-run — không
     // bài nào có Active=1 rõ ràng, web cũ hiển thị công khai theo cơ chế khác không chỉ dựa cột này),
@@ -274,34 +282,30 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
     const excerpt = stripHtmlForExcerpt(row.ContentUp);
 
     if (DRY_RUN) {
+      const baseSlugSource = str(row.Link) || title;
+      const slug = uniqueSlug(slugify(baseSlugSource), usedSlugs, row.Id);
       console.log(`  [dry-run] Post "${title}" -> slug "${slug}", status=${isPublished ? "PUBLISHED" : "DRAFT"}`);
       imported += 1;
       continue;
     }
 
-    await prisma.post.upsert({
-      where: { slug },
-      update: {
-        title,
-        content,
-        excerpt,
-        coverImageUrl: normalizeAssetPath(str(row.Image)),
-        categoryId,
-        status: isPublished ? "PUBLISHED" : "DRAFT",
-        publishedAt: isPublished ? createdAt : null
-      },
-      create: {
-        slug,
-        title,
-        content,
-        excerpt,
-        coverImageUrl: normalizeAssetPath(str(row.Image)),
-        categoryId,
-        authorId,
-        status: isPublished ? "PUBLISHED" : "DRAFT",
-        publishedAt: isPublished ? createdAt : null,
-        createdAt
-      }
+    // Đã nhập ở lần chạy trước (khớp legacyCode) -> GIỮ NGUYÊN slug hiện có (không đổi URL đã công
+    // khai), chỉ tạo slug MỚI khi đây thực sự là bài viết chưa từng nhập.
+    const existingPost = await prisma.post.findFirst({ where: { legacyCode } });
+    const baseSlugSource = str(row.Link) || title;
+    const slug = existingPost ? existingPost.slug : uniqueSlug(slugify(baseSlugSource), usedSlugs, row.Id);
+
+    await upsertByLegacyCode(prisma.post, legacyCode, {
+      slug,
+      title,
+      content,
+      excerpt,
+      coverImageUrl: normalizeAssetPath(str(row.Image)),
+      categoryId,
+      authorId,
+      status: isPublished ? "PUBLISHED" : "DRAFT",
+      publishedAt: isPublished ? createdAt : null,
+      createdAt
     });
     imported += 1;
   }
