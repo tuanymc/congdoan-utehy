@@ -137,23 +137,21 @@ model Category {
   @@map("categories")
 }
 
-enum PostStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-}
-
+// SQL Server connector của Prisma KHÔNG hỗ trợ enum gốc của CSDL (native enum) — xem
+// https://www.prisma.io/docs/orm/reference/database-features#misc — nên `status` dùng String,
+// validate giá trị hợp lệ ở tầng ứng dụng (xem PostStatus trong packages/types/src/content.ts và
+// @IsEnum ở create-post.dto.ts/update-post.dto.ts). KHÔNG đổi lại thành `enum` khi sửa domain này.
 model Post {
-  id            String     @id @default(uuid())
-  slug          String     @unique
+  id            String    @id @default(uuid())
+  slug          String    @unique
   title         String
   excerpt       String?
-  content       String     @db.NVarChar(Max)
+  content       String    @db.NVarChar(Max)
   coverImageUrl String?
-  status        PostStatus @default(DRAFT)
+  status        String    @default("DRAFT") @db.VarChar(20)
   publishedAt   DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])

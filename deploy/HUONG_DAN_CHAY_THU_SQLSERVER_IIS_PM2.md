@@ -110,9 +110,11 @@ Trong thư mục gốc repo trên server (ví dụ `D:\WEBSITE DA HOAN THANH\Web
 ```powershell
 pnpm install --frozen-lockfile
 
-# Copy .env vào apps/api để prisma & nest đọc được khi chạy lệnh dưới đây (script deploy.ps1 sẽ tự
-# làm việc này ở lần deploy sau; lần đầu làm tay để kiểm tra kết nối DB trước).
-Copy-Item C:\inetpub\congdoan\shared\.env apps\api\.env
+# QUAN TRỌNG: lệnh Prisma CLI (prisma:generate/deploy/seed) chạy từ THƯ MỤC GỐC repo, nên đọc
+# .env ở gốc repo (hoặc prisma/.env) — KHÔNG phải apps/api/.env (đó là chỗ tiến trình PM2 đọc, xem
+# Bước 4). Copy .env ra CẢ HAI chỗ:
+Copy-Item C:\inetpub\congdoan\shared\.env .env               # cho các lệnh Prisma CLI chạy ở bước này
+Copy-Item C:\inetpub\congdoan\shared\.env apps\api\.env      # cho tiến trình API chạy qua PM2 ở Bước 4
 
 pnpm prisma:generate
 pnpm prisma:deploy      # chạy migration thật lên CongDoanUtehy — tương đương "prisma migrate deploy"
@@ -120,6 +122,10 @@ pnpm prisma:seed        # tạo tài khoản admin đầu tiên (SEED_ADMIN_EMAI
 
 pnpm build              # build cả apps/api, apps/web, apps/admin
 ```
+
+File `.env` ở gốc repo chỉ dùng để chạy các lệnh CLI ở bước này — không commit vào Git (đã có trong
+`.gitignore`), và không cần thiết nữa sau khi triển khai xong qua `deploy.ps1` (script đó chỉ đọc từ
+`C:\inetpub\congdoan\shared\.env`, không đụng tới file `.env` ở gốc repo).
 
 Nếu `pnpm prisma:deploy` báo lỗi kết nối, kiểm tra lại: TCP/IP đã bật ở bước 1.2 chưa, tường lửa
 Windows có chặn cổng 1433 không (`New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound
