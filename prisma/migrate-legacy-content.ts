@@ -67,9 +67,9 @@ async function connectLegacyDb() {
 
 /** Legacy CreateDate là string tự do (nhập từ ASP.NET, thường "dd/MM/yyyy HH:mm:ss" hoặc "MM/dd/yyyy...").
  * Thử vài định dạng phổ biến, không parse được thì trả về null (script sẽ dùng ngày hiện tại). */
-function parseLegacyDate(raw: string | null | undefined): Date | null {
-  if (!raw || !raw.trim()) return null;
-  const s = raw.trim();
+function parseLegacyDate(raw: unknown): Date | null {
+  const s = str(raw);
+  if (!s) return null;
 
   // dd/MM/yyyy[ HH:mm:ss]
   const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
@@ -87,15 +87,30 @@ function parseLegacyDate(raw: string | null | undefined): Date | null {
 }
 
 /** Bỏ thẻ HTML thô để làm excerpt ngắn từ ContentUp (không cần thư viện sanitize đầy đủ, chỉ hiển thị tóm tắt). */
-function stripHtmlForExcerpt(html: string | null | undefined, maxLen = 300): string | undefined {
-  if (!html) return undefined;
-  const text = html
+function stripHtmlForExcerpt(html: unknown, maxLen = 300): string | undefined {
+  const raw = str(html);
+  if (!raw) return undefined;
+  const text = raw
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (!text) return undefined;
   return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + "…" : text;
+}
+
+/** CSDL web cũ (SQL Server) đôi khi trả cột "chắc chắn là text theo tên/theo code cũ" nhưng driver
+ * mssql thực tế lại đưa về number/Date/... (gặp thật ở tblPost.Name khi chạy trên server production —
+ * KHÔNG phải giả định) — có thể do stored procedure cũ CAST/UNION lệch kiểu, hoặc dữ liệu nhập tay
+ * lẫn kiểu qua nhiều đời code ASP.NET. Kiểu khai báo TypeScript trên recordset chỉ là "as" (ép kiểu
+ * biên dịch, KHÔNG kiểm tra runtime), nên không thể tin chắc row.X luôn đúng là string|null. Toàn bộ
+ * chỗ đọc field text từ CSDL cũ phải qua hàm này thay vì gọi thẳng ".trim()"/"?.trim()" — tránh vỡ
+ * giữa chừng ETL 2.494 dòng chỉ vì 1 dòng dữ liệu lạ.
+ */
+function str(raw: unknown): string {
+  if (raw === null || raw === undefined) return "";
+  if (typeof raw === "string") return raw.trim();
+  return String(raw).trim();
 }
 
 function uniqueSlug(base: string, used: Set<string>, legacyId: string): string {
@@ -150,7 +165,7 @@ async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, 
 
   let sortOrder = 0;
   for (const row of rows) {
-    const name = (row.Name ?? "").trim() || `Chuyên mục ${row.Id}`;
+    const name = str(row.Name) || `Chuyên mục ${row.Id}`;
     const slug = uniqueSlug(slugify(name), usedSlugs, row.Id);
 
     if (DRY_RUN) {
@@ -164,12 +179,12 @@ async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, 
       where: { slug },
       update: {
         name,
-        description: row.MetaDescription?.trim() || null
+        description: str(row.MetaDescription) || null
       },
       create: {
         slug,
         name,
-        description: row.MetaDescription?.trim() || null,
+        description: str(row.MetaDescription) || null,
         sortOrder
       }
     });
@@ -208,7 +223,7 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
   let unparsedDates = 0;
 
   for (const row of rows) {
-    const title = (row.Name ?? "").trim();
+    const title = str(row.Name);
     if (!title) {
       console.warn(`  [bỏ qua] Bài Id=${row.Id} không có tiêu đề.`);
       continue;
@@ -221,15 +236,15 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
       continue;
     }
 
-    const baseSlugSource = row.Link?.trim() || title;
+    const baseSlugSource = str(row.Link) || title;
     const slug = uniqueSlug(slugify(baseSlugSource), usedSlugs, row.Id);
 
-    const isPublished = row.Active === "1" || row.Active?.toLowerCase() === "true";
+    const isPublished = str(row.Active) === "1" || str(row.Active).toLowerCase() === "true";
     const parsedDate = parseLegacyDate(row.CreateDate);
     if (row.CreateDate && !parsedDate) unparsedDates += 1;
     const createdAt = parsedDate ?? new Date();
 
-    const content = row.Content?.trim() || row.ContentUp?.trim() || "(Không có nội dung ở web cũ)";
+    const content = str(row.Content) || str(row.ContentUp) || "(Không có nội dung ở web cũ)";
     const excerpt = stripHtmlForExcerpt(row.ContentUp);
 
     if (DRY_RUN) {
@@ -244,7 +259,7 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
         title,
         content,
         excerpt,
-        coverImageUrl: row.Image?.trim() || null,
+        coverImageUrl: str(row.Image) || null,
         categoryId,
         status: isPublished ? "PUBLISHED" : "DRAFT",
         publishedAt: isPublished ? createdAt : null
@@ -254,7 +269,7 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
         title,
         content,
         excerpt,
-        coverImageUrl: row.Image?.trim() || null,
+        coverImageUrl: str(row.Image) || null,
         categoryId,
         authorId,
         status: isPublished ? "PUBLISHED" : "DRAFT",
@@ -294,10 +309,11 @@ const STATUS_MAP: Record<number, string> = {
 };
 
 /** Map cột [Status] (lưu dạng string số) của tblDocument theo đúng enum EOFFICE.Common.DocumentStatus. */
-function mapStatus(raw: string | null, warnSet: Set<string>): string {
-  const n = raw ? parseInt(raw.trim(), 10) : NaN;
+function mapStatus(raw: unknown, warnSet: Set<string>): string {
+  const s = str(raw);
+  const n = s ? parseInt(s, 10) : NaN;
   if (Number.isFinite(n) && STATUS_MAP[n]) return STATUS_MAP[n];
-  if (raw) warnSet.add(raw);
+  if (s) warnSet.add(s);
   return "SAVE_DRAFT";
 }
 
@@ -334,7 +350,7 @@ async function migrateDocumentTypes(pool: sql.ConnectionPool): Promise<Map<numbe
   // Bước 1: tạo/cập nhật tất cả trước, CHƯA gán parentId (vì thứ tự DocumentKindParent trong kết
   // quả không đảm bảo cha luôn đứng trước con).
   for (const row of rows) {
-    const name = (row.Name ?? "").trim() || `Loại công văn ${row.DocumentKindID}`;
+    const name = str(row.Name) || `Loại công văn ${row.DocumentKindID}`;
     const legacyCode = String(row.DocumentKindID);
 
     if (DRY_RUN) {
@@ -344,7 +360,7 @@ async function migrateDocumentTypes(pool: sql.ConnectionPool): Promise<Map<numbe
 
     const type = await upsertByLegacyCode(prisma.documentType, legacyCode, {
       name,
-      description: row.Description?.trim() || null
+      description: str(row.Description) || null
     });
     legacyToNewId.set(row.DocumentKindID, type.id);
   }
@@ -383,23 +399,24 @@ async function migrateOfficialDocuments(
   ]);
 
   const officeNameById = new Map<number, string>(
-    (officialsResult.recordset as Array<{ OfficalID: number; Name: string | null }>).map((o) => [
+    (officialsResult.recordset as Array<{ OfficalID: number; Name: unknown }>).map((o) => [
       o.OfficalID,
-      o.Name ?? ""
+      str(o.Name)
     ])
   );
   const userNameById = new Map<number, string>(
-    (usersResult.recordset as Array<{ UserID: number; FullName: string | null }>).map((u) => [
+    (usersResult.recordset as Array<{ UserID: number; FullName: unknown }>).map((u) => [
       u.UserID,
-      u.FullName ?? ""
+      str(u.FullName)
     ])
   );
 
-  function resolveUserProcessNames(csv: string | null): string | null {
-    if (!csv || !csv.trim()) return null;
-    const names = csv
+  function resolveUserProcessNames(csv: unknown): string | null {
+    const s = str(csv);
+    if (!s) return null;
+    const names = s
       .split(",")
-      .map((s) => s.trim())
+      .map((x) => x.trim())
       .filter(Boolean)
       .map((idStr) => userNameById.get(parseInt(idStr, 10)))
       .filter((n): n is string => Boolean(n));
@@ -439,7 +456,7 @@ async function migrateOfficialDocuments(
   let skippedNoTitle = 0;
 
   for (const row of rows) {
-    const title = (row.Name ?? "").trim();
+    const title = str(row.Name);
     if (!title) {
       skippedNoTitle += 1;
       continue;
@@ -463,18 +480,18 @@ async function migrateOfficialDocuments(
 
     const data = {
       title,
-      documentNumber: row.DocumentNumber?.trim() || null,
-      content: row.Content?.trim() || null,
-      summary: row.Excerpt?.trim() || null,
+      documentNumber: str(row.DocumentNumber) || null,
+      content: str(row.Content) || null,
+      summary: str(row.Excerpt) || null,
       direction,
       status,
-      priority: row.Priority?.trim() || null,
+      priority: str(row.Priority) || null,
       isPublic: row.ShowWeb === 1,
       documentTypeId,
       issuingOfficeName: row.PublishOffical ? officeNameById.get(row.PublishOffical) ?? null : null,
       createdByName: row.IDUserCreate ? userNameById.get(row.IDUserCreate) ?? null : null,
       processedByNames: resolveUserProcessNames(row.UserProcess),
-      sentToRaw: row.SendOfficals?.trim() || null,
+      sentToRaw: str(row.SendOfficals) || null,
       issuedAt: row.PublishDate ?? null,
       sentAt: row.SendDate ?? null,
       receivedAt: row.ReceiveDate ?? null,
@@ -507,11 +524,8 @@ async function migrateAttachments(pool: sql.ConnectionPool, documentMap: Map<str
     pool.request().query("SELECT DocumentID, Attachs FROM tblDocument WHERE Attachs IS NOT NULL AND Attachs <> '' AND Attachs <> ','")
   ]);
 
-  const attachById = new Map<
-    number,
-    { Name: string | null; Description: string | null; Path: string | null }
-  >(
-    (attachResult.recordset as Array<{ AttachID: number; Name: string | null; Description: string | null; Path: string | null }>).map(
+  const attachById = new Map<number, { Name: unknown; Description: unknown; Path: unknown }>(
+    (attachResult.recordset as Array<{ AttachID: number; Name: unknown; Description: unknown; Path: unknown }>).map(
       (a) => [a.AttachID, { Name: a.Name, Description: a.Description, Path: a.Path }]
     )
   );
@@ -527,7 +541,7 @@ async function migrateAttachments(pool: sql.ConnectionPool, documentMap: Map<str
       continue;
     }
 
-    const attachIds = (row.Attachs ?? "")
+    const attachIds = str(row.Attachs)
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -536,7 +550,8 @@ async function migrateAttachments(pool: sql.ConnectionPool, documentMap: Map<str
 
     for (const attachId of attachIds) {
       const attach = attachById.get(attachId);
-      if (!attach || !attach.Path) {
+      const attachPath = attach ? str(attach.Path) : "";
+      if (!attach || !attachPath) {
         skippedNoAttach += 1;
         continue;
       }
@@ -547,9 +562,9 @@ async function migrateAttachments(pool: sql.ConnectionPool, documentMap: Map<str
       }
 
       await upsertByLegacyCode(prisma.documentAttachment, String(attachId), {
-        fileName: attach.Name?.trim() || `file-${attachId}`,
-        description: attach.Description?.trim() || null,
-        path: attach.Path.trim(),
+        fileName: str(attach.Name) || `file-${attachId}`,
+        description: str(attach.Description) || null,
+        path: attachPath,
         documentId
       });
       imported += 1;
