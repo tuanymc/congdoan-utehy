@@ -437,6 +437,81 @@ robocopy "C:\inetpub\CongDoan\upload\images" "C:\inetpub\congdoan2026\web\upload
 
 ---
 
+## Bước 6.6 — Migrate schema đợt 2 (Banner, Danh bạ CĐV, Liên hệ) + hoàn thiện trang công khai
+
+Đợt này bổ sung 4 bảng mới — `home_slides` (thay `tblSlide`), `union_departments` +
+`union_members` (thay 1 phần `NHANVIEN`/`CONGDOANBOPHAN`, **chỉ 6 trường công khai**, xem chú thích
+đầu domain block `UNIONDIRECTORY` trong `prisma/schema.prisma` để biết lý do không nhập các cột
+nhạy cảm còn lại), `contact_messages` (tính năng mới, web cũ không có form liên hệ thật) — cộng
+thêm 1 cột mới `Category.isAboutSection` (không phải bảng mới). Đồng thời hoàn thiện trang công
+khai theo web cũ: Văn bản, Danh bạ Công đoàn viên, banner trang chủ, sửa lại thông tin liên hệ/địa
+chỉ thật, sửa mục "TIỆN ÍCH SỐ CÔNG ĐOÀN" bị gắn nhầm nhãn ở trang chủ.
+
+Cùng cách làm với Bước 6.5 (`--from-schema-datasource`, không cần quyền `CREATE DATABASE`):
+
+```powershell
+cd "D:\WEBSITE DA HOAN THANH\WebsiteCongDoan\CongDoan.utehy.edu.vn"
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có CREATE TABLE home_slides/union_departments/union_members/
+# contact_messages (+ FK union_members -> union_departments) và 1 dòng ALTER TABLE Category ADD
+# isAboutSection — KHÔNG được có DROP/ALTER nào khác trên bảng cũ. Nếu có gì lạ, dừng lại, đừng
+# deploy, gửi lại nội dung file để review trước.
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_homeslide_uniondirectory_contact"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Get-Content "prisma/migrations/tmp_diff.sql" | Set-Content -Encoding ascii "prisma/migrations/$name/migration.sql"
+Remove-Item "prisma/migrations/tmp_diff.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed   # thêm quyền homeslide:*/uniondepartment:*/unionmember:*/contactmessage:*, cấp view/create/update (không delete) cho UNION_CLERK
+pnpm build          # build lại cả 3 app — admin có 4 trang quản trị mới, web có 3 trang công khai mới
+```
+
+Sau khi build xong, lặp lại thao tác copy ở Bước 5 (hoặc dùng `deploy\scripts\deploy.ps1` nếu đã
+cài CI/CD ở Bước 7) để đưa `apps\web\dist`/`apps\admin\dist` mới vào physical path IIS, rồi
+`pm2 reload deploy\ecosystem.config.js --update-env` để API load Prisma Client mới.
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_homeslide_uniondirectory_contact/`)
+vào Git rồi push, giống lưu ý ở Bước 3/6.5.
+
+### Tuỳ chọn: chạy lại ETL để có dữ liệu banner/danh bạ thật từ web cũ
+
+An toàn chạy lại nhiều lần (idempotent theo `legacyCode`), không tạo trùng:
+
+```powershell
+$env:LEGACY_MIGRATE_DRY_RUN = "true"
+pnpm migrate:legacy
+Remove-Item Env:\LEGACY_MIGRATE_DRY_RUN
+# Nếu log dry-run hợp lý (đúng số lượng bộ phận/nhân viên STATUS=1/slide Active=1):
+pnpm migrate:legacy
+```
+
+Script cũng tự gắn `isAboutSection=true` cho các Category có tên khớp danh sách trong
+`ABOUT_CATEGORY_NAMES` (`prisma/migrate-legacy-content.ts`) — chạy ETL xong, trang `/gioi-thieu`
+công khai sẽ tự hiển thị nội dung từ các chuyên mục đó thay vì rỗng.
+
+### Kiểm tra end-to-end đợt này
+
+1. `http://localhost:8080/van-ban` — danh sách văn bản công khai tải được, có phân trang.
+2. `http://localhost:8080/danh-ba-cong-doan-vien` — danh bạ công khai tải được (rỗng nếu chưa chạy
+   ETL — không phải lỗi).
+3. `http://localhost:8080/` — nếu đã có `home_slides` với `isActive=true`, banner trượt hiện ở đầu
+   trang; nếu bảng rỗng, trang chủ vẫn hiển thị bình thường (không có slider).
+4. `http://localhost:8080/lien-he` — gửi thử 1 liên hệ, kiểm tra `admin/contact-messages` (đăng
+   nhập admin) thấy tin nhắn vừa gửi.
+5. `http://localhost:8080/admin/home-slides`, `/admin/union-departments`, `/admin/union-members` —
+   đăng nhập admin, thấy trang quản trị tương ứng (rỗng nếu chưa ETL).
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên
