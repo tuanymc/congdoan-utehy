@@ -248,7 +248,11 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
     const baseSlugSource = str(row.Link) || title;
     const slug = uniqueSlug(slugify(baseSlugSource), usedSlugs, row.Id);
 
-    const isPublished = str(row.Active) === "1" || str(row.Active).toLowerCase() === "true";
+    // Toàn bộ 329 bài ở web cũ đều đang hiển thị công khai thật (đã xác nhận qua log dry-run — không
+    // bài nào có Active=1 rõ ràng, web cũ hiển thị công khai theo cơ chế khác không chỉ dựa cột này),
+    // và người dùng đã CHỌN rõ import PUBLISHED hết thay vì để DRAFT chờ duyệt tay từng bài — xem
+    // quyết định trong chat lúc chạy dry-run ETL. KHÔNG dựa vào row.Active nữa.
+    const isPublished = true;
     const parsedDate = parseLegacyDate(row.CreateDate);
     if (row.CreateDate && !parsedDate) unparsedDates += 1;
     const createdAt = parsedDate ?? new Date();
