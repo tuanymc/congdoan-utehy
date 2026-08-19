@@ -2,6 +2,10 @@
  * Seed dữ liệu khởi tạo: 4 vai trò mặc định + quyền cho module post/category + 1 tài khoản admin.
  * Chạy: pnpm prisma:seed (sau khi đã prisma:migrate).
  */
+// Chạy trực tiếp bằng tsx (không qua "prisma db seed"), nên KHÔNG tự động nạp .env như các lệnh
+// Prisma CLI khác (generate/migrate) — phải nạp tay bằng dotenv trước khi PrismaClient đọc
+// process.env.DATABASE_URL. Phải là dòng import đầu tiên, trước khi import PrismaClient.
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { SYSTEM_ROLES } from "../packages/types/src/common";

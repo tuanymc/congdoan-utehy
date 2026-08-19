@@ -18,7 +18,8 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.20.0"
+    "@prisma/client": "^5.20.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "turbo": "^2.1.3",

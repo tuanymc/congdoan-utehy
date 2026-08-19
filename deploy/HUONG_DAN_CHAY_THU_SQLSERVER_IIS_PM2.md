@@ -117,11 +117,27 @@ Copy-Item C:\inetpub\congdoan\shared\.env .env               # cho các lệnh P
 Copy-Item C:\inetpub\congdoan\shared\.env apps\api\.env      # cho tiến trình API chạy qua PM2 ở Bước 4
 
 pnpm prisma:generate
-pnpm prisma:deploy      # chạy migration thật lên CongDoanUtehy — tương đương "prisma migrate deploy"
+
+# LẦN ĐẦU TIÊN duy nhất (database CongDoanUtehy còn trống, chưa có migration nào trong
+# prisma/migrations/): dùng "migrate dev" để vừa TẠO file migration khởi tạo vừa ÁP DỤNG luôn lên
+# database. Prisma sẽ hỏi tên migration nếu bỏ trống --name, nên truyền sẵn cho khỏi phải gõ tay.
+# Yêu cầu user trong DATABASE_URL (vd "sa") có quyền tạo/xoá database tạm (shadow database) —
+# thường sẵn có với "sa".
+pnpm prisma:migrate -- --name init
+
+# Từ lần deploy thứ 2 trở đi (đã có migration trong prisma/migrations/, migration đó đã được commit
+# vào Git), dùng "prisma:deploy" — đây cũng chính là lệnh deploy.ps1 tự động chạy mỗi lần CI deploy,
+# CHỈ áp dụng migration đã có sẵn chứ không tạo mới, an toàn cho production:
+pnpm prisma:deploy
+
 pnpm prisma:seed        # tạo tài khoản admin đầu tiên (SEED_ADMIN_EMAIL/PASSWORD ở .env)
 
 pnpm build              # build cả apps/api, apps/web, apps/admin
 ```
+
+Sau khi `prisma:migrate` chạy xong, thư mục `prisma/migrations/<timestamp>_init/` mới được tạo ra —
+**nhớ commit thư mục này vào Git** (`git add prisma/migrations && git commit -m "feat(prisma): initial migration"`)
+rồi push, để lần deploy tiếp theo qua CI (dùng `prisma:deploy`, không phải `prisma:migrate`) có migration để áp dụng.
 
 File `.env` ở gốc repo chỉ dùng để chạy các lệnh CLI ở bước này — không commit vào Git (đã có trong
 `.gitignore`), và không cần thiết nữa sau khi triển khai xong qua `deploy.ps1` (script đó chỉ đọc từ
