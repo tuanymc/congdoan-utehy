@@ -179,3 +179,36 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
   return JSON.parse(text) as T;
 }
+
+/**
+ * Tải file nhị phân (vd file đính kèm công văn) kèm header Authorization — không dùng được apiFetch()
+ * vì hàm đó luôn parse JSON. Đọc tên file gốc từ header Content-Disposition do server set (xem
+ * admin-official-documents.controller.ts) để khỏi phải truyền tên riêng. Không tự refresh token khi
+ * 401 (khác apiFetch) vì đây là hành động phụ, ít khi xảy ra đúng lúc access token vừa hết hạn — nếu
+ * gặp 401 chỉ cần báo lỗi, người dùng thao tác lại là request khác sẽ tự refresh trước.
+ */
+export async function apiFetchBlob(path: string): Promise<{ blob: Blob; fileName: string }> {
+  const headers: Record<string, string> = {};
+  if (currentAccessToken) {
+    headers.Authorization = `Bearer ${currentAccessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+
+  if (!response.ok) {
+    const errorBody = await parseErrorBody(response);
+    throw new ApiError(
+      errorBody?.message ?? "Không tải được file, vui lòng thử lại sau.",
+      response.status,
+      errorBody?.errorCode ?? "UNKNOWN_ERROR",
+      errorBody?.details
+    );
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const fileName = match?.[1] ? decodeURIComponent(match[1]) : "tep-dinh-kem";
+
+  const blob = await response.blob();
+  return { blob, fileName };
+}

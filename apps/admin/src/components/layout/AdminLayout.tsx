@@ -1,7 +1,7 @@
 import { useState, type ComponentType, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useGetIdentity, useLogout } from "@refinedev/core";
-import { FolderTree, LayoutDashboard, LogOut, Menu, Newspaper, Users as UsersIcon } from "lucide-react";
+import { FileText, FolderTree, LayoutDashboard, LogOut, Menu, Newspaper, Tags, Users as UsersIcon } from "lucide-react";
 import type { AuthUser } from "@congdoan/types";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
@@ -21,6 +21,14 @@ const BASE_NAV_ITEMS: NavItem[] = [
 ];
 
 const USERS_NAV_ITEM: NavItem = { to: "/users", label: "Người dùng", icon: UsersIcon };
+
+// Chỉ ADMIN/UNION_CLERK có quyền "document:*"/"documenttype:*" (xem prisma/seed.ts) — cùng điều kiện
+// với RequireDocumentAccess bọc route, ẩn hẳn menu cho MEMBER/DEPARTMENT_OFFICER thay vì để họ bấm
+// vào rồi mới bị chặn.
+const DOCUMENT_NAV_ITEMS: NavItem[] = [
+  { to: "/official-documents", label: "Công văn", icon: FileText },
+  { to: "/document-types", label: "Loại công văn", icon: Tags }
+];
 
 function BrandTitle() {
   return <span className="text-lg font-semibold text-primary">Công đoàn UTEHY</span>;
@@ -54,7 +62,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { mutate: logout } = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems: NavItem[] = identity?.roles.includes("ADMIN") ? [...BASE_NAV_ITEMS, USERS_NAV_ITEM] : BASE_NAV_ITEMS;
+  const isAdmin = identity?.roles.includes("ADMIN") ?? false;
+  const hasDocumentAccess = isAdmin || (identity?.roles.includes("UNION_CLERK") ?? false);
+
+  const navItems: NavItem[] = [
+    ...BASE_NAV_ITEMS,
+    ...(hasDocumentAccess ? DOCUMENT_NAV_ITEMS : []),
+    ...(isAdmin ? [USERS_NAV_ITEM] : [])
+  ];
 
   return (
     <div className="flex min-h-screen bg-background">

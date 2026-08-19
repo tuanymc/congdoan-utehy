@@ -1,18 +1,22 @@
 /**
- * DataProvider cho @refinedev/core, ánh xạ 3 resource của trang quản trị sang đúng endpoint của
+ * DataProvider cho @refinedev/core, ánh xạ resource của trang quản trị sang đúng endpoint của
  * apps/api (xem hợp đồng API trong tài liệu thiết kế):
- *  - "posts"      -> /admin/posts
- *  - "categories" -> GET danh sách/1 bản ghi dùng endpoint public /categories (trả về mảng thuần,
- *                     không phân trang); tạo/sửa/xoá dùng /admin/categories
- *  - "users"      -> /users (chỉ ADMIN được phép, do apps/api tự kiểm tra)
+ *  - "posts"            -> /admin/posts
+ *  - "categories"        -> GET danh sách/1 bản ghi dùng endpoint public /categories (trả về mảng
+ *                            thuần, không phân trang); tạo/sửa/xoá dùng /admin/categories
+ *  - "users"             -> /users (chỉ ADMIN được phép, do apps/api tự kiểm tra)
+ *  - "document-types"    -> /admin/document-types (trả về mảng thuần, không phân trang — số lượng
+ *                            loại công văn nhỏ, xem document-types.service.ts)
+ *  - "official-documents" -> /admin/official-documents (có phân trang) — cả 2 resource công văn chỉ
+ *                            ADMIN/UNION_CLERK truy cập được (permission "document:*"/"documenttype:*")
  *
  * Chỉ implement getList, getOne, create, update, deleteOne — đủ dùng cho toàn bộ UI CRUD hiện tại.
  */
 import type { BaseRecord, CrudFilters, DataProvider } from "@refinedev/core";
-import type { CategoryDto, PaginatedResult } from "@congdoan/types";
+import type { CategoryDto, DocumentTypeDto, PaginatedResult } from "@congdoan/types";
 import { API_BASE_URL, apiFetch } from "../lib/api-client";
 
-type ResourceName = "posts" | "categories" | "users";
+type ResourceName = "posts" | "categories" | "users" | "document-types" | "official-documents";
 
 interface ResourcePaths {
   /** Đường dẫn dùng cho getList. */
@@ -49,6 +53,20 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/users",
     update: (id) => `/users/${id}`,
     remove: (id) => `/users/${id}`
+  },
+  "document-types": {
+    list: "/admin/document-types",
+    one: (id) => `/admin/document-types/${id}`,
+    create: "/admin/document-types",
+    update: (id) => `/admin/document-types/${id}`,
+    remove: (id) => `/admin/document-types/${id}`
+  },
+  "official-documents": {
+    list: "/admin/official-documents",
+    one: (id) => `/admin/official-documents/${id}`,
+    create: "/admin/official-documents",
+    update: (id) => `/admin/official-documents/${id}`,
+    remove: (id) => `/admin/official-documents/${id}`
   }
 };
 
@@ -76,9 +94,13 @@ export const dataProvider: DataProvider = {
   getList: async <TData extends BaseRecord = BaseRecord>({ resource, pagination, filters }: Parameters<DataProvider["getList"]>[0]) => {
     const paths = resolveResource(resource);
 
-    // Resource "categories" dùng endpoint public không hỗ trợ phân trang/lọc -> luôn trả về toàn bộ.
+    // "categories"/"document-types" không hỗ trợ phân trang/lọc ở BE (danh sách nhỏ) -> trả về toàn bộ.
     if (resource === "categories") {
       const items = await apiFetch<CategoryDto[]>(paths.list);
+      return { data: items as unknown as TData[], total: items.length };
+    }
+    if (resource === "document-types") {
+      const items = await apiFetch<DocumentTypeDto[]>(paths.list);
       return { data: items as unknown as TData[], total: items.length };
     }
 
@@ -97,6 +119,15 @@ export const dataProvider: DataProvider = {
       if (status) params.set("status", status);
       const categorySlug = extractFilterValue(filters, "categorySlug");
       if (categorySlug) params.set("categorySlug", categorySlug);
+    }
+
+    if (resource === "official-documents") {
+      const direction = extractFilterValue(filters, "direction");
+      if (direction) params.set("direction", direction);
+      const status = extractFilterValue(filters, "status");
+      if (status) params.set("status", status);
+      const documentTypeId = extractFilterValue(filters, "documentTypeId");
+      if (documentTypeId) params.set("documentTypeId", documentTypeId);
     }
 
     const result = await apiFetch<PaginatedResult<unknown>>(`${paths.list}?${params.toString()}`);

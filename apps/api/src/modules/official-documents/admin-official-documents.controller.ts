@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, StreamableFile, UseGuards } from "@nestjs/common";
+import { createReadStream } from "node:fs";
+import type { Response } from "express";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { JwtAccessPayload, OfficialDocumentDetailDto, OfficialDocumentListItemDto, PaginatedResult } from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
@@ -53,5 +55,23 @@ export class AdminOfficialDocumentsController {
   @Delete(":id")
   remove(@Param("id") id: string, @CurrentUser() actor: JwtAccessPayload): Promise<void> {
     return this.officialDocumentsService.remove(id, actor.sub);
+  }
+
+  // Chỉ cần permission "document:view" — tải file đính kèm là một dạng xem nội dung công văn, không
+  // phải thao tác chỉnh sửa. File được stream trực tiếp từ đĩa (xem getAttachmentForDownload), không
+  // qua URL tĩnh công khai nào — bắt buộc phải có JWT + permission hợp lệ mới tải được.
+  @RequirePermissions("document:view")
+  @Get(":id/attachments/:attachmentId/download")
+  async downloadAttachment(
+    @Param("id") id: string,
+    @Param("attachmentId") attachmentId: string,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<StreamableFile> {
+    const { fileName, physicalPath } = await this.officialDocumentsService.getAttachmentForDownload(id, attachmentId);
+    res.set({
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`
+    });
+    return new StreamableFile(createReadStream(physicalPath));
   }
 }

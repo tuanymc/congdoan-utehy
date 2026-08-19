@@ -13,6 +13,7 @@ import { notificationProvider } from "./providers/notification-provider";
 
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { RequireAdmin } from "./components/common/RequireAdmin";
+import { RequireDocumentAccess } from "./components/common/RequireDocumentAccess";
 import { Toaster } from "./components/common/Toaster";
 
 import { LoginPage } from "./pages/login/LoginPage";
@@ -23,6 +24,10 @@ import { CategoryList } from "./pages/categories/CategoryList";
 import { CategoryForm } from "./pages/categories/CategoryForm";
 import { UserList } from "./pages/users/UserList";
 import { UserForm } from "./pages/users/UserForm";
+import { DocumentTypeList } from "./pages/document-types/DocumentTypeList";
+import { DocumentTypeForm } from "./pages/document-types/DocumentTypeForm";
+import { OfficialDocumentList } from "./pages/official-documents/OfficialDocumentList";
+import { OfficialDocumentForm } from "./pages/official-documents/OfficialDocumentForm";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -64,6 +69,20 @@ export function App() {
             create: "/users/create",
             edit: "/users/edit/:id",
             meta: { label: "Người dùng" }
+          },
+          {
+            name: "document-types",
+            list: "/document-types",
+            create: "/document-types/create",
+            edit: "/document-types/edit/:id",
+            meta: { label: "Loại công văn" }
+          },
+          {
+            name: "official-documents",
+            list: "/official-documents",
+            create: "/official-documents/create",
+            edit: "/official-documents/edit/:id",
+            meta: { label: "Công văn" }
           }
         ]}
         options={{
@@ -109,6 +128,32 @@ export function App() {
               <Route index element={<UserList />} />
               <Route path="create" element={<UserForm mode="create" />} />
               <Route path="edit/:id" element={<UserForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/document-types"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<DocumentTypeList />} />
+              <Route path="create" element={<DocumentTypeForm mode="create" />} />
+              <Route path="edit/:id" element={<DocumentTypeForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/official-documents"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<OfficialDocumentList />} />
+              <Route path="create" element={<OfficialDocumentForm mode="create" />} />
+              <Route path="edit/:id" element={<OfficialDocumentForm mode="edit" />} />
             </Route>
           </Route>
 
