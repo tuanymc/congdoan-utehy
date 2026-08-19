@@ -197,8 +197,17 @@ async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, 
 }
 
 async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, string>, authorId: string) {
-  console.log("\n[2/5] Đang lấy danh sách bài viết (sp_tblPost_GetByAll) từ web cũ...");
-  const result = await pool.request().execute("sp_tblPost_GetByAll");
+  console.log("\n[2/5] Đang lấy danh sách bài viết (tblPost) từ web cũ...");
+  // KHÔNG dùng sp_tblPost_GetByAll — sproc đó JOIN thêm tblCategory và làm "SELECT *, CategoryName =
+  // tblCategory.Name" (xem full_schema.sql), nên kết quả có 2 CỘT CÙNG TÊN "Name" (Name của tblPost
+  // VÀ Name của tblCategory). Driver mssql trả về giá trị của cột trùng tên dưới dạng MẢNG thay vì
+  // ghi đè — gặp thật trên production: row.Name = ["Tiêu đề bài viết", "Tên chuyên mục"], khiến
+  // ".trim()" vỡ (mảng không có .trim) và sau khi ép String() lại thành "Tiêu đề,Tên chuyên mục" (do
+  // Array.prototype.toString() nối bằng dấu phẩy) — tiêu đề bài viết bị dính thêm tên chuyên mục nếu
+  // không sửa. Dùng SELECT trực tiếp trên tblPost (không JOIN) để tránh hẳn xung đột tên cột.
+  const result = await pool.request().query(
+    "SELECT Id, CateId, Name, Link, Image, ContentUp, Content, CreateDate, Active FROM tblPost"
+  );
   const rows = result.recordset as Array<{
     Id: string;
     CateId: string | null;
@@ -208,7 +217,7 @@ async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, s
     ContentUp: string | null;
     Content: string | null;
     CreateDate: string | null;
-    Active: string | null;
+    Active: number | null;
   }>;
   console.log(`  -> Tìm thấy ${rows.length} bài viết ở web cũ.`);
 
