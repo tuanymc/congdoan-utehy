@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Mẫu web.config cho site IIS trỏ tới apps/api (reverse proxy sang tiến trình Node.js do PM2 quản
-  lý, mặc định lắng nghe cổng nội bộ 3000 — khớp API_PORT trong .env).
+  Mẫu web.config cho apps/api (reverse proxy sang tiến trình Node.js do PM2 quản lý, mặc định lắng
+  nghe cổng nội bộ 3000 — khớp API_PORT trong .env). Đặt vào physical path của IIS Application mount
+  ở "/api", nested dưới site chính (congdoan.utehy.edu.vn/api) — xem Bước 5 trong
+  deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md. Thư mục physical path này rỗng, KHÔNG chứa
+  apps/api/dist — chỉ cần đúng 1 file web.config này để làm proxy.
+
+  Vì Application mount ở "/api" nên IIS đã tự bóc tiền tố "/api" khỏi URL trước khi rule bên dưới
+  chạy — {R:1} nhận được là phần URL SAU "/api" (vd request "/api/auth/login" → {R:1}="auth/login"),
+  khớp đúng với route thật của Nest (main.ts KHÔNG có global prefix "api/", xem ghi chú trong đó).
 
   YÊU CẦU CÀI ĐẶT TRƯỚC trên Windows Server (một lần, không phải mỗi lần deploy):
     1. Cài "Application Request Routing" (ARR) và "URL Rewrite" module cho IIS.
     2. Trong IIS Manager -> chọn Server (cấp cao nhất) -> Application Request Routing Cache ->
        Server Proxy Settings... -> tick "Enable proxy" -> Apply.
        (Nếu không bật bước này, mọi rule reverse proxy bên dưới sẽ báo lỗi 502.)
-    3. Tạo site IIS mới, ví dụ "congdoan-api", binding https://api.congdoan.utehy.edu.vn (hoặc
-       subpath /api trên site chính — tuỳ bạn chốt ở câu hỏi domain/subpath đã nêu trước đó),
-       Physical path trỏ tới thư mục chứa file web.config này (copy từ template, đổi tên thành
-       "web.config" tại thư mục gốc site — KHÔNG cần trỏ vào apps/api/dist, chỉ cần 1 site rỗng
-       làm proxy).
-    4. Cấu hình HTTPS binding + chứng chỉ SSL cho site này qua IIS Manager như bình thường.
 
   Đổi PORT bên dưới nếu bạn đổi API_PORT trong .env khác 3000.
 -->

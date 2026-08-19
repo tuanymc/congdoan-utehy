@@ -33,12 +33,17 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("api/docs", app, document);
+  // Chú ý: KHÔNG đặt "api/docs" — mọi route khác trong app này đều không có tiền tố "api/" (health,
+  // auth, posts...), vì tiền tố "/api" được thêm ở tầng IIS reverse-proxy khi mount app này làm
+  // sub-application "/api" của site chính (xem deploy/iis/web.config.api). IIS đã tự bóc "/api" khỏi
+  // URL trước khi chuyển tiếp vào đây, nên phải khai "docs" (không tiền tố) để khớp — request thật
+  // của trình duyệt vẫn là https://<domain>/api/docs như bình thường.
+  SwaggerModule.setup("docs", app, document);
 
   const port = Number(process.env.API_PORT ?? 3000);
   await app.listen(port);
   // eslint-disable-next-line no-console
-  console.log(`API đang chạy tại http://localhost:${port} (Swagger: /api/docs)`);
+  console.log(`API đang chạy tại http://localhost:${port} (Swagger: /docs, hoặc /api/docs qua IIS)`);
 }
 
 bootstrap();

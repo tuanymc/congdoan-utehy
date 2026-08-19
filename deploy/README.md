@@ -23,8 +23,10 @@ chốt, xem `docs/CURSOR_PROMPT_Website_CongDoan_UTEHY.md` mục "Kiến trúc t
    (https://www.memurai.com — bản Redis-compatible cho Windows, cài như Windows Service).
 3. Cài IIS + module **Application Request Routing (ARR)** + **URL Rewrite**, bật "Enable proxy"
    trong ARR Server Proxy Settings (xem chi tiết comment trong `iis/web.config.api`).
-4. Tạo 3 site IIS: API (reverse proxy), Web (tĩnh), Admin (tĩnh) — hoặc gộp Web+Admin làm 2 subpath
-   trên cùng site tuỳ quyết định domain/subdomain của trường.
+4. Tạo 1 site IIS duy nhất (binding `congdoan.utehy.edu.vn`, physical path = `apps/web/dist`) +
+   2 IIS Application nested `/admin` và `/api` trỏ tới physical path riêng — xem hướng dẫn chi tiết
+   ở Bước 5 trong `deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md` (đã chốt dùng 1 domain duy nhất,
+   không tách subdomain riêng cho admin/api).
 5. Cài self-hosted GitHub Actions runner trên chính server này (xem `.github/workflows/ci.yml`).
 6. Tạo file `.env` thật tại `C:\inetpub\congdoan\shared\.env` (không commit vào git) theo mẫu
    `.env.example` ở gốc repo — script `deploy.ps1` sẽ copy file này vào cạnh `dist/main.js` mỗi lần

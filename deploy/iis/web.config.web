@@ -20,7 +20,10 @@
             <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
             <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
           </conditions>
-          <action type="Rewrite" url="/index.html" />
+          <!-- KHÔNG bắt đầu bằng "/" — nếu site này chạy dưới dạng nested IIS Application (không
+               phải site gốc), url bắt đầu bằng "/" sẽ trỏ nhầm về gốc site cha thay vì thư mục hiện
+               tại. Dùng đường dẫn tương đối để đúng trong mọi trường hợp mount. -->
+          <action type="Rewrite" url="index.html" />
         </rule>
       </rules>
     </rewrite>

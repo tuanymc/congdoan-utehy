@@ -24,9 +24,15 @@ import { CategoryForm } from "./pages/categories/CategoryForm";
 import { UserList } from "./pages/users/UserList";
 import { UserForm } from "./pages/users/UserForm";
 
+// Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
+// deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
+// bộ (Link, navigate...) không bị cụt mất tiền tố. Chỉ áp dụng ở bản build production; lúc "pnpm dev"
+// app vẫn chạy ở gốc "/" như bình thường (khớp với apps/admin/vite.config.ts).
+const ROUTER_BASENAME = import.meta.env.PROD ? "/admin" : "/";
+
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={ROUTER_BASENAME}>
       <Refine
         authProvider={authProvider}
         dataProvider={dataProvider}
