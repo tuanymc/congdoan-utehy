@@ -296,6 +296,71 @@ riêng 1 App Pool "No Managed Code" và gán qua tham số `-ApplicationPool` c�
 
 ---
 
+## Bước 6.5 — Nhập dữ liệu tin tức/chuyên mục từ web cũ (ETL)
+
+Đã khảo sát mã nguồn web cũ (`web_cu/MyWeb.Data/`) để biết chính xác nên nhập gì. Kết quả:
+
+**Nhập được ngay (có DAL + stored procedure rõ ràng trong code web cũ):** `tblCategory` → `Category`,
+`tblPost` → `Post`. Script `prisma/migrate-legacy-content.ts` làm đúng 2 bảng này.
+
+**CHƯA nhập được** — 3 nhóm bảng còn lại (`tblNguoiDung` tài khoản, `tblCongDoanVien` hồ sơ đoàn
+viên, `tblPostCongVan`/`tblNoiDungCV`/`tblLoaiCV`/`tblFileDinhKem` công văn) chỉ tồn tại dưới dạng
+class C# rỗng (`tblXxxInfo.cs`) — **không có bất kỳ DAL/stored procedure nào trong toàn bộ mã nguồn
+web cũ gọi tới các bảng này** (đã grep toàn bộ thư mục `web_cu`, 0 kết quả). Thêm nữa,
+`web_cu/MyWeb/Web.config` cho thấy:
+- Đăng nhập thật của web cũ dùng **ASP.NET SqlMembershipProvider** (`ApplicationServices` — bảng
+  `aspnet_Users`/`aspnet_Membership`...), không phải `tblNguoiDung`.
+- Kết nối `QuanLyCongVanConnectionString` (module công văn) trỏ về SQL Express cục bộ
+  (`.\SQLEXPRESS`, user `sa`), khác hẳn CSDL production thật (`45.117.177.224/CMS_CongDoan`) — nên
+  nhiều khả năng module công văn trong bản code này **chưa từng chạy trên server production**, hoặc
+  dùng một CSDL khác không có trong bản upload.
+
+Nói cách khác: chưa có cơ sở chắc chắn để biết 4 nhóm bảng đó có dữ liệu thật hay không, và hệ
+thống mới cũng **chưa có bảng đích** cho hồ sơ đoàn viên (Phase 2 — Membership) và công văn
+(Phase 3 — OfficialDocument) — 2 domain này chủ động để dành làm sau theo đúng thiết kế ban đầu.
+
+**Trước khi quyết định có xây Phase 2/3 hay không**, chạy thử truy vấn sau trực tiếp trên CSDL
+production cũ (SSMS hoặc `sqlcmd`, không phải đọc code) để biết chắc có dữ liệu thật hay không:
+
+```sql
+SELECT 'tblNguoiDung' AS TableName, COUNT(*) AS SoDong FROM tblNguoiDung
+UNION ALL SELECT 'tblCongDoanVien', COUNT(*) FROM tblCongDoanVien
+UNION ALL SELECT 'tblPostCongVan', COUNT(*) FROM tblPostCongVan
+UNION ALL SELECT 'tblNoiDungCV', COUNT(*) FROM tblNoiDungCV
+UNION ALL SELECT 'tblLoaiCV', COUNT(*) FROM tblLoaiCV
+UNION ALL SELECT 'tblFileDinhKem', COUNT(*) FROM tblFileDinhKem;
+```
+
+(Nếu bảng nào không tồn tại, câu lệnh sẽ báo lỗi "Invalid object name" cho đúng bảng đó — cũng là
+thông tin hữu ích.) Gửi lại kết quả — nếu có dữ liệu thật đáng kể thì mới đáng để xây thêm Phase
+2/3 (model Prisma mới + API + trang admin mới) trước khi viết tiếp ETL cho phần đó.
+
+### Chạy ETL tin tức/chuyên mục (Post/Category — làm được ngay)
+
+1. Thêm vào `.env` (cả ở gốc repo và `apps\api\.env`, giống DATABASE_URL) thông tin CSDL web cũ —
+   xem khối `LEGACY_DB_*` trong `.env.example`. Giá trị thật lấy từ
+   `web_cu\MyWeb\Web.config` (connection string `ConnectionString`).
+2. Chạy thử trước, KHÔNG ghi gì vào CSDL mới, chỉ xem log sẽ làm gì:
+   ```powershell
+   $env:LEGACY_MIGRATE_DRY_RUN = "true"
+   pnpm migrate:legacy
+   Remove-Item Env:\LEGACY_MIGRATE_DRY_RUN
+   ```
+3. Nếu log dry-run hợp lý (đúng số lượng chuyên mục/bài viết, slug sinh ra không có gì bất thường),
+   chạy thật:
+   ```powershell
+   pnpm migrate:legacy
+   ```
+   Script dùng `upsert` theo slug nên chạy lại nhiều lần là **an toàn** (không tạo trùng dữ liệu).
+4. Mở lại `http://localhost:8080/` và `http://localhost:8080/admin/posts` — phải thấy tin tức/chuyên
+   mục từ web cũ xuất hiện.
+
+**Lưu ý ảnh bài viết:** script giữ nguyên đường dẫn ảnh gốc (`Image`) từ web cũ — ảnh **chưa được
+copy sang server mới**, cần copy thủ công thư mục Upload ảnh của web cũ sang server mới (hoặc viết
+thêm bước xử lý riêng) nếu muốn ảnh cũ hiển thị đúng trên web mới.
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên
