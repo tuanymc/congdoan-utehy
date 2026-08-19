@@ -21,9 +21,19 @@ const ROLE_SEED = [
 ];
 
 // Danh sách quyền ban đầu cho module Content (post/category) + OfficialDocument (documenttype/
-// document, Phase 3). Các module Phase 2/4 sẽ bổ sung thêm entry vào đây theo đúng khuôn
-// "module:action".
-const PERMISSION_SEED = ["post", "category", "documenttype", "document"].flatMap((module) =>
+// document, Phase 3) + HomeSlide/UnionDepartment/UnionMember/ContactMessage ("hoàn thiện chức năng
+// web mới" — xem prisma/schema.prisma). Các module Phase 2/4 còn lại sẽ bổ sung thêm entry vào đây
+// theo đúng khuôn "module:action".
+const PERMISSION_SEED = [
+  "post",
+  "category",
+  "documenttype",
+  "document",
+  "homeslide",
+  "uniondepartment",
+  "unionmember",
+  "contactmessage"
+].flatMap((module) =>
   ["view", "create", "update", "delete"].map((action) => ({
     key: `${module}:${action}`,
     module,
@@ -31,9 +41,11 @@ const PERMISSION_SEED = ["post", "category", "documenttype", "document"].flatMap
   }))
 );
 
-// Công văn (documenttype/document) là dữ liệu nội bộ, KHÔNG công khai như post/category — module
-// nào được cấp quyền "view" mặc định cho MEMBER (đoàn viên) phải khai rõ ở đây, KHÔNG tự động cấp
-// theo action="view" như trước (xem lý do ở đoạn seed quyền MEMBER bên dưới).
+// post/category/homeslide/unionmember/uniondepartment đều có route công khai riêng (không qua
+// permission này) nên MEMBER không cần "view" ở đây để xem — danh sách này chỉ ảnh hưởng việc MEMBER
+// có thấy các module đó trong TRANG QUẢN TRỊ hay không. document/contactmessage là dữ liệu nội bộ,
+// module nào được cấp quyền "view" mặc định cho MEMBER (đoàn viên) phải khai rõ ở đây, KHÔNG tự động
+// cấp theo action="view" như trước (xem lý do ở đoạn seed quyền MEMBER bên dưới).
 const MEMBER_VISIBLE_MODULES = ["post", "category"];
 
 async function main() {
@@ -85,12 +97,14 @@ async function main() {
     });
   }
 
-  // UNION_CLERK ("Văn thư công đoàn") — người thực tế nhập/tra cứu công văn hàng ngày — được cấp
-  // view/create/update cho documenttype/document, KHÔNG cấp delete (tránh xoá nhầm dữ liệu đã
-  // migrate từ web cũ; xoá vẫn làm được qua ADMIN khi thật sự cần).
-  console.log("Seeding quyền công văn cho UNION_CLERK...");
+  // UNION_CLERK ("Văn thư công đoàn") — người thực tế nhập/tra cứu công văn + quản lý nội dung công
+  // khai (banner trang chủ, danh bạ công đoàn viên, hộp thư liên hệ) hàng ngày — được cấp
+  // view/create/update, KHÔNG cấp delete (tránh xoá nhầm dữ liệu đã migrate từ web cũ hoặc do người
+  // dùng gửi; xoá vẫn làm được qua ADMIN khi thật sự cần).
+  console.log("Seeding quyền công văn + nội dung công khai cho UNION_CLERK...");
+  const clerkManagedModules = ["documenttype", "document", "homeslide", "uniondepartment", "unionmember", "contactmessage"];
   const clerkDocumentPermissions = await prisma.permission.findMany({
-    where: { module: { in: ["documenttype", "document"] }, action: { in: ["view", "create", "update"] } }
+    where: { module: { in: clerkManagedModules }, action: { in: ["view", "create", "update"] } }
   });
   for (const perm of clerkDocumentPermissions) {
     await prisma.rolePermission.upsert({

@@ -13,8 +13,11 @@ export class CategoriesService {
     private readonly auditLog: AuditLogService
   ) {}
 
-  async list(): Promise<CategoryDto[]> {
-    const categories = await this.prisma.category.findMany({ orderBy: { sortOrder: "asc" } });
+  async list(aboutOnly?: boolean): Promise<CategoryDto[]> {
+    const categories = await this.prisma.category.findMany({
+      where: aboutOnly ? { isAboutSection: true } : undefined,
+      orderBy: { sortOrder: "asc" }
+    });
     return categories;
   }
 
@@ -30,7 +33,13 @@ export class CategoriesService {
     if (existing) throw new ConflictException("Slug chuyên mục đã tồn tại.");
 
     const category = await this.prisma.category.create({
-      data: { name: dto.name, slug, description: dto.description, sortOrder: dto.sortOrder ?? 0 }
+      data: {
+        name: dto.name,
+        slug,
+        description: dto.description,
+        sortOrder: dto.sortOrder ?? 0,
+        isAboutSection: dto.isAboutSection ?? false
+      }
     });
     await this.auditLog.record({ actorUserId, action: "create", entityType: "Category", entityId: category.id });
     return category;
@@ -44,7 +53,8 @@ export class CategoriesService {
         name: dto.name,
         slug: dto.slug ? slugify(dto.slug) : undefined,
         description: dto.description,
-        sortOrder: dto.sortOrder
+        sortOrder: dto.sortOrder,
+        isAboutSection: dto.isAboutSection
       }
     });
     await this.auditLog.record({ actorUserId, action: "update", entityType: "Category", entityId: id });

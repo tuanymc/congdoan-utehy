@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { PaginatedResult, PostListItemDto } from "@congdoan/types";
+import type { HomeSlideDto, PaginatedResult, PostListItemDto } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PostCard } from "@/components/PostCard";
-import { Newspaper, Info, Phone, Wallet } from "lucide-react";
+import { HomeSlider } from "@/components/HomeSlider";
+import { Newspaper, Info, FileText, Users, Phone, LogIn } from "lucide-react";
 
 const SHORTCUTS = [
   {
@@ -22,6 +23,18 @@ const SHORTCUTS = [
     description: "Chức năng, nhiệm vụ và cơ cấu tổ chức của Công đoàn UTEHY."
   },
   {
+    to: "/van-ban",
+    icon: FileText,
+    title: "Văn bản",
+    description: "Công văn, thông báo do Công đoàn trường ban hành và công khai."
+  },
+  {
+    to: "/danh-ba-cong-doan-vien",
+    icon: Users,
+    title: "Công đoàn viên",
+    description: "Danh bạ công khai cán bộ, giảng viên là đoàn viên Công đoàn trường."
+  },
+  {
     to: "/lien-he",
     icon: Phone,
     title: "Liên hệ",
@@ -29,16 +42,16 @@ const SHORTCUTS = [
   },
   {
     to: "/cong-doan-vien",
-    icon: Wallet,
-    title: "Tiện ích số Công đoàn",
-    description: "Ví đoàn phí, biểu mẫu điện tử... — sắp ra mắt.",
-    badge: "Sắp ra mắt"
+    icon: LogIn,
+    title: "Cổng đoàn viên",
+    description: "Đăng nhập để xem thông tin dành riêng cho đoàn viên đã có tài khoản."
   }
 ] as const;
 
 export function HomePage() {
   const [posts, setPosts] = useState<PostListItemDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [slides, setSlides] = useState<HomeSlideDto[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,8 +70,18 @@ export function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    apiFetch<HomeSlideDto[]>("/home-slides")
+      .then(setSlides)
+      .catch(() => {
+        // Không có banner nào (hoặc lỗi tải) -> chỉ ẩn slider, vẫn hiển thị phần còn lại của trang chủ.
+      });
+  }, []);
+
   return (
     <div>
+      {slides.length > 0 ? <HomeSlider slides={slides} /> : null}
+
       {/* Banner giới thiệu */}
       <section className="bg-gradient-to-br from-primary to-[#78171b] text-primary-foreground">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
@@ -90,7 +113,7 @@ export function HomePage() {
 
       {/* Lối tắt */}
       <section className="mx-auto max-w-6xl px-4 py-12">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SHORTCUTS.map((item) => (
             <Link key={item.to} to={item.to}>
               <Card className="h-full transition-shadow hover:shadow-md">
@@ -104,11 +127,6 @@ export function HomePage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
-                  {"badge" in item ? (
-                    <span className="mt-3 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                      {item.badge}
-                    </span>
-                  ) : null}
                 </CardContent>
               </Card>
             </Link>

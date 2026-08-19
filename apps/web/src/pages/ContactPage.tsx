@@ -1,16 +1,37 @@
 import { type FormEvent, useState } from "react";
 import { Mail, MapPin, Phone } from "lucide-react";
+import type { CreateContactMessageRequest } from "@congdoan/types";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // TODO(Phase sau): nối API POST /contact (chưa có trong apps/api hiện tại).
-    // Hiện chỉ hiển thị thông báo xác nhận tạm thời phía client, KHÔNG gửi dữ liệu đi đâu cả.
-    setSubmitted(true);
+    setError(null);
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const payload: CreateContactMessageRequest = {
+      name: String(formData.get("name") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
+      phone: String(formData.get("phone") ?? "").trim() || undefined,
+      message: String(formData.get("message") ?? "").trim()
+    };
+
+    setIsSubmitting(true);
+    try {
+      await apiFetch("/contact-messages", { method: "POST", body: payload });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể gửi phản ánh lúc này, vui lòng thử lại sau.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -30,23 +51,22 @@ export function ContactPage() {
               <MapPin className="mt-0.5 size-5 shrink-0 text-primary" />
               <div>
                 <p className="font-medium">Địa chỉ</p>
-                <p className="text-muted-foreground">
-                  Số 39A Nguyễn Văn Linh, phường Hiến Nam, tỉnh Hưng Yên
-                </p>
+                <p className="text-muted-foreground">Xã Dân Tiến, Huyện Khoái Châu, Tỉnh Hưng Yên</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Phone className="mt-0.5 size-5 shrink-0 text-primary" />
               <div>
                 <p className="font-medium">Điện thoại</p>
-                <p className="text-muted-foreground">[Số điện thoại Văn phòng Công đoàn]</p>
+                <p className="text-muted-foreground">Hotline: 0962.490.411</p>
+                <p className="text-muted-foreground">Văn phòng: 03123.713.108</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Mail className="mt-0.5 size-5 shrink-0 text-primary" />
               <div>
                 <p className="font-medium">Email</p>
-                <p className="text-muted-foreground">congdoan@utehy.edu.vn</p>
+                <p className="text-muted-foreground">congdoanutehy@gmail.com</p>
               </div>
             </div>
           </CardContent>
@@ -59,11 +79,11 @@ export function ContactPage() {
           <CardContent>
             {submitted ? (
               <p className="text-sm text-primary">
-                Cảm ơn bạn đã gửi phản ánh. Đây hiện là bản demo — biểu mẫu chưa được nối API, Công
-                đoàn trường sẽ bổ sung tính năng tiếp nhận trực tuyến ở giai đoạn sau.
+                Cảm ơn bạn đã gửi phản ánh. Văn phòng Công đoàn trường sẽ xem và liên hệ lại qua email/số điện
+                thoại bạn đã để lại trong thời gian sớm nhất.
               </p>
             ) : (
-              <form className="space-y-4" onSubmit={handleSubmit}>
+              <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
                 <div className="space-y-1.5">
                   <label htmlFor="contact-name" className="text-sm font-medium">
                     Họ và tên
@@ -88,6 +108,16 @@ export function ContactPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <label htmlFor="contact-phone" className="text-sm font-medium">
+                    Số điện thoại (không bắt buộc)
+                  </label>
+                  <input
+                    id="contact-phone"
+                    name="phone"
+                    className="w-full rounded-md border bg-input-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <label htmlFor="contact-message" className="text-sm font-medium">
                     Nội dung
                   </label>
@@ -99,8 +129,9 @@ export function ContactPage() {
                     className="w-full rounded-md border bg-input-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  Gửi phản ánh
+                {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Đang gửi..." : "Gửi phản ánh"}
                 </Button>
               </form>
             )}

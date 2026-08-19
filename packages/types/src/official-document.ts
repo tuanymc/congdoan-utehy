@@ -3,9 +3,11 @@
  * hệ "quản lý công văn" riêng trong web_cu/MyWeb/CV2/) — xem chú thích chi tiết đầu domain block
  * trong prisma/schema.prisma để biết ý nghĩa từng field được xác nhận từ code-behind gốc thế nào.
  *
- * Khác với Content (Post/Category — công khai), toàn bộ domain này CHỈ dành cho người dùng đã đăng
- * nhập có quyền "document:*"/"documenttype:*" (mặc định: ADMIN và UNION_CLERK — xem prisma/seed.ts),
- * KHÔNG có endpoint công khai nào (field `isPublic` chỉ giữ lại giá trị ShowWeb gốc để tham khảo).
+ * CRUD đầy đủ (Dto/Request ở dưới) CHỈ dành cho người dùng đã đăng nhập có quyền "document:*"/
+ * "documenttype:*" (mặc định: ADMIN và UNION_CLERK — xem prisma/seed.ts). Riêng công văn có
+ * `isPublic=true` (khớp ShowWeb=1 web cũ) còn được expose qua route công khai GET /official-documents
+ * (không JWT) dưới dạng PublicOfficialDocumentListItemDto/DetailDto — bản rút gọn lược bỏ field nội
+ * bộ, xem 2 interface đó bên dưới và PublicOfficialDocumentsController.
  */
 
 /** "DRAFT" = dự thảo, "OUTGOING" = công văn đi, "INCOMING" = công văn đến. */
@@ -71,6 +73,27 @@ export interface CreateDocumentTypeRequest {
 }
 
 export interface UpdateDocumentTypeRequest extends Partial<CreateDocumentTypeRequest> {}
+
+/**
+ * Biến thể CÔNG KHAI — dùng cho GET /official-documents (không JWT), chỉ trả công văn isPublic=true
+ * và CỐ Ý bỏ các field nội bộ (createdByName/processedByNames/sentToRaw/status/priority tiến trình
+ * xử lý...) không phù hợp hiển thị công khai, dù cùng nguồn tblDocument với bản admin ở trên.
+ */
+export interface PublicOfficialDocumentListItemDto {
+  id: string;
+  title: string;
+  documentNumber: string | null;
+  direction: DocumentDirection;
+  documentType: DocumentTypeDto;
+  issuingOfficeName: string | null;
+  issuedAt: string | null;
+}
+
+export interface PublicOfficialDocumentDetailDto extends PublicOfficialDocumentListItemDto {
+  content: string | null;
+  summary: string | null;
+  attachments: DocumentAttachmentDto[];
+}
 
 export interface CreateOfficialDocumentRequest {
   title: string;

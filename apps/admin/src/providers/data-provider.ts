@@ -9,14 +9,32 @@
  *                            loại công văn nhỏ, xem document-types.service.ts)
  *  - "official-documents" -> /admin/official-documents (có phân trang) — cả 2 resource công văn chỉ
  *                            ADMIN/UNION_CLERK truy cập được (permission "document:*"/"documenttype:*")
+ *  - "home-slides"        -> /admin/home-slides (không phân trang — danh sách banner nhỏ)
+ *  - "union-departments"  -> /admin/union-departments (không phân trang — danh sách bộ phận nhỏ)
+ *  - "union-members"      -> /admin/union-members (có phân trang, lọc theo departmentId)
+ *  - "contact-messages"   -> /admin/contact-messages (có phân trang, lọc theo isRead) — không có trang
+ *                            "create" riêng (tin nhắn chỉ tạo qua form công khai apps/web), chỉ
+ *                            list + update (đánh dấu đã đọc) + delete.
  *
  * Chỉ implement getList, getOne, create, update, deleteOne — đủ dùng cho toàn bộ UI CRUD hiện tại.
  */
 import type { BaseRecord, CrudFilters, DataProvider } from "@refinedev/core";
-import type { CategoryDto, DocumentTypeDto, PaginatedResult } from "@congdoan/types";
+import type { PaginatedResult } from "@congdoan/types";
 import { API_BASE_URL, apiFetch } from "../lib/api-client";
 
-type ResourceName = "posts" | "categories" | "users" | "document-types" | "official-documents";
+type ResourceName =
+  | "posts"
+  | "categories"
+  | "users"
+  | "document-types"
+  | "official-documents"
+  | "home-slides"
+  | "union-departments"
+  | "union-members"
+  | "contact-messages";
+
+/** Resource nhỏ, không phân trang ở BE — getList trả về toàn bộ mảng (giống "categories"/"document-types"). */
+const UNPAGINATED_RESOURCES: ResourceName[] = ["categories", "document-types", "home-slides", "union-departments"];
 
 interface ResourcePaths {
   /** Đường dẫn dùng cho getList. */
@@ -67,6 +85,34 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/official-documents",
     update: (id) => `/admin/official-documents/${id}`,
     remove: (id) => `/admin/official-documents/${id}`
+  },
+  "home-slides": {
+    list: "/admin/home-slides",
+    one: (id) => `/admin/home-slides/${id}`,
+    create: "/admin/home-slides",
+    update: (id) => `/admin/home-slides/${id}`,
+    remove: (id) => `/admin/home-slides/${id}`
+  },
+  "union-departments": {
+    list: "/admin/union-departments",
+    one: (id) => `/admin/union-departments/${id}`,
+    create: "/admin/union-departments",
+    update: (id) => `/admin/union-departments/${id}`,
+    remove: (id) => `/admin/union-departments/${id}`
+  },
+  "union-members": {
+    list: "/admin/union-members",
+    one: (id) => `/admin/union-members/${id}`,
+    create: "/admin/union-members",
+    update: (id) => `/admin/union-members/${id}`,
+    remove: (id) => `/admin/union-members/${id}`
+  },
+  "contact-messages": {
+    list: "/admin/contact-messages",
+    one: (id) => `/admin/contact-messages/${id}`,
+    create: "/admin/contact-messages",
+    update: (id) => `/admin/contact-messages/${id}`,
+    remove: (id) => `/admin/contact-messages/${id}`
   }
 };
 
@@ -94,14 +140,10 @@ export const dataProvider: DataProvider = {
   getList: async <TData extends BaseRecord = BaseRecord>({ resource, pagination, filters }: Parameters<DataProvider["getList"]>[0]) => {
     const paths = resolveResource(resource);
 
-    // "categories"/"document-types" không hỗ trợ phân trang/lọc ở BE (danh sách nhỏ) -> trả về toàn bộ.
-    if (resource === "categories") {
-      const items = await apiFetch<CategoryDto[]>(paths.list);
-      return { data: items as unknown as TData[], total: items.length };
-    }
-    if (resource === "document-types") {
-      const items = await apiFetch<DocumentTypeDto[]>(paths.list);
-      return { data: items as unknown as TData[], total: items.length };
+    // Danh sách nhỏ, không hỗ trợ phân trang/lọc ở BE (xem UNPAGINATED_RESOURCES) -> trả về toàn bộ.
+    if (UNPAGINATED_RESOURCES.includes(resource as ResourceName)) {
+      const items = await apiFetch<unknown[]>(paths.list);
+      return { data: items as TData[], total: items.length };
     }
 
     const page = pagination?.current ?? 1;
@@ -128,6 +170,16 @@ export const dataProvider: DataProvider = {
       if (status) params.set("status", status);
       const documentTypeId = extractFilterValue(filters, "documentTypeId");
       if (documentTypeId) params.set("documentTypeId", documentTypeId);
+    }
+
+    if (resource === "union-members") {
+      const departmentId = extractFilterValue(filters, "departmentId");
+      if (departmentId) params.set("departmentId", departmentId);
+    }
+
+    if (resource === "contact-messages") {
+      const isRead = extractFilterValue(filters, "isRead");
+      if (isRead) params.set("isRead", isRead);
     }
 
     const result = await apiFetch<PaginatedResult<unknown>>(`${paths.list}?${params.toString()}`);

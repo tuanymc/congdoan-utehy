@@ -1,7 +1,19 @@
 import { useState, type ComponentType, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useGetIdentity, useLogout } from "@refinedev/core";
-import { FileText, FolderTree, LayoutDashboard, LogOut, Menu, Newspaper, Tags, Users as UsersIcon } from "lucide-react";
+import {
+  FileText,
+  FolderTree,
+  Images,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Menu,
+  Newspaper,
+  Tags,
+  Users as UsersIcon,
+  UsersRound
+} from "lucide-react";
 import type { AuthUser } from "@congdoan/types";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
@@ -22,12 +34,16 @@ const BASE_NAV_ITEMS: NavItem[] = [
 
 const USERS_NAV_ITEM: NavItem = { to: "/users", label: "Người dùng", icon: UsersIcon };
 
-// Chỉ ADMIN/UNION_CLERK có quyền "document:*"/"documenttype:*" (xem prisma/seed.ts) — cùng điều kiện
-// với RequireDocumentAccess bọc route, ẩn hẳn menu cho MEMBER/DEPARTMENT_OFFICER thay vì để họ bấm
-// vào rồi mới bị chặn.
+// Chỉ ADMIN/UNION_CLERK có quyền "document:*"/"documenttype:*"/"homeslide:*"/"uniondepartment:*"/
+// "unionmember:*"/"contactmessage:*" (xem prisma/seed.ts) — cùng điều kiện với RequireDocumentAccess
+// bọc route, ẩn hẳn menu cho MEMBER/DEPARTMENT_OFFICER thay vì để họ bấm vào rồi mới bị chặn.
 const DOCUMENT_NAV_ITEMS: NavItem[] = [
   { to: "/official-documents", label: "Công văn", icon: FileText },
-  { to: "/document-types", label: "Loại công văn", icon: Tags }
+  { to: "/document-types", label: "Loại công văn", icon: Tags },
+  { to: "/home-slides", label: "Banner trang chủ", icon: Images },
+  { to: "/union-members", label: "Công đoàn viên", icon: UsersRound },
+  { to: "/union-departments", label: "Công đoàn bộ phận", icon: FolderTree },
+  { to: "/contact-messages", label: "Liên hệ", icon: Mail }
 ];
 
 function BrandTitle() {

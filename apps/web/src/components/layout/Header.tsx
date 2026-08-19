@@ -16,6 +16,8 @@ const NAV_ITEMS = [
   { to: "/", label: "Trang chủ", end: true },
   { to: "/tin-tuc", label: "Tin tức", end: false },
   { to: "/gioi-thieu", label: "Giới thiệu", end: false },
+  { to: "/van-ban", label: "Văn bản", end: false },
+  { to: "/danh-ba-cong-doan-vien", label: "Công đoàn viên", end: false },
   { to: "/lien-he", label: "Liên hệ", end: false }
 ] as const;
 
@@ -60,7 +62,7 @@ export function Header() {
         </Link>
 
         {/* Menu desktop */}
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-4 lg:flex lg:gap-6">
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClassName}>
               {item.label}
@@ -68,7 +70,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
               <Link
@@ -97,7 +99,7 @@ export function Header() {
         {/* Menu mobile */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden" aria-label="Mở menu">
+            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Mở menu">
               <Menu />
             </Button>
           </SheetTrigger>

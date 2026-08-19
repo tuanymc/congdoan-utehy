@@ -145,6 +145,15 @@ model Category {
   // khác, tự thêm hậu tố "-2" và TẠO MỚI thay vì cập nhật — gây trùng dữ liệu.
   legacyCode String?
 
+  /// true nếu đây là 1 trong các chuyên mục thuộc nhóm "Giới thiệu" ở web cũ (Giới thiệu chung, Chức
+  /// năng nhiệm vụ, Ban chấp hành, Cơ cấu tổ chức, BCH Công đoàn qua các thời kỳ, Ủy ban kiểm tra, Ban
+  /// Tuyên giáo nữ công, Ban Văn thể, Ban Tài chính, Ban Thanh tra nhân dân, Ban Chính sách pháp luật,
+  /// Văn phòng, Ban chuyên môn — đối chiếu trực tiếp từ menu footer web cũ, KHÔNG đoán) — ETL tự nhận
+  /// diện bằng cách so khớp tên (xem hàm isAboutCategoryName() trong migrate-legacy-content.ts), admin
+  /// có thể bật/tắt tay qua trang Chuyên mục sau này. apps/web dùng cờ này để gom bài viết các chuyên
+  /// mục này vào trang "Giới thiệu" thay vì phải hard-code nội dung tĩnh như trước.
+  isAboutSection Boolean @default(false)
+
   posts Post[]
 
   @@index([legacyCode])
@@ -251,9 +260,10 @@ model OfficialDocument {
   /// SEND_AGAIN) để không mất thông tin, dù bản này chưa có UI thao tác đổi trạng thái theo luồng.
   status         String   @default("SAVE_DRAFT") @db.VarChar(20)
   priority       String?
-  /// true nếu web cũ có ShowWeb=1 (hiển thị công khai), false nếu ShowWeb=2 (nội bộ). CHỈ dùng để
-  /// giữ thông tin gốc — domain này hiện KHÔNG có endpoint công khai (xem packages/types), field chỉ
-  /// mang tính lưu trữ/tham khảo, có thể dùng làm bộ lọc trong trang admin.
+  /// true nếu web cũ có ShowWeb=1 (hiển thị công khai), false nếu ShowWeb=2 (nội bộ). Dùng làm bộ lọc
+  /// cho endpoint công khai GET /public/official-documents (chỉ trả về công văn isPublic=true, không
+  /// JWT) — xem public-official-documents.controller.ts; endpoint /admin/official-documents (yêu cầu
+  /// permission document:*) vẫn trả về toàn bộ không phân biệt cờ này.
   isPublic       Boolean  @default(false)
 
   issuedAt         DateTime?
@@ -320,8 +330,124 @@ model DocumentAttachment {
 }
 
 // ============================================================================
-// TODO Phase 2 — DOMAIN: MEMBERSHIP
-//   model Member, Leader, Position, Term, Department, ManagementUnit, EducationLevel
+// DOMAIN: HOMESLIDE — banner/slide ảnh trang chủ (thay tblSlide web cũ)
+// ============================================================================
+
+/// Banner trượt ở đầu trang chủ — nguồn: tblSlide (Name, Image, Active); web cũ lọc "Active=1" khi
+/// hiển thị (xem modules/uc_Slide.ascx.cs) — giữ đúng field tương ứng, thêm sortOrder vì tblSlide
+/// không có cột thứ tự riêng (web cũ hiển thị theo thứ tự Id mặc định).
+model HomeSlide {
+  id        String   @id @default(uuid())
+  name      String
+  imageUrl  String
+  /// Bấm vào ảnh chuyển tới đâu — web cũ KHÔNG có cột này ở tblSlide (chỉ tblSlideLink mới có Link,
+  /// nhưng đó là banner khác, không migrate) — field mới hoàn toàn cho web mới, mặc định null (ảnh
+  /// không click được, giống hệt hành vi gốc của tblSlide).
+  linkUrl   String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Mã gốc (tblSlide.Id) từ web cũ — xem giải thích ở DocumentType.legacyCode.
+  legacyCode String?
+
+  @@index([legacyCode])
+  @@map("home_slides")
+}
+
+// ============================================================================
+// DOMAIN: UNIONDIRECTORY — danh bạ công đoàn viên công khai (thay 1 phần Membership Phase 2)
+//
+// Web cũ có bảng NHANVIEN (~90 cột, hồ sơ nhân sự ĐẦY ĐỦ: CMND, ngày sinh, tình trạng hôn nhân,
+// thành phần xuất thân, sổ BHXH, đảng tịch...) dùng cho quản lý nhân sự nội bộ, nhưng trang công khai
+// modules/GioiThieuCongDoanVien.aspx CHỈ hiển thị 4 trường: Họ tên, Trình độ (chuyên môn cao nhất),
+// Chức vụ, Điện thoại di động, Email — lọc NHANVIEN.STATUS=1, lọc/nhóm theo CongDoanBoPhan (đối
+// chiếu trực tiếp từ code-behind GioiThieuCongDoanVien.aspx.cs, KHÔNG đoán). 2 model bên dưới CHỈ giữ
+// đúng các trường công khai này — CHỦ ĐỘNG không nhập các trường nhạy cảm còn lại (CMND, ngày sinh,
+// sức khoẻ, lương, đảng tịch...) vì không phục vụ mục đích hiển thị công khai và tránh rủi ro lộ dữ
+// liệu cá nhân không cần thiết.
+// ============================================================================
+
+/// "Công đoàn bộ phận" — nguồn: CONGDOANBOPHAN, dùng để lọc/nhóm danh bạ (KHÔNG phải NHANVIEN.PHONGBAN
+/// — 1 field khác trên web cũ, không dùng để lọc danh bạ công khai, xem code-behind).
+model UnionDepartment {
+  id        String   @id @default(uuid())
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  /// Mã gốc (CONGDOANBOPHAN.MACDBP) từ web cũ — xem giải thích ở DocumentType.legacyCode.
+  legacyCode String?
+
+  members UnionMember[]
+
+  @@index([legacyCode])
+  @@map("union_departments")
+}
+
+/// Công đoàn viên hiển thị công khai — nguồn: NHANVIEN (chỉ lấy field công khai, xem giải thích đầu
+/// domain block).
+model UnionMember {
+  id       String @id @default(uuid())
+  fullName String
+  /// Ảnh đại diện — nguồn NHANVIEN.HINHANH, cùng cơ chế chuẩn hoá path như Post.coverImageUrl (xem
+  /// normalizeAssetPath trong migrate-legacy-content.ts). Null = dùng ảnh mặc định phía FE (web cũ
+  /// dùng "upload/images/AnhCDV/avatar.jpg" làm ảnh mặc định).
+  photoUrl String?
+  /// Trình độ chuyên môn cao nhất, đã resolve tên hiển thị sẵn lúc ETL (nguồn
+  /// NHANVIEN.TD_CHUYENMONCAONHAT tra qua bảng TRINHDOHOCVAN.GHICHU — xem hàm LayTrinhDo() trong
+  /// GioiThieuCongDoanVien.aspx.cs) — lưu thẳng text hiển thị, không xây bảng danh mục trình độ riêng
+  /// chỉ để phục vụ 1 field.
+  degreeLabel String?
+  /// Chức vụ (nếu có), đã resolve tên hiển thị sẵn lúc ETL (nguồn NHANVIEN.CHUCVU tra qua bảng
+  /// CHUCVU.TENCV — xem hàm LayChucVu()) — cùng lý do lưu thẳng text như degreeLabel.
+  positionTitle String?
+  phone         String?
+  email         String?
+  /// true nếu NHANVIEN.STATUS=1 (web cũ chỉ hiển thị công khai đúng điều kiện này) — admin có thể tự
+  /// tắt hiển thị 1 người mà không cần xoá bản ghi (vd nghỉ việc nhưng chưa muốn xoá dữ liệu).
+  isPublic  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departmentId String?
+  department   UnionDepartment? @relation(fields: [departmentId], references: [id])
+
+  /// Mã gốc (NHANVIEN.MANV) từ web cũ — xem giải thích ở DocumentType.legacyCode.
+  legacyCode String?
+
+  @@index([departmentId])
+  @@index([legacyCode])
+  @@map("union_members")
+}
+
+// ============================================================================
+// DOMAIN: CONTACT — form "Liên hệ" trang công khai
+//
+// Web cũ có bảng tblContact nhưng KHÔNG có bất kỳ trang/code-behind nào ghi vào bảng đó (đã grep toàn
+// bộ web_cu/MyWeb/**/*.cs, không thấy tham chiếu) — trang /lien-he web cũ chỉ là nội dung tĩnh, KHÔNG
+// có form gửi thật. Model bên dưới là tính năng MỚI hoàn toàn cho web mới, không migrate gì từ đâu cả.
+// ============================================================================
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  message   String   @db.NVarChar(Max)
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([isRead, createdAt])
+  @@map("contact_messages")
+}
+
+// ============================================================================
+// TODO Phase 2 — DOMAIN: MEMBERSHIP (phần còn lại)
+//   Danh bạ công khai (UnionMember/UnionDepartment) đã triển khai ở trên — phần CÒN LẠI của Phase 2
+//   (tài khoản đoàn viên tự quản lý, đóng đoàn phí, Leader/Position/Term đầy đủ...) làm sau nếu cần.
 //   (xem mục 4 CURSOR_PROMPT_Website_CongDoan_UTEHY.md để lấy đúng tên field)
 //
 // TODO Phase 4 — DOMAIN: DIGITALUTILITY ("Tiện ích số Công đoàn")

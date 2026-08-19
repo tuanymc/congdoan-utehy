@@ -1,0 +1,168 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDelete, useList, useTable } from "@refinedev/core";
+import type { CrudFilter } from "@refinedev/core";
+import type { UnionDepartmentDto, UnionMemberListItemDto } from "@congdoan/types";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Badge } from "../../components/ui/badge";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
+
+/** Trang quản trị danh bạ Công đoàn viên (thay modules/GioiThieuCongDoanVien.aspx phần quản lý web
+ * cũ) — khác endpoint công khai, hiển thị TOÀN BỘ kể cả người đang "Đang ẩn" (isPublic=false) để admin
+ * tự bật/tắt hiển thị. */
+export function UnionMemberList() {
+  const navigate = useNavigate();
+  const { mutate: deleteMember, isLoading: isDeleting } = useDelete();
+  const { data: deptsResult } = useList<UnionDepartmentDto>({ resource: "union-departments" });
+
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [departmentId, setDepartmentId] = useState<string>("ALL");
+  const [deleteTarget, setDeleteTarget] = useState<UnionMemberListItemDto | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { tableQueryResult, current, setCurrent, pageCount, setFilters } = useTable<UnionMemberListItemDto>({
+    resource: "union-members",
+    pagination: { current: 1, pageSize: 24 }
+  });
+
+  useEffect(() => {
+    const filters: CrudFilter[] = [];
+    if (debouncedSearch) filters.push({ field: "search", operator: "contains", value: debouncedSearch });
+    if (departmentId !== "ALL") filters.push({ field: "departmentId", operator: "eq", value: departmentId });
+    setFilters(filters, "replace");
+  }, [debouncedSearch, departmentId, setFilters]);
+
+  const members = tableQueryResult.data?.data ?? [];
+  const total = tableQueryResult.data?.total ?? 0;
+  const isLoading = tableQueryResult.isLoading;
+  const departments = deptsResult?.data ?? [];
+
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    deleteMember({ resource: "union-members", id: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Công đoàn viên</h1>
+          <p className="text-muted-foreground">Tổng cộng {total} công đoàn viên.</p>
+        </div>
+        <Button onClick={() => navigate("/union-members/create")}>Thêm công đoàn viên</Button>
+      </div>
+
+      <div className="flex flex-col gap-3 lg:flex-row">
+        <Input
+          placeholder="Tìm theo họ tên..."
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          className="lg:max-w-xs"
+        />
+        <Select value={departmentId} onValueChange={setDepartmentId}>
+          <SelectTrigger className="lg:max-w-64">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tất cả công đoàn bộ phận</SelectItem>
+            {departments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-lg border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Họ tên</TableHead>
+              <TableHead>Chức vụ</TableHead>
+              <TableHead>Bộ phận</TableHead>
+              <TableHead>Điện thoại</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading &&
+              Array.from({ length: 8 }).map((_, index) => (
+                <TableRow key={`skeleton-${index}`}>
+                  <TableCell colSpan={6}>
+                    <Skeleton className="h-6 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))}
+
+            {!isLoading && members.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  Không có công đoàn viên nào phù hợp.
+                </TableCell>
+              </TableRow>
+            )}
+
+            {!isLoading &&
+              members.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell className="font-medium">{member.fullName}</TableCell>
+                  <TableCell className="text-muted-foreground">{member.positionTitle ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{member.department?.name ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{member.phone ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={member.isPublic ? "default" : "secondary"}>
+                      {member.isPublic ? "Đang hiển thị" : "Đang ẩn"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/union-members/edit/${member.id}`)}>
+                        Sửa
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(member)}>
+                        Xoá
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <Button variant="outline" size="sm" disabled={current <= 1} onClick={() => setCurrent(current - 1)}>
+            Trước
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Trang {current} / {pageCount}
+          </span>
+          <Button variant="outline" size="sm" disabled={current >= pageCount} onClick={() => setCurrent(current + 1)}>
+            Sau
+          </Button>
+        </div>
+      )}
+
+      <ConfirmDeleteDialog
+        open={deleteTarget !== null}
+        title="Xoá công đoàn viên"
+        description={`Bạn có chắc chắn muốn xoá "${deleteTarget?.fullName ?? ""}" khỏi danh bạ? Hành động này không thể hoàn tác.`}
+        isPending={isDeleting}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+      />
+    </div>
+  );
+}

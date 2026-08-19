@@ -8,7 +8,9 @@
  */
 import type { ApiErrorBody } from "@congdoan/types";
 
-const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
+/** Export để các trang cần dựng URL trực tiếp (vd link tải file đính kèm <a href>, không qua apiFetch
+ * vì đó là điều hướng trình duyệt tải file chứ không phải gọi API lấy JSON). */
+export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
 
 const FALLBACK_ERROR_MESSAGE = "Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.";
 

@@ -8,6 +8,9 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
 import { ContentModule } from "./modules/content/content.module";
 import { OfficialDocumentsModule } from "./modules/official-documents/official-documents.module";
+import { UnionDirectoryModule } from "./modules/union-directory/union-directory.module";
+import { HomeSlideModule } from "./modules/home-slide/home-slide.module";
+import { ContactModule } from "./modules/contact/contact.module";
 
 @Module({
   imports: [
@@ -18,7 +21,10 @@ import { OfficialDocumentsModule } from "./modules/official-documents/official-d
     AuthModule,
     UsersModule,
     ContentModule,
-    OfficialDocumentsModule
+    OfficialDocumentsModule,
+    UnionDirectoryModule,
+    HomeSlideModule,
+    ContactModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
 })

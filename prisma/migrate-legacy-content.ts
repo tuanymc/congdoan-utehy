@@ -8,6 +8,12 @@
  *     tblAttach -> DocumentAttachment (2.494 công văn thật — xem chú thích đầu domain block trong
  *     prisma/schema.prisma để biết chi tiết map từng cột, đã xác nhận từ code-behind gốc
  *     web_cu/MyWeb/CV2/Document/*.aspx.cs + web_cu/MyWeb/CV2/Common/ECommon.cs, KHÔNG đoán mò).
+ *   - CONGDOANBOPHAN -> UnionDepartment, NHANVIEN (CHỈ 6 field công khai) -> UnionMember — danh bạ
+ *     công đoàn viên công khai, đối chiếu trực tiếp từ sp_tblCongDoanVien_GetByAll (INNER JOIN
+ *     NHANVIEN/CONGDOANBOPHAN) và modules/GioiThieuCongDoanVien.aspx(.cs) — xem chú thích đầu domain
+ *     block UNIONDIRECTORY trong prisma/schema.prisma để biết lý do CHỦ ĐỘNG bỏ qua toàn bộ field
+ *     nhạy cảm còn lại của NHANVIEN (~90 cột).
+ *   - tblSlide -> HomeSlide (banner trang chủ), lọc Active=1 giống modules/uc_Slide.ascx.cs.
  *
  * KHÔNG bao gồm (xem giải thích trong chat / báo cáo khảo sát mã nguồn web cũ):
  *   - tblNguoiDung (tài khoản, 4 dòng)  — quá ít, không đáng viết ETL riêng; đăng nhập thật của web
@@ -30,8 +36,9 @@
  *        LEGACY_MIGRATE_DRY_RUN=true pnpm migrate:legacy
  *   3. Chạy thật:
  *        pnpm migrate:legacy
- * Toàn bộ 5 model (Category/Post/DocumentType/OfficialDocument/DocumentAttachment) đều tra cứu bản
- * ghi đã nhập qua cột legacyCode (KHÔNG qua slug) trước khi upsert, nên chạy lại script nhiều lần là
+ * Toàn bộ 8 model (Category/Post/DocumentType/OfficialDocument/DocumentAttachment/UnionDepartment/
+ * UnionMember/HomeSlide) đều tra cứu bản ghi đã nhập qua cột legacyCode (KHÔNG qua slug) trước khi
+ * upsert, nên chạy lại script nhiều lần là
  * AN TOÀN (idempotent) — không tạo trùng, không đổi slug/URL đã công khai của bản ghi đã có. Trước
  * đây Category/Post tra theo slug, gây trùng dữ liệu thật trên production khi chạy ETL lần 2 (slug
  * của chính bản ghi cũ bị hiểu nhầm là "đã bị chiếm", tự thêm hậu tố "-2" rồi tạo mới) — đã sửa bằng
@@ -130,6 +137,33 @@ function normalizeAssetPath(raw: string): string | null {
   return `/${raw}`;
 }
 
+/** 13 tên chuyên mục con thuộc menu "Giới thiệu" ở web cũ, chép trực tiếp từ footer sitemap của
+ * https://congdoan.utehy.edu.vn/ (KHÔNG đoán) — dùng để ETL tự động gắn Category.isAboutSection=true
+ * khi tên chuyên mục khớp (so khớp không phân biệt hoa/thường, bỏ khoảng trắng đầu/cuối). Admin vẫn
+ * có thể bật/tắt tay sau qua trang Chuyên mục nếu web cũ đổi tên hoặc thêm chuyên mục mới không khớp
+ * danh sách này. */
+const ABOUT_CATEGORY_NAMES = new Set(
+  [
+    "Giới thiệu chung",
+    "Chức năng nhiệm vụ",
+    "Ban chấp hành",
+    "Cơ cấu tổ chức",
+    "BCH Công đoàn qua các thời kỳ",
+    "Ủy ban kiểm tra",
+    "Ban Tuyên giáo nữ công",
+    "Ban Văn thể",
+    "Ban Tài chính",
+    "Ban Thanh tra nhân dân",
+    "Ban Chính sách pháp luật",
+    "Văn phòng",
+    "Ban chuyên môn"
+  ].map((n) => n.trim().toLowerCase())
+);
+
+function isAboutCategoryName(name: string): boolean {
+  return ABOUT_CATEGORY_NAMES.has(name.trim().toLowerCase());
+}
+
 function uniqueSlug(base: string, used: Set<string>, legacyId: string): string {
   let candidate = base || `bai-viet-${legacyId}`;
   let n = 2;
@@ -159,7 +193,7 @@ async function ensureImportBotUser(): Promise<string> {
 }
 
 async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, string>> {
-  console.log("\n[1/5] Đang lấy danh sách chuyên mục (sp_tblCategory_GetByAll) từ web cũ...");
+  console.log("\n[1/8] Đang lấy danh sách chuyên mục (sp_tblCategory_GetByAll) từ web cũ...");
   const result = await pool.request().execute("sp_tblCategory_GetByAll");
   const rows = result.recordset as Array<{
     Id: string;
@@ -206,7 +240,8 @@ async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, 
       slug,
       name,
       description: str(row.MetaDescription) || null,
-      sortOrder
+      sortOrder,
+      isAboutSection: isAboutCategoryName(name)
     });
     legacyToNewId.set(row.Id, category.id);
     sortOrder += 1;
@@ -217,7 +252,7 @@ async function migrateCategories(pool: sql.ConnectionPool): Promise<Map<string, 
 }
 
 async function migratePosts(pool: sql.ConnectionPool, categoryMap: Map<string, string>, authorId: string) {
-  console.log("\n[2/5] Đang lấy danh sách bài viết (tblPost) từ web cũ...");
+  console.log("\n[2/8] Đang lấy danh sách bài viết (tblPost) từ web cũ...");
   // KHÔNG dùng sp_tblPost_GetByAll — sproc đó JOIN thêm tblCategory và làm "SELECT *, CategoryName =
   // tblCategory.Name" (xem full_schema.sql), nên kết quả có 2 CỘT CÙNG TÊN "Name" (Name của tblPost
   // VÀ Name của tblCategory). Driver mssql trả về giá trị của cột trùng tên dưới dạng MẢNG thay vì
@@ -364,7 +399,7 @@ async function upsertByLegacyCode<T extends { findFirst: Function; update: Funct
 }
 
 async function migrateDocumentTypes(pool: sql.ConnectionPool): Promise<Map<number, string>> {
-  console.log("\n[3/5] Đang lấy danh sách loại công văn (tblDocumentKind) từ web cũ...");
+  console.log("\n[3/8] Đang lấy danh sách loại công văn (tblDocumentKind) từ web cũ...");
   const result = await pool.request().query(
     "SELECT DocumentKindID, Name, Description, DocumentKindParent FROM tblDocumentKind"
   );
@@ -416,7 +451,7 @@ async function migrateOfficialDocuments(
   pool: sql.ConnectionPool,
   documentTypeMap: Map<number, string>
 ): Promise<Map<string, string>> {
-  console.log("\n[4/5] Đang lấy danh sách công văn (tblDocument) từ web cũ — có thể mất chút thời gian với 2.494 dòng...");
+  console.log("\n[4/8] Đang lấy danh sách công văn (tblDocument) từ web cũ — có thể mất chút thời gian với 2.494 dòng...");
 
   const [documentsResult, officialsResult, usersResult] = await Promise.all([
     pool.request().query(`
@@ -549,7 +584,7 @@ async function migrateOfficialDocuments(
 }
 
 async function migrateAttachments(pool: sql.ConnectionPool, documentMap: Map<string, string>) {
-  console.log("\n[5/5] Đang lấy danh sách file đính kèm công văn (tblAttach) từ web cũ...");
+  console.log("\n[5/8] Đang lấy danh sách file đính kèm công văn (tblAttach) từ web cũ...");
   const [attachResult, documentsResult] = await Promise.all([
     pool.request().query("SELECT AttachID, Name, Description, Path FROM tblAttach"),
     pool.request().query("SELECT DocumentID, Attachs FROM tblDocument WHERE Attachs IS NOT NULL AND Attachs <> '' AND Attachs <> ','")
@@ -611,6 +646,173 @@ async function migrateAttachments(pool: sql.ConnectionPool, documentMap: Map<str
   );
 }
 
+async function migrateUnionDepartments(pool: sql.ConnectionPool): Promise<Map<string, string>> {
+  console.log("\n[6/8] Đang lấy danh sách công đoàn bộ phận (CONGDOANBOPHAN) từ web cũ...");
+  const result = await pool.request().query("SELECT MACDBP, TENCDBP FROM CONGDOANBOPHAN");
+  const rows = result.recordset as Array<{ MACDBP: string; TENCDBP: string | null }>;
+  console.log(`  -> Tìm thấy ${rows.length} công đoàn bộ phận ở web cũ.`);
+
+  const legacyToNewId = new Map<string, string>();
+  let sortOrder = 0;
+
+  for (const row of rows) {
+    const name = str(row.TENCDBP) || `Bộ phận ${row.MACDBP}`;
+    const legacyCode = str(row.MACDBP);
+    if (!legacyCode) continue;
+
+    if (DRY_RUN) {
+      console.log(`  [dry-run] UnionDepartment "${name}"`);
+      legacyToNewId.set(legacyCode, `dry-run-${legacyCode}`);
+      sortOrder += 1;
+      continue;
+    }
+
+    const dept = await upsertByLegacyCode(prisma.unionDepartment, legacyCode, {
+      name,
+      sortOrder
+    });
+    legacyToNewId.set(legacyCode, dept.id);
+    sortOrder += 1;
+  }
+
+  console.log(`  -> Đã nhập ${legacyToNewId.size} công đoàn bộ phận.`);
+  return legacyToNewId;
+}
+
+/** Danh bạ công đoàn viên công khai — nguồn NHANVIEN, CHỈ lấy 6 field thật sự hiển thị công khai ở
+ * modules/GioiThieuCongDoanVien.aspx(.cs) (xem chú thích domain block UNIONDIRECTORY trong
+ * prisma/schema.prisma) — KHÔNG SELECT các cột nhạy cảm còn lại của NHANVIEN dù bảng gốc có ~90 cột,
+ * để tránh nhỡ tay dùng nhầm về sau dù không insert vào CSDL mới. */
+async function migrateUnionMembers(pool: sql.ConnectionPool, departmentMap: Map<string, string>) {
+  console.log("\n[7/8] Đang lấy danh sách công đoàn viên (NHANVIEN) từ web cũ...");
+
+  const [membersResult, degreesResult, positionsResult] = await Promise.all([
+    pool.request().query(`
+      SELECT MANV, HOTEN, HINHANH, TD_CHUYENMONCAONHAT, CHUCVU, DIENTHOAIDD, EMAIL, STATUS, CONGDOANBOPHAN
+      FROM NHANVIEN
+    `),
+    pool.request().query("SELECT MATDHV, GHICHU FROM TRINHDOHOCVAN"),
+    pool.request().query("SELECT MACV, TENCV FROM CHUCVU")
+  ]);
+
+  // Trình độ chuyên môn cao nhất: NHANVIEN.TD_CHUYENMONCAONHAT lưu MÃ (khớp TRINHDOHOCVAN.MATDHV), tên
+  // hiển thị lấy từ cột GHICHU (KHÔNG phải TENTDHV) — đúng theo hàm LayTrinhDo() trong
+  // GioiThieuCongDoanVien.aspx.cs, KHÔNG đoán.
+  const degreeLabelByCode = new Map<string, string>(
+    (degreesResult.recordset as Array<{ MATDHV: string; GHICHU: string | null }>)
+      .map((d): [string, string] => [str(d.MATDHV), str(d.GHICHU)])
+      .filter(([, label]) => label)
+  );
+  // Chức vụ: NHANVIEN.CHUCVU lưu MÃ (khớp CHUCVU.MACV), tên hiển thị lấy từ CHUCVU.TENCV — đúng theo
+  // hàm LayChucVu() (bỏ tiền tố "Chức vụ: " mà hàm gốc tự thêm, vì đó là style trình bày của web cũ,
+  // web mới tự trình bày lại theo UI riêng).
+  const positionTitleByCode = new Map<string, string>(
+    (positionsResult.recordset as Array<{ MACV: string; TENCV: string | null }>)
+      .map((p): [string, string] => [str(p.MACV), str(p.TENCV)])
+      .filter(([, label]) => label)
+  );
+
+  const rows = membersResult.recordset as Array<{
+    MANV: string;
+    HOTEN: string | null;
+    HINHANH: string | null;
+    TD_CHUYENMONCAONHAT: string | null;
+    CHUCVU: string | null;
+    DIENTHOAIDD: string | null;
+    EMAIL: string | null;
+    STATUS: number | null;
+    CONGDOANBOPHAN: string | null;
+  }>;
+  console.log(`  -> Tìm thấy ${rows.length} công đoàn viên ở web cũ.`);
+
+  let imported = 0;
+  let skippedNoName = 0;
+  let sortOrder = 0;
+
+  for (const row of rows) {
+    const fullName = str(row.HOTEN);
+    if (!fullName) {
+      skippedNoName += 1;
+      continue;
+    }
+
+    const legacyCode = str(row.MANV);
+    const departmentId = row.CONGDOANBOPHAN ? departmentMap.get(str(row.CONGDOANBOPHAN)) : undefined;
+    // STATUS=1 ở web cũ = hiển thị công khai (xem NHANVIEN.STATUS=1 trong btnSearch_Click()/LoadNEws()
+    // của GioiThieuCongDoanVien.aspx.cs) — map thẳng vào isPublic, admin có thể tự bật/tắt sau này.
+    const isPublic = row.STATUS === 1;
+
+    if (DRY_RUN) {
+      console.log(`  [dry-run] UnionMember "${fullName}" (isPublic=${isPublic})`);
+      imported += 1;
+      sortOrder += 1;
+      continue;
+    }
+
+    await upsertByLegacyCode(prisma.unionMember, legacyCode, {
+      fullName,
+      photoUrl: normalizeAssetPath(str(row.HINHANH)),
+      degreeLabel: degreeLabelByCode.get(str(row.TD_CHUYENMONCAONHAT)) ?? null,
+      positionTitle: positionTitleByCode.get(str(row.CHUCVU)) ?? null,
+      phone: str(row.DIENTHOAIDD) || null,
+      email: str(row.EMAIL) || null,
+      isPublic,
+      sortOrder,
+      departmentId: departmentId ?? null
+    });
+    imported += 1;
+    sortOrder += 1;
+  }
+
+  console.log(`  -> Đã nhập ${imported} công đoàn viên. Bỏ qua ${skippedNoName} (thiếu họ tên).`);
+  console.warn(
+    "  -> LƯU Ý: photoUrl giữ nguyên đường dẫn ảnh từ NHANVIEN.HINHANH (chuẩn hoá luôn có dấu \"/\" " +
+      "đầu, xem normalizeAssetPath) — chỉ hiển thị đúng nếu đã copy đủ thư mục upload/images/AnhCDV " +
+      "của web cũ sang server mới (xem deploy guide Bước 6.5)."
+  );
+}
+
+async function migrateHomeSlides(pool: sql.ConnectionPool) {
+  console.log("\n[8/8] Đang lấy danh sách banner trang chủ (tblSlide) từ web cũ...");
+  // Lọc Active=1 giống hệt web cũ (xem modules/uc_Slide.ascx.cs: tblSlideService.tblSlide_GetByTop("",
+  // "Active=1", "")) — banner không Active=1 không hiển thị công khai nên không cần nhập.
+  const result = await pool.request().query("SELECT Id, Name, Image, Active FROM tblSlide WHERE Active = 1");
+  const rows = result.recordset as Array<{ Id: number; Name: string | null; Image: string | null; Active: number | null }>;
+  console.log(`  -> Tìm thấy ${rows.length} banner đang Active ở web cũ.`);
+
+  let imported = 0;
+  let skippedNoImage = 0;
+  let sortOrder = 0;
+
+  for (const row of rows) {
+    const imageUrl = normalizeAssetPath(str(row.Image));
+    if (!imageUrl) {
+      skippedNoImage += 1;
+      continue;
+    }
+    const legacyCode = String(row.Id);
+    const name = str(row.Name) || `Banner ${row.Id}`;
+
+    if (DRY_RUN) {
+      console.log(`  [dry-run] HomeSlide "${name}"`);
+      imported += 1;
+      sortOrder += 1;
+      continue;
+    }
+
+    await upsertByLegacyCode(prisma.homeSlide, legacyCode, {
+      name,
+      imageUrl,
+      sortOrder,
+      isActive: true
+    });
+    imported += 1;
+    sortOrder += 1;
+  }
+
+  console.log(`  -> Đã nhập ${imported} banner. Bỏ qua ${skippedNoImage} (thiếu ảnh).`);
+}
+
 async function main() {
   console.log(`=== ETL nội dung web cũ -> web mới ${DRY_RUN ? "(DRY-RUN — không ghi CSDL)" : ""} ===`);
   console.log("Đang kết nối CSDL web cũ...");
@@ -625,6 +827,10 @@ async function main() {
     const documentTypeMap = await migrateDocumentTypes(pool);
     const documentMap = await migrateOfficialDocuments(pool, documentTypeMap);
     await migrateAttachments(pool, documentMap);
+
+    const departmentMap = await migrateUnionDepartments(pool);
+    await migrateUnionMembers(pool, departmentMap);
+    await migrateHomeSlides(pool);
 
     console.log("\n=== HOÀN TẤT ===");
     if (DRY_RUN) console.log("(Đây là dry-run — chưa có gì được ghi vào CSDL mới. Bỏ LEGACY_MIGRATE_DRY_RUN để chạy thật.)");

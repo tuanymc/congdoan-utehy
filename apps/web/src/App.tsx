@@ -6,6 +6,9 @@ import { NewsListPage } from "./pages/NewsListPage";
 import { NewsDetailPage } from "./pages/NewsDetailPage";
 import { AboutPage } from "./pages/AboutPage";
 import { ContactPage } from "./pages/ContactPage";
+import { DocumentsPage } from "./pages/DocumentsPage";
+import { DocumentDetailPage } from "./pages/DocumentDetailPage";
+import { UnionMembersPage } from "./pages/UnionMembersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MemberPortalPage } from "./pages/MemberPortalPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -18,6 +21,9 @@ export default function App() {
         <Route path="tin-tuc" element={<NewsListPage />} />
         <Route path="tin-tuc/:slug" element={<NewsDetailPage />} />
         <Route path="gioi-thieu" element={<AboutPage />} />
+        <Route path="van-ban" element={<DocumentsPage />} />
+        <Route path="van-ban/:id" element={<DocumentDetailPage />} />
+        <Route path="danh-ba-cong-doan-vien" element={<UnionMembersPage />} />
         <Route path="lien-he" element={<ContactPage />} />
         <Route path="dang-nhap" element={<LoginPage />} />
         <Route

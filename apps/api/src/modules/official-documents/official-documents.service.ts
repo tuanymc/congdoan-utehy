@@ -7,7 +7,9 @@ import type {
   OfficialDocumentDetailDto,
   OfficialDocumentListItemDto,
   PaginatedResult,
-  PaginationQuery
+  PaginationQuery,
+  PublicOfficialDocumentDetailDto,
+  PublicOfficialDocumentListItemDto
 } from "@congdoan/types";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -60,6 +62,40 @@ function toListItem(d: DocumentWithRelations): OfficialDocumentListItemDto {
   };
 }
 
+/** Biến thể công khai — CỐ Ý bỏ status/priority/createdByName/processedByNames/sentToRaw (xem
+ * PublicOfficialDocumentListItemDto trong packages/types/src/official-document.ts). */
+function toPublicListItem(d: DocumentWithRelations): PublicOfficialDocumentListItemDto {
+  return {
+    id: d.id,
+    title: d.title,
+    documentNumber: d.documentNumber,
+    direction: d.direction as DocumentDirection,
+    documentType: {
+      id: d.documentType.id,
+      name: d.documentType.name,
+      description: d.documentType.description,
+      parentId: d.documentType.parentId
+    },
+    issuingOfficeName: d.issuingOfficeName,
+    issuedAt: d.issuedAt ? d.issuedAt.toISOString() : null
+  };
+}
+
+function toPublicDetail(d: DocumentWithRelations): PublicOfficialDocumentDetailDto {
+  return {
+    ...toPublicListItem(d),
+    content: d.content,
+    summary: d.summary,
+    attachments: d.attachments.map((a) => ({
+      id: a.id,
+      fileName: a.fileName,
+      description: a.description,
+      path: a.path,
+      uploadedAt: a.uploadedAt ? a.uploadedAt.toISOString() : null
+    }))
+  };
+}
+
 function toDetail(d: DocumentWithRelations): OfficialDocumentDetailDto {
   return {
     ...toListItem(d),
@@ -85,9 +121,12 @@ function toDetail(d: DocumentWithRelations): OfficialDocumentDetailDto {
 }
 
 /**
- * CRUD "Công văn" — chỉ dùng ở trang quản trị (không có endpoint công khai, khác với Content/Post).
- * Xem packages/types/src/official-document.ts và đầu domain block trong prisma/schema.prisma để
- * biết vì sao field được đặt tên/map như vậy (đối chiếu trực tiếp từ code web cũ CV2/Document/*.cs).
+ * CRUD "Công văn" — các method không có hậu tố "Public" chỉ dùng ở trang quản trị (yêu cầu JWT +
+ * permission "document:*"). Các method *Public() phục vụ PublicOfficialDocumentsController (route
+ * công khai /official-documents, không JWT) — CHỈ trả công văn isPublic=true và lược bỏ field nội bộ,
+ * xem PublicOfficialDocumentListItemDto/DetailDto trong packages/types/src/official-document.ts.
+ * Xem đầu domain block OFFICIALDOCUMENT trong prisma/schema.prisma để biết vì sao field được đặt
+ * tên/map như vậy (đối chiếu trực tiếp từ code web cũ CV2/Document/*.cs).
  */
 @Injectable()
 export class OfficialDocumentsService {
@@ -139,6 +178,44 @@ export class OfficialDocumentsService {
     const document = await this.prisma.officialDocument.findUnique({ where: { id }, ...documentWithRelations });
     if (!document) throw new NotFoundException("Không tìm thấy công văn.");
     return toDetail(document);
+  }
+
+  /** Công khai — CHỈ trả công văn isPublic=true (khớp ShowWeb=1 web cũ), dùng cho trang "Văn bản". */
+  async listPublic(
+    query: PaginationQuery & { documentTypeId?: string; direction?: DocumentDirection }
+  ): Promise<PaginatedResult<PublicOfficialDocumentListItemDto>> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const where: Prisma.OfficialDocumentWhereInput = {
+      isPublic: true,
+      ...(query.documentTypeId ? { documentTypeId: query.documentTypeId } : {}),
+      ...(query.direction ? { direction: query.direction } : {}),
+      ...(query.search
+        ? { OR: [{ title: { contains: query.search } }, { documentNumber: { contains: query.search } }] }
+        : {})
+    };
+
+    const [total, documents] = await this.prisma.$transaction([
+      this.prisma.officialDocument.count({ where }),
+      this.prisma.officialDocument.findMany({
+        where,
+        ...documentWithRelations,
+        orderBy: { issuedAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      })
+    ]);
+
+    return { items: documents.map(toPublicListItem), total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+  }
+
+  async findOnePublic(id: string): Promise<PublicOfficialDocumentDetailDto> {
+    const document = await this.prisma.officialDocument.findFirst({
+      where: { id, isPublic: true },
+      ...documentWithRelations
+    });
+    if (!document) throw new NotFoundException("Không tìm thấy công văn.");
+    return toPublicDetail(document);
   }
 
   async create(dto: CreateOfficialDocumentDto, actorUserId: string): Promise<OfficialDocumentDetailDto> {
@@ -213,5 +290,17 @@ export class OfficialDocumentsService {
       );
     }
     return { fileName: attachment.fileName, physicalPath };
+  }
+
+  /** Giống getAttachmentForDownload() ở trên, nhưng thêm điều kiện document.isPublic=true — chặn tải
+   * file đính kèm của công văn nội bộ qua route công khai (route công khai KHÔNG có JWT/permission
+   * guard bảo vệ, nên phải tự kiểm tra isPublic ngay trong service thay vì dựa vào guard). */
+  async getPublicAttachmentForDownload(
+    documentId: string,
+    attachmentId: string
+  ): Promise<{ fileName: string; physicalPath: string }> {
+    const document = await this.prisma.officialDocument.findFirst({ where: { id: documentId, isPublic: true } });
+    if (!document) throw new NotFoundException("Không tìm thấy công văn.");
+    return this.getAttachmentForDownload(documentId, attachmentId);
   }
 }

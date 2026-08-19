@@ -1,5 +1,5 @@
 import { ApiPropertyOptional, ApiProperty } from "@nestjs/swagger";
-import { IsInt, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
 import type { CreateCategoryRequest } from "@congdoan/types";
 
 export class CreateCategoryDto implements CreateCategoryRequest {
@@ -21,4 +21,9 @@ export class CreateCategoryDto implements CreateCategoryRequest {
   @IsOptional()
   @IsInt()
   sortOrder?: number;
+
+  @ApiPropertyOptional({ description: 'Chuyên mục thuộc nhóm "Giới thiệu" ở web cũ — gom vào trang Giới thiệu.' })
+  @IsOptional()
+  @IsBoolean()
+  isAboutSection?: boolean;
 }

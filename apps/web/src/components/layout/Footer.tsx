@@ -35,6 +35,16 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link to="/van-ban" className="hover:text-primary">
+                Văn bản
+              </Link>
+            </li>
+            <li>
+              <Link to="/danh-ba-cong-doan-vien" className="hover:text-primary">
+                Công đoàn viên
+              </Link>
+            </li>
+            <li>
               <Link to="/lien-he" className="hover:text-primary">
                 Liên hệ
               </Link>
@@ -52,15 +62,15 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <MapPin className="mt-0.5 size-4 shrink-0" />
-              <span>Số 39A Nguyễn Văn Linh, phường Hiến Nam, Hưng Yên</span>
+              <span>Xã Dân Tiến, Huyện Khoái Châu, Tỉnh Hưng Yên</span>
             </li>
             <li className="flex items-center gap-2">
               <Phone className="size-4 shrink-0" />
-              <span>[Số điện thoại Văn phòng Công đoàn]</span>
+              <span>Hotline: 0962.490.411 — VP: 03123.713.108</span>
             </li>
             <li className="flex items-center gap-2">
               <Mail className="size-4 shrink-0" />
-              <span>congdoan@utehy.edu.vn</span>
+              <span>congdoanutehy@gmail.com</span>
             </li>
           </ul>
         </div>

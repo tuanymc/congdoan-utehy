@@ -7,6 +7,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { PageLoading } from "../../components/common/PageLoading";
 import { slugify } from "../../lib/slugify";
 
@@ -31,6 +32,7 @@ export function CategoryForm({ mode }: CategoryFormProps) {
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
+  const [isAboutSection, setIsAboutSection] = useState<"true" | "false">("false");
 
   useEffect(() => {
     if (mode === "edit" && categoryResult?.data) {
@@ -39,6 +41,7 @@ export function CategoryForm({ mode }: CategoryFormProps) {
       setSlug(category.slug);
       setDescription(category.description ?? "");
       setSortOrder(String(category.sortOrder));
+      setIsAboutSection(category.isAboutSection ? "true" : "false");
     }
   }, [mode, categoryResult]);
 
@@ -52,7 +55,8 @@ export function CategoryForm({ mode }: CategoryFormProps) {
       name,
       slug: slug.trim() || undefined,
       description: description.trim() || undefined,
-      sortOrder: sortOrder.trim() ? Number(sortOrder) : undefined
+      sortOrder: sortOrder.trim() ? Number(sortOrder) : undefined,
+      isAboutSection: isAboutSection === "true"
     };
 
     if (mode === "create") {
@@ -113,6 +117,23 @@ export function CategoryForm({ mode }: CategoryFormProps) {
                 value={sortOrder}
                 onChange={(event) => setSortOrder(event.target.value)}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="isAboutSection">Thuộc trang "Giới thiệu"</Label>
+              <Select value={isAboutSection} onValueChange={(value) => setIsAboutSection(value as "true" | "false")}>
+                <SelectTrigger id="isAboutSection">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Không — hiển thị như chuyên mục tin tức bình thường</SelectItem>
+                  <SelectItem value="true">Có — gom bài viết chuyên mục này vào trang Giới thiệu</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Dùng cho các chuyên mục dạng "Giới thiệu chung", "Ban chấp hành"... — apps/web sẽ gom bài viết
+                các chuyên mục này vào trang Giới thiệu thay vì trang Tin tức.
+              </p>
             </div>
 
             <div className="flex justify-end gap-2">

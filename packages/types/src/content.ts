@@ -12,6 +12,9 @@ export interface CategoryDto {
   name: string;
   description?: string | null;
   sortOrder: number;
+  /** true nếu chuyên mục thuộc nhóm "Giới thiệu" ở web cũ — dùng để apps/web gom bài viết vào trang
+   * Giới thiệu thay vì phải hard-code nội dung tĩnh. Xem Category.isAboutSection trong schema.prisma. */
+  isAboutSection: boolean;
 }
 
 export interface PostListItemDto {
@@ -49,6 +52,7 @@ export interface CreateCategoryRequest {
   slug?: string;
   description?: string;
   sortOrder?: number;
+  isAboutSection?: boolean;
 }
 
 export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}

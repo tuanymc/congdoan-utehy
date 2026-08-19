@@ -28,6 +28,13 @@ import { DocumentTypeList } from "./pages/document-types/DocumentTypeList";
 import { DocumentTypeForm } from "./pages/document-types/DocumentTypeForm";
 import { OfficialDocumentList } from "./pages/official-documents/OfficialDocumentList";
 import { OfficialDocumentForm } from "./pages/official-documents/OfficialDocumentForm";
+import { HomeSlideList } from "./pages/home-slides/HomeSlideList";
+import { HomeSlideForm } from "./pages/home-slides/HomeSlideForm";
+import { UnionDepartmentList } from "./pages/union-departments/UnionDepartmentList";
+import { UnionDepartmentForm } from "./pages/union-departments/UnionDepartmentForm";
+import { UnionMemberList } from "./pages/union-members/UnionMemberList";
+import { UnionMemberForm } from "./pages/union-members/UnionMemberForm";
+import { ContactMessageList } from "./pages/contact-messages/ContactMessageList";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -83,6 +90,32 @@ export function App() {
             create: "/official-documents/create",
             edit: "/official-documents/edit/:id",
             meta: { label: "Công văn" }
+          },
+          {
+            name: "home-slides",
+            list: "/home-slides",
+            create: "/home-slides/create",
+            edit: "/home-slides/edit/:id",
+            meta: { label: "Banner trang chủ" }
+          },
+          {
+            name: "union-departments",
+            list: "/union-departments",
+            create: "/union-departments/create",
+            edit: "/union-departments/edit/:id",
+            meta: { label: "Công đoàn bộ phận" }
+          },
+          {
+            name: "union-members",
+            list: "/union-members",
+            create: "/union-members/create",
+            edit: "/union-members/edit/:id",
+            meta: { label: "Công đoàn viên" }
+          },
+          {
+            name: "contact-messages",
+            list: "/contact-messages",
+            meta: { label: "Liên hệ" }
           }
         ]}
         options={{
@@ -154,6 +187,56 @@ export function App() {
               <Route index element={<OfficialDocumentList />} />
               <Route path="create" element={<OfficialDocumentForm mode="create" />} />
               <Route path="edit/:id" element={<OfficialDocumentForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/home-slides"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<HomeSlideList />} />
+              <Route path="create" element={<HomeSlideForm mode="create" />} />
+              <Route path="edit/:id" element={<HomeSlideForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/union-departments"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<UnionDepartmentList />} />
+              <Route path="create" element={<UnionDepartmentForm mode="create" />} />
+              <Route path="edit/:id" element={<UnionDepartmentForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/union-members"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<UnionMemberList />} />
+              <Route path="create" element={<UnionMemberForm mode="create" />} />
+              <Route path="edit/:id" element={<UnionMemberForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/contact-messages"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<ContactMessageList />} />
             </Route>
           </Route>
 

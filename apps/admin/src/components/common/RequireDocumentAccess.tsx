@@ -5,11 +5,14 @@ import type { AuthUser } from "@congdoan/types";
 import { Skeleton } from "../ui/skeleton";
 
 /**
- * Bọc các trang module Công văn (Loại công văn / Công văn) — chỉ ADMIN và UNION_CLERK ("Văn thư công
- * đoàn") mới có quyền "document:*"/"documenttype:*" theo prisma/seed.ts. AuthUser (xem @congdoan/types)
- * chỉ có field `roles`, không có `permissions` chi tiết ở phía FE, nên chỉ kiểm tra theo 2 role cố
- * định này — API vẫn là nơi kiểm tra permission thật sự (PermissionsGuard), đây chỉ là lớp UX chặn
- * sớm để tránh hiện trang rồi mới báo lỗi 403.
+ * Bọc các trang chỉ ADMIN và UNION_CLERK ("Văn thư công đoàn") mới có quyền truy cập theo
+ * prisma/seed.ts — ban đầu chỉ dùng cho module Công văn (Loại công văn / Công văn, quyền
+ * "document:*"/"documenttype:*"), nay dùng chung cho mọi module UNION_CLERK cũng quản lý: banner
+ * trang chủ ("homeslide:*"), danh bạ công đoàn viên ("uniondepartment:*"/"unionmember:*"), hộp thư
+ * liên hệ ("contactmessage:*") — 2 role này có cùng tập quyền quản trị nội dung công khai. AuthUser
+ * (xem @congdoan/types) chỉ có field `roles`, không có `permissions` chi tiết ở phía FE, nên chỉ kiểm
+ * tra theo 2 role cố định này — API vẫn là nơi kiểm tra permission thật sự (PermissionsGuard), đây
+ * chỉ là lớp UX chặn sớm để tránh hiện trang rồi mới báo lỗi 403.
  */
 export function RequireDocumentAccess({ children }: { children: ReactNode }) {
   const { data: identity, isLoading } = useGetIdentity<AuthUser>();

@@ -3,3 +3,6 @@ export * from "./auth";
 export * from "./system";
 export * from "./content";
 export * from "./official-document";
+export * from "./union-directory";
+export * from "./home-slide";
+export * from "./contact";
