@@ -5,7 +5,12 @@
 //   1. System      — ĐÃ triển khai đầy đủ ở đây (Phase 1: Auth & RBAC).
 //   2. Content     — ĐÃ triển khai Post/Category làm module mẫu (vertical slice minh hoạ pattern).
 //   3. Membership  — CHƯA triển khai, làm ở Phase 2 (Member, Leader, Position, Term, Department...).
-//   4. OfficialDocument — CHƯA triển khai, làm ở Phase 3.
+//      Bảng tblCongDoanVien web cũ KHÔNG tồn tại trên CSDL production (đã xác nhận thực tế, không
+//      còn là giả định) — không có dữ liệu cũ cần giữ chỗ cho phần này.
+//   4. OfficialDocument — ĐÃ triển khai (Phase 3): DocumentType/OfficialDocument/DocumentAttachment,
+//      thay 4 bảng tblLoaiCV/tblNoiDungCV/tblFileDinhKem/tblPostCongVan cũ. Xây sau khi xác nhận CSDL
+//      production web cũ có dữ liệu thật (18 loại công văn / 94 công văn / 92 file đính kèm — xem
+//      deploy guide Bước 6.5). tblPostCongVan (0 dòng, bảng liên kết không dùng) KHÔNG migrate.
 //   5. DigitalUtility   — CHƯA triển khai, làm ở Phase 4 (Tiện ích số Công đoàn).
 //
 // Không xoá comment TODO bên dưới khi bổ sung domain mới — đó là điểm neo cho các phase tiếp theo.
@@ -165,12 +170,135 @@ model Post {
 }
 
 // ============================================================================
+// DOMAIN: OFFICIALDOCUMENT — công văn đi/đến + file đính kèm (Phase 3)
+//
+// Nguồn dữ liệu thật đã xác nhận là [tblDocument] (2.494 dòng, hệ "quản lý công văn" riêng trong
+// web_cu/MyWeb/CV2/, KHÔNG phải tblNoiDungCV — bảng đó chỉ có 94 dòng, có thể là bản thử nghiệm bỏ
+// dở). Ý nghĩa từng cột được xác nhận bằng cách đọc trực tiếp code-behind (CV2/Document/*.aspx.cs)
+// và enum trong CV2/Common/ECommon.cs, không suy đoán từ tên cột:
+//   - cột [DocumentType] (int) = HƯỚNG văn bản (enum EOFFICE.Common.DocumentType): 1=dự thảo,
+//     2=công văn đi, 3=công văn đến. Map vào field `direction` bên dưới.
+//   - cột [Status] (int, lưu dạng string) = enum EOFFICE.Common.DocumentStatus (1..7: lưu bản thảo/
+//     gửi bản thảo/chờ xuất bản/đã xuất bản/đã xử lý/đang xử lý/bị trả lại). Map vào field `status`.
+//   - cột [IDDocumentKind] = FK thật tới tblDocumentKind (loại công văn, có phân cấp cha/con qua
+//     DocumentKindParent) — model DocumentType bên dưới, KHÔNG liên quan tới tblLoaiCV.
+//   - cột [Attachs] = danh sách AttachID cách nhau bởi dấu phẩy, trỏ tới tblAttach (Name/Description/
+//     Path) — KHÔNG phải tblFileDinhKem (bảng đó chỉ liên kết với tblNoiDungCV). File vật lý nằm ở
+//     web_cu/MyWeb/CV2/Document/DocumentFiles/{username}/... và THẬT SỰ tồn tại trong bản upload —
+//     xem hướng dẫn deploy Bước 6.5 để copy sang server mới.
+//   - cột [PublishOffical] = FK tới tblOffical (đơn vị phát hành) — lưu tên đơn vị (resolve lúc ETL)
+//     vào field `issuingOfficeName`, không xây thêm domain "đơn vị" riêng cho một field duy nhất.
+//   - cột [IDUserCreate]/[UserProcess] = FK tới tblUser (người tạo/danh sách người xử lý) — lưu tên
+//     hiển thị (resolve lúc ETL) vào field text, không xây lại luồng duyệt/xử lý (xem ghi chú dưới).
+//   - cột [ShowWeb]: 1 = công khai, 2 = nội bộ — map vào field `isPublic`.
+// CHỦ ĐỘNG KHÔNG xây lại đầy đủ luồng duyệt/xử lý (workflow StartProcess/EndProcess/UserComments) —
+// bản này là lưu trữ + tra cứu công văn, không phải hệ thống quản lý công văn có luồng duyệt. Các
+// mốc thời gian StartProcess/EndProcess vẫn giữ lại (processStartAt/processEndAt) để tham khảo.
+// ============================================================================
+
+/// "Loại công văn" — nguồn: tblDocumentKind (18+ loại thật, có thể phân cấp cha/con).
+model DocumentType {
+  id        String   @id @default(uuid())
+  name      String
+  description String?
+  /// Tự tham chiếu — khớp cột DocumentKindParent ở tblDocumentKind (loại công văn có thể có loại cha).
+  parentId  String?
+  parent    DocumentType?  @relation("DocumentTypeParent", fields: [parentId], references: [id])
+  children  DocumentType[] @relation("DocumentTypeParent")
+  /// Mã gốc (DocumentKindID) từ web cũ — dùng để script ETL tra cứu bản ghi đã nhập trước đó và
+  /// upsert an toàn khi chạy lại nhiều lần. KHÔNG đặt @unique: SQL Server chỉ cho phép 1 NULL trong
+  /// 1 UNIQUE constraint thường, mà bản ghi tạo tay trên admin sau này sẽ luôn có legacyCode = NULL.
+  /// ETL tự đảm bảo không trùng lặp bằng findFirst trước khi create, không dựa vào ràng buộc CSDL.
+  legacyCode String?
+  createdAt DateTime @default(now())
+
+  documents OfficialDocument[]
+
+  @@index([legacyCode])
+  @@map("document_types")
+}
+
+/// "Công văn" — nguồn: tblDocument (2.494 dòng thật).
+model OfficialDocument {
+  id             String   @id @default(uuid())
+  title          String
+  documentNumber String?
+  content        String?  @db.NVarChar(Max)
+  summary        String?  @db.NVarChar(Max)
+  /// "DRAFT" (dự thảo) | "OUTGOING" (công văn đi) | "INCOMING" (công văn đến) — map từ cột
+  /// [DocumentType] (int) web cũ theo đúng enum EOFFICE.Common.DocumentType (1/2/3), xem giải thích
+  /// ở đầu domain block.
+  direction      String   @default("DRAFT") @db.VarChar(20)
+  /// Map từ cột [Status] (int 1..7) web cũ theo đúng enum EOFFICE.Common.DocumentStatus — giữ
+  /// nguyên tên hằng số gốc (SAVE_DRAFT/SEND_DRAFT/WAIT_PUBLISH/PUBLISHED/PROCESSED/PROCESSING/
+  /// SEND_AGAIN) để không mất thông tin, dù bản này chưa có UI thao tác đổi trạng thái theo luồng.
+  status         String   @default("SAVE_DRAFT") @db.VarChar(20)
+  priority       String?
+  /// true nếu web cũ có ShowWeb=1 (hiển thị công khai), false nếu ShowWeb=2 (nội bộ). CHỈ dùng để
+  /// giữ thông tin gốc — domain này hiện KHÔNG có endpoint công khai (xem packages/types), field chỉ
+  /// mang tính lưu trữ/tham khảo, có thể dùng làm bộ lọc trong trang admin.
+  isPublic       Boolean  @default(false)
+
+  issuedAt         DateTime?
+  sentAt           DateTime?
+  receivedAt       DateTime?
+  /// Mốc bắt đầu/kết thúc xử lý ở web cũ — giữ lại để tham khảo, KHÔNG có UI thao tác theo các mốc
+  /// này (xem ghi chú "chủ động không xây lại workflow" ở đầu domain block).
+  processStartAt   DateTime?
+  processEndAt     DateTime?
+
+  /// Tên đơn vị phát hành, resolve từ tblOffical lúc ETL (xem giải thích ở đầu domain block).
+  issuingOfficeName String?
+  /// Tên người tạo, resolve từ tblUser.IDUserCreate lúc ETL.
+  createdByName     String?
+  /// Danh sách tên người được giao xử lý (nối bằng ", "), resolve từ tblUser.UserProcess lúc ETL —
+  /// thông tin tham khảo, không phải danh sách assignee có thể thao tác trong hệ thống mới.
+  processedByNames  String?  @db.NVarChar(Max)
+  /// Nội dung SendOfficals gốc (đơn vị nhận) — giữ nguyên dạng text, chưa chuẩn hoá thành quan hệ.
+  sentToRaw         String?  @db.NVarChar(Max)
+
+  /// Mã gốc (DocumentID) từ web cũ — xem giải thích ở DocumentType.legacyCode.
+  legacyCode String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  documentTypeId String
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  attachments DocumentAttachment[]
+
+  @@index([documentTypeId])
+  @@index([direction, status])
+  @@index([legacyCode])
+  @@map("official_documents")
+}
+
+/// File đính kèm công văn — nguồn: tblAttach (KHÔNG phải tblFileDinhKem, xem giải thích ở đầu domain
+/// block), tra theo danh sách AttachID trong cột [Attachs] của tblDocument.
+model DocumentAttachment {
+  id          String    @id @default(uuid())
+  fileName    String
+  description String?
+  /// Đường dẫn tương đối giữ nguyên từ web cũ (cột Path, vd "DocumentFiles/admin/xxx.pdf") — copy
+  /// nguyên thư mục DocumentFiles từ web_cu sang server mới thì link vẫn đúng cấu trúc thư mục con
+  /// theo username (xem hướng dẫn deploy Bước 6.5); KHÔNG tự suy ra URL công khai, chỉ lưu path gốc.
+  path        String
+  uploadedAt  DateTime?
+  /// Mã gốc (AttachID) từ web cũ — xem giải thích ở DocumentType.legacyCode.
+  legacyCode  String?
+
+  documentId String
+  document   OfficialDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([legacyCode])
+  @@map("document_attachments")
+}
+
+// ============================================================================
 // TODO Phase 2 — DOMAIN: MEMBERSHIP
 //   model Member, Leader, Position, Term, Department, ManagementUnit, EducationLevel
 //   (xem mục 4 CURSOR_PROMPT_Website_CongDoan_UTEHY.md để lấy đúng tên field)
-//
-// TODO Phase 3 — DOMAIN: OFFICIALDOCUMENT
-//   model IncomingDocument, OutgoingDocument, DocumentWorkflowStep, Attachment
 //
 // TODO Phase 4 — DOMAIN: DIGITALUTILITY ("Tiện ích số Công đoàn")
 //   model EForm, EFormSubmission, UnionFeeLedger, SupportBooking,

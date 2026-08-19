@@ -296,57 +296,78 @@ riêng 1 App Pool "No Managed Code" và gán qua tham số `-ApplicationPool` c�
 
 ---
 
-## Bước 6.5 — Nhập dữ liệu tin tức/chuyên mục từ web cũ (ETL)
+## Bước 6.5 — Migrate schema Phase 3 (Công văn) + nhập dữ liệu từ web cũ (ETL)
 
-Đã khảo sát mã nguồn web cũ (`web_cu/MyWeb.Data/`) để biết chính xác nên nhập gì. Kết quả:
+Đã khảo sát mã nguồn web cũ để biết chính xác nên nhập gì — không chỉ đọc `web_cu/MyWeb.Data/` (DAL
+cũ, phần lớn không dùng thật) mà còn đọc trực tiếp `web_cu/MyWeb/CV2/Document/*.aspx.cs` và
+`web_cu/MyWeb/CV2/Common/ECommon.cs` (enum) — đây mới là module công văn ĐANG CHẠY THẬT. Kết quả:
 
-**Nhập được ngay (có DAL + stored procedure rõ ràng trong code web cũ):** `tblCategory` → `Category`,
-`tblPost` → `Post`. Script `prisma/migrate-legacy-content.ts` làm đúng 2 bảng này.
+**Tin tức/chuyên mục:** `tblCategory` → `Category`, `tblPost` → `Post` — nguồn rõ ràng, có stored
+procedure trong code (`sp_tblCategory_GetByAll`, `sp_tblPost_GetByAll`).
 
-**CHƯA nhập được** — 3 nhóm bảng còn lại (`tblNguoiDung` tài khoản, `tblCongDoanVien` hồ sơ đoàn
-viên, `tblPostCongVan`/`tblNoiDungCV`/`tblLoaiCV`/`tblFileDinhKem` công văn) chỉ tồn tại dưới dạng
-class C# rỗng (`tblXxxInfo.cs`) — **không có bất kỳ DAL/stored procedure nào trong toàn bộ mã nguồn
-web cũ gọi tới các bảng này** (đã grep toàn bộ thư mục `web_cu`, 0 kết quả). Thêm nữa,
-`web_cu/MyWeb/Web.config` cho thấy:
-- Đăng nhập thật của web cũ dùng **ASP.NET SqlMembershipProvider** (`ApplicationServices` — bảng
-  `aspnet_Users`/`aspnet_Membership`...), không phải `tblNguoiDung`.
-- Kết nối `QuanLyCongVanConnectionString` (module công văn) trỏ về SQL Express cục bộ
-  (`.\SQLEXPRESS`, user `sa`), khác hẳn CSDL production thật (`45.117.177.224/CMS_CongDoan`) — nên
-  nhiều khả năng module công văn trong bản code này **chưa từng chạy trên server production**, hoặc
-  dùng một CSDL khác không có trong bản upload.
+**Công văn (Phase 3, đã xây):** nguồn dữ liệu thật là **`tblDocument`** (2.494 dòng thật — xác nhận
+qua truy vấn trực tiếp CSDL production, KHÔNG phải `tblNoiDungCV` chỉ có 94 dòng, là một bộ bảng
+khác cũ hơn/bỏ dở). Domain `DocumentType`/`OfficialDocument`/`DocumentAttachment` trong
+`prisma/schema.prisma` map đúng theo `tblDocumentKind`/`tblDocument`/`tblAttach` — xem chú thích chi
+tiết đầu domain block trong schema để biết từng cột web cũ map sang đâu và vì sao (đối chiếu trực
+tiếp từ code, không đoán). File đính kèm công văn (PDF/Excel...) nằm ở
+`web_cu\MyWeb\CV2\Document\DocumentFiles\{username}\...` và **thật sự có trong bản upload** — cần
+copy nguyên thư mục `DocumentFiles` này sang server mới (xem bước 5 bên dưới).
 
-Nói cách khác: chưa có cơ sở chắc chắn để biết 4 nhóm bảng đó có dữ liệu thật hay không, và hệ
-thống mới cũng **chưa có bảng đích** cho hồ sơ đoàn viên (Phase 2 — Membership) và công văn
-(Phase 3 — OfficialDocument) — 2 domain này chủ động để dành làm sau theo đúng thiết kế ban đầu.
+**KHÔNG migrate** (đã xác nhận trực tiếp trên CSDL production, không phải suy đoán từ code):
+`tblCongDoanVien` (hồ sơ đoàn viên) — bảng **không tồn tại** trên production, không có gì để nhập,
+hệ thống mới cũng chưa có domain Membership (Phase 2 — vẫn để dành làm sau). `tblNguoiDung` (tài
+khoản) chỉ có 4 dòng — không đáng viết ETL riêng, tạo tay nếu cần. Bộ bảng
+`tblNoiDungCV`/`tblLoaiCV`/`tblFileDinhKem`/`tblPostCongVan` (94/18/92/0 dòng) — bộ công văn cũ/bỏ
+dở, không phải nguồn dữ liệu thật, không migrate.
 
-**Trước khi quyết định có xây Phase 2/3 hay không**, chạy thử truy vấn sau trực tiếp trên CSDL
-production cũ (SSMS hoặc `sqlcmd`, không phải đọc code) để biết chắc có dữ liệu thật hay không:
+### 1. Migrate schema Phase 3 lên CSDL production (thêm bảng, KHÔNG đụng dữ liệu cũ)
 
-**LƯU Ý:** không dùng `UNION ALL` để gộp chung — SQL Server parse/bind toàn bộ batch trước khi chạy,
-nên chỉ cần 1 bảng không tồn tại là "Invalid object name" làm hỏng luôn cả câu lệnh, không cho biết
-gì về 5 bảng còn lại. Dùng script dưới đây (kiểm tra tồn tại bằng `OBJECT_ID` trước, bảng nào không
-có thì tự bỏ qua, không báo lỗi):
+Dùng đúng "Cách B" đã làm ở Bước 3 (không cần quyền tạo shadow database), lần này diff từ migration
+history hiện có (không phải `--from-empty`, vì CSDL đã có bảng users/posts/categories... từ trước):
 
-```sql
-DECLARE @sql nvarchar(max) = '';
-SELECT @sql = @sql +
-  'IF OBJECT_ID(''' + name + ''', ''U'') IS NOT NULL ' +
-  'EXEC(''SELECT ''''' + name + ''''' AS TableName, COUNT(*) AS SoDong FROM ' + QUOTENAME(name) + ''');' +
-  ' ELSE SELECT ''' + name + ''' AS TableName, -1 AS SoDong;' + CHAR(10)
-FROM (VALUES ('tblNguoiDung'),('tblCongDoanVien'),('tblPostCongVan'),
-             ('tblNoiDungCV'),('tblLoaiCV'),('tblFileDinhKem')) AS t(name);
-EXEC sp_executesql @sql;
+```powershell
+cd "D:\WEBSITE DA HOAN THANH\WebsiteCongDoan\CongDoan.utehy.edu.vn"
+npx prisma migrate diff `
+  --from-migrations prisma/migrations `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra file tmp_diff.sql chỉ chứa CREATE TABLE document_types/official_documents/
+# document_attachments (+ FK) — KHÔNG được có DROP/ALTER trên bảng cũ. Nếu đúng, đổi tên đúng chuẩn
+# Prisma migration rồi deploy:
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_official_document"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql" -Encoding ascii
+npx prisma migrate deploy --schema=prisma/schema.prisma
 ```
 
-Đọc kết quả: mỗi dòng là 1 bảng; `SoDong = -1` nghĩa là bảng **không tồn tại** trong CSDL này (đúng
-như trường hợp `tblCongDoanVien` đã gặp — "Invalid object name" ở lần chạy UNION ALL trước đó chính
-là bằng chứng đầu tiên xác nhận bảng này không tồn tại trên production, khớp với việc code web cũ
-không có DAL nào gọi tới nó). Gửi lại toàn bộ kết quả (6 dòng) — nếu bảng nào tồn tại VÀ có dữ liệu
-thật đáng kể thì mới đáng để xây thêm Phase 2/3 (model Prisma mới + API + trang admin mới) trước khi
-viết tiếp ETL cho phần đó; bảng nào báo -1 hoặc 0 dòng thì coi như xác nhận là scaffold chưa dùng,
-không cần migrate.
+**Lưu ý encoding:** nếu PowerShell tạo `migration.sql` với BOM (lỗi quen thuộc từ Bước 3 —
+`Incorrect syntax near '﻿'`), dùng `Get-Content tmp_diff.sql | Set-Content migration.sql -Encoding ascii`
+thay vì `Move-Item` để đảm bảo không có BOM.
 
-### Chạy ETL tin tức/chuyên mục (Post/Category — làm được ngay)
+### 2. Chạy lại seed (an toàn, chỉ thêm quyền mới, không đổi dữ liệu cũ)
+
+```powershell
+pnpm prisma:seed
+```
+
+Thêm quyền `documenttype:*`/`document:*`, cấp đủ cho `ADMIN`, cấp `view/create/update` (không
+`delete`) cho `UNION_CLERK` ("Văn thư công đoàn"). `MEMBER` **không** được cấp quyền xem công văn
+(công văn là dữ liệu nội bộ, khác tin tức công khai — xem `packages/types/src/official-document.ts`).
+
+### 3. Copy thư mục file đính kèm công văn
+
+```powershell
+Copy-Item "web_cu\MyWeb\CV2\Document\DocumentFiles" "C:\inetpub\congdoan2026\..." -Recurse
+```
+
+(Điền đúng đường dẫn đích tương ứng nơi API/web phục vụ file tĩnh — nếu chưa có chỗ phục vụ file
+tĩnh cho đường dẫn này, tạm thời chỉ cần copy để dữ liệu không mất; việc lộ file qua URL công khai
+làm sau nếu cần.)
+
+### 4. Chạy ETL
 
 1. Thêm vào `.env` (cả ở gốc repo và `apps\api\.env`, giống DATABASE_URL) thông tin CSDL web cũ —
    xem khối `LEGACY_DB_*` trong `.env.example`. Giá trị thật lấy từ
@@ -357,18 +378,23 @@ không cần migrate.
    pnpm migrate:legacy
    Remove-Item Env:\LEGACY_MIGRATE_DRY_RUN
    ```
-3. Nếu log dry-run hợp lý (đúng số lượng chuyên mục/bài viết, slug sinh ra không có gì bất thường),
-   chạy thật:
+3. Nếu log dry-run hợp lý (đúng số lượng chuyên mục/bài viết/loại công văn/công văn/file đính kèm,
+   không có quá nhiều cảnh báo "giá trị lạ"), chạy thật:
    ```powershell
    pnpm migrate:legacy
    ```
-   Script dùng `upsert` theo slug nên chạy lại nhiều lần là **an toàn** (không tạo trùng dữ liệu).
+   Script dùng `upsert` (theo slug với Post/Category, theo `legacyCode` với công văn) nên chạy lại
+   nhiều lần là **an toàn** (không tạo trùng dữ liệu).
 4. Mở lại `http://localhost:8080/` và `http://localhost:8080/admin/posts` — phải thấy tin tức/chuyên
-   mục từ web cũ xuất hiện.
+   mục từ web cũ xuất hiện. Công văn hiện **chưa có trang admin riêng** (chỉ có API
+   `/admin/document-types` và `/admin/official-documents`, bảo vệ theo quyền `document:*`) — kiểm
+   tra qua Swagger `/api/docs` hoặc query thẳng CSDL `official_documents` để xác nhận đã nhập đủ
+   2.494 dòng.
 
 **Lưu ý ảnh bài viết:** script giữ nguyên đường dẫn ảnh gốc (`Image`) từ web cũ — ảnh **chưa được
-copy sang server mới**, cần copy thủ công thư mục Upload ảnh của web cũ sang server mới (hoặc viết
-thêm bước xử lý riêng) nếu muốn ảnh cũ hiển thị đúng trên web mới.
+copy sang server mới** (khác với file đính kèm công văn, ảnh bài viết web cũ không có sẵn trong bản
+upload để tôi xác nhận đường dẫn thật), cần copy thủ công thư mục Upload ảnh của web cũ sang server
+mới nếu muốn ảnh cũ hiển thị đúng trên web mới.
 
 ---
 

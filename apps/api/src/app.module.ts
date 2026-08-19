@@ -7,6 +7,7 @@ import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
 import { ContentModule } from "./modules/content/content.module";
+import { OfficialDocumentsModule } from "./modules/official-documents/official-documents.module";
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { ContentModule } from "./modules/content/content.module";
     HealthModule,
     AuthModule,
     UsersModule,
-    ContentModule
+    ContentModule,
+    OfficialDocumentsModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
 })

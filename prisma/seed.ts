@@ -1,6 +1,7 @@
 /**
- * Seed dữ liệu khởi tạo: 4 vai trò mặc định + quyền cho module post/category + 1 tài khoản admin.
- * Chạy: pnpm prisma:seed (sau khi đã prisma:migrate).
+ * Seed dữ liệu khởi tạo: 4 vai trò mặc định + quyền cho module post/category + documenttype/document
+ * (Phase 3) + 1 tài khoản admin. An toàn chạy lại nhiều lần (toàn bộ dùng upsert).
+ * Chạy: pnpm prisma:seed (sau khi đã prisma:migrate/prisma:deploy).
  */
 // Chạy trực tiếp bằng tsx (không qua "prisma db seed"), nên KHÔNG tự động nạp .env như các lệnh
 // Prisma CLI khác (generate/migrate) — phải nạp tay bằng dotenv trước khi PrismaClient đọc
@@ -19,15 +20,21 @@ const ROLE_SEED = [
   { code: SYSTEM_ROLES.MEMBER, name: "Đoàn viên" }
 ];
 
-// Danh sách quyền ban đầu cho module Content (post/category). Các module Phase 2+ sẽ bổ sung
-// thêm entry vào đây theo đúng khuôn "module:action".
-const PERMISSION_SEED = ["post", "category"].flatMap((module) =>
+// Danh sách quyền ban đầu cho module Content (post/category) + OfficialDocument (documenttype/
+// document, Phase 3). Các module Phase 2/4 sẽ bổ sung thêm entry vào đây theo đúng khuôn
+// "module:action".
+const PERMISSION_SEED = ["post", "category", "documenttype", "document"].flatMap((module) =>
   ["view", "create", "update", "delete"].map((action) => ({
     key: `${module}:${action}`,
     module,
     action
   }))
 );
+
+// Công văn (documenttype/document) là dữ liệu nội bộ, KHÔNG công khai như post/category — module
+// nào được cấp quyền "view" mặc định cho MEMBER (đoàn viên) phải khai rõ ở đây, KHÔNG tự động cấp
+// theo action="view" như trước (xem lý do ở đoạn seed quyền MEMBER bên dưới).
+const MEMBER_VISIBLE_MODULES = ["post", "category"];
 
 async function main() {
   console.log("Seeding roles...");
@@ -52,9 +59,12 @@ async function main() {
     permissionIds.push(perm.id);
   }
 
-  // ADMIN có toàn bộ quyền; MEMBER chỉ có quyền view.
+  // ADMIN có toàn bộ quyền; MEMBER chỉ có quyền view, và CHỈ với các module công khai
+  // (MEMBER_VISIBLE_MODULES) — KHÔNG tự động cấp "document:view"/"documenttype:view" cho MEMBER dù
+  // action cũng là "view", vì công văn là dữ liệu nội bộ (xem packages/types/src/official-document.ts).
   const adminRoleId = roles.get(SYSTEM_ROLES.ADMIN)!;
   const memberRoleId = roles.get(SYSTEM_ROLES.MEMBER)!;
+  const clerkRoleId = roles.get(SYSTEM_ROLES.UNION_CLERK)!;
 
   for (const permId of permissionIds) {
     await prisma.rolePermission.upsert({
@@ -64,12 +74,29 @@ async function main() {
     });
   }
 
-  const viewPermissions = await prisma.permission.findMany({ where: { action: "view" } });
-  for (const perm of viewPermissions) {
+  const memberViewPermissions = await prisma.permission.findMany({
+    where: { action: "view", module: { in: MEMBER_VISIBLE_MODULES } }
+  });
+  for (const perm of memberViewPermissions) {
     await prisma.rolePermission.upsert({
       where: { roleId_permissionId: { roleId: memberRoleId, permissionId: perm.id } },
       update: {},
       create: { roleId: memberRoleId, permissionId: perm.id }
+    });
+  }
+
+  // UNION_CLERK ("Văn thư công đoàn") — người thực tế nhập/tra cứu công văn hàng ngày — được cấp
+  // view/create/update cho documenttype/document, KHÔNG cấp delete (tránh xoá nhầm dữ liệu đã
+  // migrate từ web cũ; xoá vẫn làm được qua ADMIN khi thật sự cần).
+  console.log("Seeding quyền công văn cho UNION_CLERK...");
+  const clerkDocumentPermissions = await prisma.permission.findMany({
+    where: { module: { in: ["documenttype", "document"] }, action: { in: ["view", "create", "update"] } }
+  });
+  for (const perm of clerkDocumentPermissions) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: clerkRoleId, permissionId: perm.id } },
+      update: {},
+      create: { roleId: clerkRoleId, permissionId: perm.id }
     });
   }
 
