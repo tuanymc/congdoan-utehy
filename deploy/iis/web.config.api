@@ -22,6 +22,12 @@
   <system.webServer>
     <rewrite>
       <rules>
+        <!-- <clear /> bắt buộc: Application nested mặc định KẾ THỪA <rules> của web.config site cha
+             (rule "ReactRouterSpaFallback" trong web.config.web) — không <clear /> trước, request
+             tới /api/* có thể bị rule kế thừa đó xử lý (rewrite về "index.html", không tồn tại
+             trong thư mục proxy rỗng này) TRƯỚC KHI tới được rule proxy thật bên dưới, làm vỡ toàn
+             bộ API. -->
+        <clear />
         <rule name="ReverseProxyToNodeApi" stopProcessing="true">
           <match url="(.*)" />
           <action type="Rewrite" url="http://127.0.0.1:3000/{R:1}" />

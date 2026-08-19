@@ -14,6 +14,11 @@
   <system.webServer>
     <rewrite>
       <rules>
+        <!-- <clear /> bắt buộc: Application nested mặc định KẾ THỪA <rules> của web.config site cha
+             (web.config.web cũng có rule tên "ReactRouterSpaFallback") — không <clear /> trước sẽ
+             gây lỗi 500.52 "Cannot add duplicate collection entry ... key ... ReactRouterSpaFallback"
+             vì 2 rule trùng tên bị gộp vào cùng 1 collection. -->
+        <clear />
         <rule name="ReactRouterSpaFallback" stopProcessing="true">
           <match url=".*" />
           <conditions logicalGrouping="MatchAll">
