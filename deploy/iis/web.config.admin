@@ -23,6 +23,7 @@
           <!-- KHÔNG bắt đầu bằng "/" — url tuyệt đối sẽ trỏ về gốc site cha (congdoan.utehy.edu.vn/)
                thay vì gốc của Application "/admin" này, làm vỡ SPA fallback. -->
           <action type="Rewrite" url="index.html" />
+        </rule>
       </rules>
     </rewrite>
     <staticContent>

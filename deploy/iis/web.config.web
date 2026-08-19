@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Mẫu web.config cho site IIS phục vụ apps/web (cổng công khai + cổng đoàn viên) — file tĩnh build
-  ra từ Vite (`pnpm --filter @congdoan/web build`, output tại apps/web/dist).
+  ra từ Vite (chạy "pnpm build" ở apps/web, output tại apps/web/dist).
 
   Cách dùng: sau khi build, copy TOÀN BỘ nội dung apps/web/dist/ vào physical path của site IIS,
   rồi copy file này vào đó, đổi tên thành "web.config". Script deploy/scripts/deploy.ps1 tự làm
