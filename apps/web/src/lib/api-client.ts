@@ -96,5 +96,17 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     });
   }
 
+  // response.ok=true nhưng body rỗng/không parse được JSON hợp lệ là bất thường — API luôn trả JSON
+  // thật cho response 200 (204 đã xử lý riêng ở trên), không bao giờ chủ đích trả body rỗng. Từng gây
+  // lỗi thật: các trang gọi .then((data) => data.items/.length) không ngờ nhận "null" nên crash trắng
+  // trang (vd "Cannot read properties of null (reading 'items')") thay vì rơi vào .catch() như mong
+  // muốn. Ném lỗi rõ ràng ở đây để mọi nơi gọi apiFetch đều xử lý qua .catch() sẵn có, thay vì phải tự
+  // đoán "có thể null" ở từng nơi gọi.
+  if (payload === null) {
+    throw new Error(
+      `Máy chủ trả về dữ liệu không hợp lệ cho ${path} (response ok nhưng thiếu nội dung JSON).`
+    );
+  }
+
   return payload as T;
 }

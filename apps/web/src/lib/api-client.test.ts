@@ -64,6 +64,12 @@ describe("apiFetch", () => {
     expect(result).toBeUndefined();
   });
 
+  it("ném lỗi rõ ràng khi response 200 nhưng body rỗng bất thường (không âm thầm trả về null)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 200 }));
+
+    await expect(apiFetch("/posts")).rejects.toThrow(/dữ liệu không hợp lệ/);
+  });
+
   it("ném lỗi thân thiện tiếng Việt khi mất kết nối mạng", async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
