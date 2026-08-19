@@ -20,6 +20,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center gap-1 text-center">
+          <img src="/logo.png" alt="Công đoàn UTEHY" className="mb-1 h-14 w-auto object-contain" />
           <CardTitle className="text-xl">Công đoàn UTEHY</CardTitle>
           <CardDescription>Đăng nhập trang quản trị</CardDescription>
         </CardHeader>

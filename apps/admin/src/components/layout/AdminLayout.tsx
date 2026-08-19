@@ -47,7 +47,14 @@ const DOCUMENT_NAV_ITEMS: NavItem[] = [
 ];
 
 function BrandTitle() {
-  return <span className="text-lg font-semibold text-primary">Công đoàn UTEHY</span>;
+  return (
+    <span className="flex items-center gap-2">
+      {/* Logo trường/công đoàn — file tĩnh tại apps/admin/public/logo.png, xem ghi chú ở
+       * apps/web/src/components/layout/Header.tsx (cùng file logo dùng chung cho cả 2 app). */}
+      <img src="/logo.png" alt="Công đoàn UTEHY" className="h-8 w-auto shrink-0" />
+      <span className="text-lg font-semibold text-primary">Công đoàn UTEHY</span>
+    </span>
+  );
 }
 
 function SidebarNav({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {

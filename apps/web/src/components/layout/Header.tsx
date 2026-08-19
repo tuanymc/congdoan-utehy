@@ -50,7 +50,20 @@ export function Header() {
 
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link to="/" className="flex items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+          {/* Logo trường/công đoàn — file tĩnh tại apps/web/public/logo.png (giữ nguyên tên file
+           * dùng chung cho cả apps/web và apps/admin). Fallback "CĐ" bằng CSS (onError) nếu chưa
+           * có file logo.png trên server — tránh vỡ layout thành icon ảnh lỗi mặc định của trình duyệt. */}
+          <img
+            src="/logo.png"
+            alt="Công đoàn UTEHY"
+            className="size-10 shrink-0 object-contain"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+              const fallback = event.currentTarget.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = "flex";
+            }}
+          />
+          <span className="hidden size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
             CĐ
           </span>
           <span className="flex flex-col leading-tight">
