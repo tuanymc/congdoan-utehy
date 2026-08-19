@@ -367,13 +367,38 @@ Thêm quyền `documenttype:*`/`document:*`, cấp đủ cho `ADMIN`, cấp `vie
 
 ### 3. Copy thư mục file đính kèm công văn
 
+**Phát hiện thực tế trên server production** (khác giả định ban đầu): web cũ (`EOFFICE`, ASP.NET
+WebSite project — không phải WebApplication) được deploy thành **3 bản sao thư mục riêng biệt** dưới
+`CV2\`: `Document` (soạn thảo/nháp), `DocumentSend` (đã gửi), `DocumentReceived` (đã nhận) — cả 3 đều
+chứa **cùng một bộ code** `DocumentEdit.aspx.cs` gần như y hệt nhau, và code dùng
+`Server.MapPath("DocumentFiles/" + username + "/" + tênFile)` — tức đường dẫn **tương đối theo app
+đang chạy**, nên mỗi bản sao tự tạo `DocumentFiles` riêng của nó khi người dùng tải file lên qua đúng
+app đó. Kết quả: 3 thư mục `DocumentFiles` này **không phải bản sao y hệt nhau** — chứa các file khác
+nhau tuỳ người dùng tải lên qua app nào — và CSDL (`tblAttach.Path`) chỉ lưu đường dẫn tương đối
+(`DocumentFiles/{username}/{tênFile}`), **không lưu app nào đã lưu file đó**, nên không thể biết chắc
+file thật nằm ở bản nào chỉ từ CSDL.
+
+**Cách xử lý an toàn: gộp (merge) cả 3 thư mục vào 1 nơi lưu trữ chung**, giữ nguyên cấu trúc con
+`{username}/{tênFile}` — tên file đã có hậu tố ngẫu nhiên khi upload (xem code `Upload()`) nên khả
+năng trùng tên giữa 2 file khác nhau gần như không xảy ra; nếu trùng do 2 app từng lưu cùng 1 file
+giống hệt (VD: dùng chung 1 phiên bản trước khi tách deploy), ghi đè lẫn nhau cũng vô hại vì nội dung
+giống nhau:
+
 ```powershell
-Copy-Item "web_cu\MyWeb\CV2\Document\DocumentFiles" "C:\inetpub\congdoan2026\..." -Recurse
+$dest = "C:\inetpub\congdoan2026\document-files"
+New-Item -ItemType Directory -Force -Path $dest | Out-Null
+
+robocopy "C:\inetpub\CongDoan\CV2\Document\DocumentFiles"         $dest /E /R:2 /W:2
+robocopy "C:\inetpub\CongDoan\CV2\DocumentSend\DocumentFiles"     $dest /E /R:2 /W:2
+robocopy "C:\inetpub\CongDoan\CV2\DocumentReceived\DocumentFiles" $dest /E /R:2 /W:2
 ```
 
-(Điền đúng đường dẫn đích tương ứng nơi API/web phục vụ file tĩnh — nếu chưa có chỗ phục vụ file
-tĩnh cho đường dẫn này, tạm thời chỉ cần copy để dữ liệu không mất; việc lộ file qua URL công khai
-làm sau nếu cần.)
+(`robocopy` chạy nhiều lần vào cùng 1 đích chỉ **thêm/hợp nhất** file, không xoá gì đã có ở đích —
+khác với cờ `/MIR` sẽ xoá — nên chạy đúng 3 lần liên tiếp như trên là an toàn để gộp cả 3 nguồn.
+`/E` copy luôn thư mục con kể cả rỗng, `/R:2 /W:2` giới hạn số lần thử lại nếu file đang bị khoá.)
+
+Đây chỉ là nơi lưu tạm để không mất dữ liệu — API/web **chưa có route phục vụ file tĩnh** từ
+`document-files` này (việc lộ file qua URL công khai/có kiểm tra quyền làm sau nếu cần).
 
 ### 4. Chạy ETL
 
