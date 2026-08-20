@@ -8,11 +8,11 @@
  *     tblAttach -> DocumentAttachment (2.494 công văn thật — xem chú thích đầu domain block trong
  *     prisma/schema.prisma để biết chi tiết map từng cột, đã xác nhận từ code-behind gốc
  *     web_cu/MyWeb/CV2/Document/*.aspx.cs + web_cu/MyWeb/CV2/Common/ECommon.cs, KHÔNG đoán mò).
- *   - CONGDOANBOPHAN -> UnionDepartment, NHANVIEN (CHỈ 6 field công khai) -> UnionMember — danh bạ
- *     công đoàn viên công khai, đối chiếu trực tiếp từ sp_tblCongDoanVien_GetByAll (INNER JOIN
- *     NHANVIEN/CONGDOANBOPHAN) và modules/GioiThieuCongDoanVien.aspx(.cs) — xem chú thích đầu domain
- *     block UNIONDIRECTORY trong prisma/schema.prisma để biết lý do CHỦ ĐỘNG bỏ qua toàn bộ field
- *     nhạy cảm còn lại của NHANVIEN (~90 cột).
+ *   - CONGDOANBOPHAN -> UnionDepartment, NHANVIEN -> UnionMember (6 field công khai, đối chiếu trực
+ *     tiếp từ sp_tblCongDoanVien_GetByAll INNER JOIN NHANVIEN/CONGDOANBOPHAN và
+ *     modules/GioiThieuCongDoanVien.aspx(.cs)) + UnionMemberProfile (TOÀN BỘ phần còn lại của NHANVIEN,
+ *     ~90 cột gốc — CHỈ dùng cho màn hình quản trị nội bộ, không lộ ra trang/endpoint công khai nào,
+ *     xem chú thích đầu domain block UNIONDIRECTORY trong prisma/schema.prisma).
  *   - tblSlide -> HomeSlide (banner trang chủ), lọc Active=1 giống modules/uc_Slide.ascx.cs.
  *
  * KHÔNG bao gồm (xem giải thích trong chat / báo cáo khảo sát mã nguồn web cũ):
@@ -679,16 +679,57 @@ async function migrateUnionDepartments(pool: sql.ConnectionPool): Promise<Map<st
   return legacyToNewId;
 }
 
-/** Danh bạ công đoàn viên công khai — nguồn NHANVIEN, CHỈ lấy 6 field thật sự hiển thị công khai ở
+/** SQL Server datetime dùng "1900-01-01 00:00:00.000" làm giá trị placeholder "chưa nhập" ở rất nhiều
+ * cột NHANVIEN (xác nhận thật từ mẫu dữ liệu người quản trị cung cấp, KHÔNG đoán) — coi mọi ngày <=
+ * 1901-01-01 là chưa nhập thật, trả về null thay vì lưu nguyên 1900-01-01 (vô nghĩa với field kiểu
+ * "ngày vào Đảng"/"ngày ký hợp đồng"...). */
+function toRealDateOrNull(raw: unknown): Date | null {
+  if (!raw || !(raw instanceof Date) || Number.isNaN(raw.getTime())) return null;
+  return raw.getFullYear() <= 1901 ? null : raw;
+}
+
+/** NHANVIEN lưu 1 số field dạng cờ 0/1 (DATOTNGHIEP, DABOIDUONGNGHIEPVUSP) — driver mssql có thể trả
+ * number HOẶC boolean tuỳ kiểu cột khai báo thật, xử lý cả 2. */
+function toBoolOrNull(raw: unknown): boolean | null {
+  if (raw === 1 || raw === true || raw === "1") return true;
+  if (raw === 0 || raw === false || raw === "0") return false;
+  return null;
+}
+
+function toIntOrNull(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+/** Danh bạ công đoàn viên — nguồn NHANVIEN. UnionMember giữ 6 field thật sự hiển thị công khai ở
  * modules/GioiThieuCongDoanVien.aspx(.cs) (xem chú thích domain block UNIONDIRECTORY trong
- * prisma/schema.prisma) — KHÔNG SELECT các cột nhạy cảm còn lại của NHANVIEN dù bảng gốc có ~90 cột,
- * để tránh nhỡ tay dùng nhầm về sau dù không insert vào CSDL mới. */
+ * prisma/schema.prisma). UnionMemberProfile giữ TOÀN BỘ phần còn lại của NHANVIEN (~90 cột gốc) —
+ * CHỈ dùng cho màn hình quản trị nội bộ, KHÔNG lộ ra endpoint/trang công khai nào (xem
+ * UnionMembersService.findOneForAdmin ở BE) — bổ sung theo yêu cầu đối chiếu lại đầy đủ so với web cũ.
+ *
+ * LƯU Ý: GIOITINH suy luận là 0=Nữ/1=Nam dựa trên đối chiếu tên trong mẫu dữ liệu thật (KHÔNG xác nhận
+ * được từ code-behind vì GioiThieuCongDoanVien.aspx.cs không hiển thị field này) — admin nên rà lại
+ * sau khi import lần đầu, đặc biệt các dòng dữ liệu không theo mẫu tên phổ biến. */
 async function migrateUnionMembers(pool: sql.ConnectionPool, departmentMap: Map<string, string>) {
   console.log("\n[7/8] Đang lấy danh sách công đoàn viên (NHANVIEN) từ web cũ...");
 
   const [membersResult, degreesResult, positionsResult] = await Promise.all([
     pool.request().query(`
-      SELECT MANV, HOTEN, HINHANH, TD_CHUYENMONCAONHAT, CHUCVU, DIENTHOAIDD, EMAIL, STATUS, CONGDOANBOPHAN
+      SELECT MANV, MALUONGNV, MAHOSONV, HOTEN, BIDANH, HINHANH, GIOITINH, NGAYSINH, NOISINH, CMND,
+        NGAYCAPCMND, NOICAPCMND, DANTOCNV, TONGIAONV, QUOCTICHNV, QUEQUAN, DIACHITHUONGTRU, NOIOHIENNAY,
+        DIENTHOAICOQUAN, DIENTHOAINHA, DIENTHOAIDD, EMAIL, TINHTRANGHONNHAN, THANHPHANXUATTHAN,
+        DIENUUTIENGIADINH, DIENUUTIENBANTHAN, NANGKHIEU, TINHTRANGSUCKHOE, NHOMMAU, CHIEUCAO, CANNANG,
+        KHUYETTAT, PHONGBAN, BOPHAN, SOQD, CHUCVU, NGAYVAONGANHGIAODUC, NGAYHOPDONG, NGAYTUYENDUNG,
+        NGAYVAODANG, NGAYVAOCOQUAN, NGAYCHINHTHUCVAODANG, HINHTHUCTUYENDUNG, COQUANTUYENDUNG,
+        CONGVIECDUOCGIAO, CONGVIECHIENNAY, NGAYVAODOAN, NOIVAODOAN, CHUCVUDOAN, NGAYVAOCONGDOAN,
+        NOIVAOCONGDOAN, CHUCVUCONGDOAN, NOIVAODANG, CHUCVUDANG, TD_HOCVANNV, DATOTNGHIEP,
+        TD_CHUYENMONCAONHAT, NGANHDAOTAO, CHUYENNGANHDAOTAO, NOIDAOTAO, HINHTHUCDAOTAO, NAMTOTNGHIEP,
+        DABOIDUONGNGHIEPVUSP, TD_LYLUANCHINHTRI, TD_QUANLYNHANUOC, TD_QUANLYGIAODUC, NGOAINGUCHINHNV,
+        TD_NGOAINGUNV, NGOAINGUKHAC, TD_TINHOCNV, STATUS, GhiChuLuong, GhiChuThamNien,
+        CHUCDANHNGHENGHIEP, NGACHLUONG, HINHTHUCLAODONG, SOBHXH, SOBHXHCU, DIACHILIENLAC, CHIBO,
+        NGAYNGHIHUU, NGAYRADANG, SOTHEDANG, CONGDOANBOPHAN, TRANGTHAIDEN, NGAYCHUYENDEN, TRANGTHAIDI,
+        NGAYCHUYENDI, donvi
       FROM NHANVIEN
     `),
     pool.request().query("SELECT MATDHV, GHICHU FROM TRINHDOHOCVAN"),
@@ -714,14 +755,94 @@ async function migrateUnionMembers(pool: sql.ConnectionPool, departmentMap: Map<
 
   const rows = membersResult.recordset as Array<{
     MANV: string;
+    MALUONGNV: string | null;
+    MAHOSONV: string | null;
     HOTEN: string | null;
+    BIDANH: string | null;
     HINHANH: string | null;
-    TD_CHUYENMONCAONHAT: string | null;
-    CHUCVU: string | null;
+    GIOITINH: number | boolean | null;
+    NGAYSINH: Date | null;
+    NOISINH: string | null;
+    CMND: string | null;
+    NGAYCAPCMND: Date | null;
+    NOICAPCMND: string | null;
+    DANTOCNV: string | null;
+    TONGIAONV: string | null;
+    QUOCTICHNV: string | null;
+    QUEQUAN: string | null;
+    DIACHITHUONGTRU: string | null;
+    NOIOHIENNAY: string | null;
+    DIENTHOAICOQUAN: string | null;
+    DIENTHOAINHA: string | null;
     DIENTHOAIDD: string | null;
     EMAIL: string | null;
+    TINHTRANGHONNHAN: string | null;
+    THANHPHANXUATTHAN: string | null;
+    DIENUUTIENGIADINH: string | null;
+    DIENUUTIENBANTHAN: string | null;
+    NANGKHIEU: string | null;
+    TINHTRANGSUCKHOE: string | null;
+    NHOMMAU: string | null;
+    CHIEUCAO: number | null;
+    CANNANG: number | null;
+    KHUYETTAT: string | null;
+    PHONGBAN: string | null;
+    BOPHAN: string | null;
+    SOQD: string | null;
+    CHUCVU: string | null;
+    NGAYVAONGANHGIAODUC: Date | null;
+    NGAYHOPDONG: Date | null;
+    NGAYTUYENDUNG: Date | null;
+    NGAYVAODANG: Date | null;
+    NGAYVAOCOQUAN: Date | null;
+    NGAYCHINHTHUCVAODANG: Date | null;
+    HINHTHUCTUYENDUNG: string | null;
+    COQUANTUYENDUNG: string | null;
+    CONGVIECDUOCGIAO: string | null;
+    CONGVIECHIENNAY: string | null;
+    NGAYVAODOAN: Date | null;
+    NOIVAODOAN: string | null;
+    CHUCVUDOAN: string | null;
+    NGAYVAOCONGDOAN: Date | null;
+    NOIVAOCONGDOAN: string | null;
+    CHUCVUCONGDOAN: string | null;
+    NOIVAODANG: string | null;
+    CHUCVUDANG: string | null;
+    TD_HOCVANNV: string | null;
+    DATOTNGHIEP: number | boolean | null;
+    TD_CHUYENMONCAONHAT: string | null;
+    NGANHDAOTAO: string | null;
+    CHUYENNGANHDAOTAO: string | null;
+    NOIDAOTAO: string | null;
+    HINHTHUCDAOTAO: string | null;
+    NAMTOTNGHIEP: number | null;
+    DABOIDUONGNGHIEPVUSP: number | boolean | null;
+    TD_LYLUANCHINHTRI: string | null;
+    TD_QUANLYNHANUOC: string | null;
+    TD_QUANLYGIAODUC: string | null;
+    NGOAINGUCHINHNV: string | null;
+    TD_NGOAINGUNV: string | null;
+    NGOAINGUKHAC: string | null;
+    TD_TINHOCNV: string | null;
     STATUS: number | null;
+    GhiChuLuong: string | null;
+    GhiChuThamNien: string | null;
+    CHUCDANHNGHENGHIEP: string | null;
+    NGACHLUONG: string | null;
+    HINHTHUCLAODONG: string | null;
+    SOBHXH: string | null;
+    SOBHXHCU: string | null;
+    DIACHILIENLAC: string | null;
+    CHIBO: string | null;
+    NGAYNGHIHUU: Date | null;
+    NGAYRADANG: Date | null;
+    SOTHEDANG: string | null;
     CONGDOANBOPHAN: string | null;
+    TRANGTHAIDEN: string | null;
+    NGAYCHUYENDEN: Date | null;
+    TRANGTHAIDI: string | null;
+    NGAYCHUYENDI: Date | null;
+    donvi: string | null;
   }>;
   console.log(`  -> Tìm thấy ${rows.length} công đoàn viên ở web cũ.`);
 
@@ -749,7 +870,7 @@ async function migrateUnionMembers(pool: sql.ConnectionPool, departmentMap: Map<
       continue;
     }
 
-    await upsertByLegacyCode(prisma.unionMember, legacyCode, {
+    const member = await upsertByLegacyCode(prisma.unionMember, legacyCode, {
       fullName,
       photoUrl: normalizeAssetPath(str(row.HINHANH)),
       degreeLabel: degreeLabelByCode.get(str(row.TD_CHUYENMONCAONHAT)) ?? null,
@@ -760,11 +881,109 @@ async function migrateUnionMembers(pool: sql.ConnectionPool, departmentMap: Map<
       sortOrder,
       departmentId: departmentId ?? null
     });
+
+    const profileData = {
+      alias: str(row.BIDANH) || null,
+      gender: row.GIOITINH === 1 || row.GIOITINH === true ? "Nam" : row.GIOITINH === 0 || row.GIOITINH === false ? "Nữ" : null,
+      dateOfBirth: toRealDateOrNull(row.NGAYSINH),
+      placeOfBirth: str(row.NOISINH) || null,
+      idCardNumber: str(row.CMND) || null,
+      idCardIssuedDate: toRealDateOrNull(row.NGAYCAPCMND),
+      idCardIssuedPlace: str(row.NOICAPCMND) || null,
+      ethnicity: str(row.DANTOCNV) || null,
+      religion: str(row.TONGIAONV) || null,
+      nationality: str(row.QUOCTICHNV) || null,
+      hometown: str(row.QUEQUAN) || null,
+      permanentAddress: str(row.DIACHITHUONGTRU) || null,
+      currentAddress: str(row.NOIOHIENNAY) || null,
+      contactAddress: str(row.DIACHILIENLAC) || null,
+      officePhone: str(row.DIENTHOAICOQUAN) || null,
+      homePhone: str(row.DIENTHOAINHA) || null,
+      maritalStatus: str(row.TINHTRANGHONNHAN) || null,
+      familyBackground: str(row.THANHPHANXUATTHAN) || null,
+      familyPriorityGroup: str(row.DIENUUTIENGIADINH) || null,
+      selfPriorityGroup: str(row.DIENUUTIENBANTHAN) || null,
+      talent: str(row.NANGKHIEU) || null,
+      healthStatus: str(row.TINHTRANGSUCKHOE) || null,
+      bloodType: str(row.NHOMMAU) || null,
+      heightCm: toIntOrNull(row.CHIEUCAO),
+      weightKg: toIntOrNull(row.CANNANG),
+      disability: str(row.KHUYETTAT) || null,
+
+      facultyOrDepartmentLabel: str(row.PHONGBAN) || null,
+      workUnit: str(row.BOPHAN) || null,
+      decisionNumber: str(row.SOQD) || null,
+      joinedEducationSectorDate: toRealDateOrNull(row.NGAYVAONGANHGIAODUC),
+      contractDate: toRealDateOrNull(row.NGAYHOPDONG),
+      recruitmentDate: toRealDateOrNull(row.NGAYTUYENDUNG),
+      joinedAgencyDate: toRealDateOrNull(row.NGAYVAOCOQUAN),
+      recruitmentMethod: str(row.HINHTHUCTUYENDUNG) || null,
+      recruitingAgency: str(row.COQUANTUYENDUNG) || null,
+      assignedJob: str(row.CONGVIECDUOCGIAO) || null,
+      currentJob: str(row.CONGVIECHIENNAY) || null,
+
+      partyCandidateDate: toRealDateOrNull(row.NGAYVAODANG),
+      partyOfficialDate: toRealDateOrNull(row.NGAYCHINHTHUCVAODANG),
+      partyJoinedPlace: str(row.NOIVAODANG) || null,
+      partyPosition: str(row.CHUCVUDANG) || null,
+      partyLeftDate: toRealDateOrNull(row.NGAYRADANG),
+      partyCardNumber: str(row.SOTHEDANG) || null,
+      partyCell: str(row.CHIBO) || null,
+
+      youthUnionJoinedDate: toRealDateOrNull(row.NGAYVAODOAN),
+      youthUnionJoinedPlace: str(row.NOIVAODOAN) || null,
+      youthUnionPosition: str(row.CHUCVUDOAN) || null,
+
+      unionJoinedDate: toRealDateOrNull(row.NGAYVAOCONGDOAN),
+      unionJoinedPlace: str(row.NOIVAOCONGDOAN) || null,
+      unionPosition: str(row.CHUCVUCONGDOAN) || null,
+      unionSectionLabel: str(row.CONGDOANBOPHAN) || null,
+
+      generalEducationLevel: str(row.TD_HOCVANNV) || null,
+      hasGraduated: toBoolOrNull(row.DATOTNGHIEP),
+      trainingField: str(row.NGANHDAOTAO) || null,
+      trainingMajor: str(row.CHUYENNGANHDAOTAO) || null,
+      trainingPlace: str(row.NOIDAOTAO) || null,
+      trainingMethod: str(row.HINHTHUCDAOTAO) || null,
+      graduationYear: toIntOrNull(row.NAMTOTNGHIEP),
+      hasPedagogyTraining: toBoolOrNull(row.DABOIDUONGNGHIEPVUSP),
+      politicalTheoryLevel: str(row.TD_LYLUANCHINHTRI) || null,
+      stateManagementLevel: str(row.TD_QUANLYNHANUOC) || null,
+      educationManagementLevel: str(row.TD_QUANLYGIAODUC) || null,
+      mainForeignLanguage: str(row.NGOAINGUCHINHNV) || null,
+      foreignLanguageLevel: str(row.TD_NGOAINGUNV) || null,
+      otherForeignLanguage: str(row.NGOAINGUKHAC) || null,
+      itLevel: str(row.TD_TINHOCNV) || null,
+
+      salaryNote: str(row.GhiChuLuong) || null,
+      seniorityNote: str(row.GhiChuThamNien) || null,
+      jobTitle: str(row.CHUCDANHNGHENGHIEP) || null,
+      salaryGrade: str(row.NGACHLUONG) || null,
+      laborType: str(row.HINHTHUCLAODONG) || null,
+      socialInsuranceNumber: str(row.SOBHXH) || null,
+      oldSocialInsuranceNumber: str(row.SOBHXHCU) || null,
+      retirementDate: toRealDateOrNull(row.NGAYNGHIHUU),
+      incomingStatus: str(row.TRANGTHAIDEN) || null,
+      incomingDate: toRealDateOrNull(row.NGAYCHUYENDEN),
+      outgoingStatus: str(row.TRANGTHAIDI) || null,
+      outgoingDate: toRealDateOrNull(row.NGAYCHUYENDI),
+
+      salaryCode: str(row.MALUONGNV) || null,
+      fileCode: str(row.MAHOSONV) || null,
+      unitLabel: str(row.donvi) || null
+    };
+
+    await prisma.unionMemberProfile.upsert({
+      where: { memberId: member.id },
+      create: { memberId: member.id, ...profileData },
+      update: profileData
+    });
+
     imported += 1;
     sortOrder += 1;
   }
 
-  console.log(`  -> Đã nhập ${imported} công đoàn viên. Bỏ qua ${skippedNoName} (thiếu họ tên).`);
+  console.log(`  -> Đã nhập ${imported} công đoàn viên (kèm hồ sơ nội bộ). Bỏ qua ${skippedNoName} (thiếu họ tên).`);
   console.warn(
     "  -> LƯU Ý: photoUrl giữ nguyên đường dẫn ảnh từ NHANVIEN.HINHANH (chuẩn hoá luôn có dấu \"/\" " +
       "đầu, xem normalizeAssetPath) — chỉ hiển thị đúng nếu đã copy đủ thư mục upload/images/AnhCDV " +

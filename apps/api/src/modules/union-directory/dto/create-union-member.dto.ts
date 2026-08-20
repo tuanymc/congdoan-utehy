@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
+import { IsBoolean, IsInt, IsOptional, IsString, ValidateNested } from "class-validator";
 import type { CreateUnionMemberRequest } from "@congdoan/types";
+import { UpsertUnionMemberProfileDto } from "./upsert-union-member-profile.dto";
 
 export class CreateUnionMemberDto implements CreateUnionMemberRequest {
   @ApiProperty()
@@ -49,4 +51,12 @@ export class CreateUnionMemberDto implements CreateUnionMemberRequest {
   @IsOptional()
   @IsString()
   departmentId?: string;
+
+  /// Có gửi kèm object này thì mới upsert hồ sơ nội bộ (~90 cột gốc NHANVIEN) — bỏ qua (undefined) nếu
+  /// không muốn đụng tới hồ sơ, xem UnionMembersService.upsertProfileData.
+  @ApiPropertyOptional({ type: UpsertUnionMemberProfileDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpsertUnionMemberProfileDto)
+  profile?: UpsertUnionMemberProfileDto;
 }

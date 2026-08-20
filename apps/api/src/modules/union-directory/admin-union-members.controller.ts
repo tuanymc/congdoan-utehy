@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { JwtAccessPayload, PaginatedResult, UnionMemberListItemDto } from "@congdoan/types";
+import type { JwtAccessPayload, PaginatedResult, UnionMemberAdminDetailDto, UnionMemberListItemDto } from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { RequirePermissions } from "../../common/decorators/roles.decorator";
@@ -27,13 +27,13 @@ export class AdminUnionMembersController {
 
   @RequirePermissions("unionmember:view")
   @Get(":id")
-  findOne(@Param("id") id: string): Promise<UnionMemberListItemDto> {
-    return this.unionMembersService.findOne(id);
+  findOne(@Param("id") id: string): Promise<UnionMemberAdminDetailDto> {
+    return this.unionMembersService.findOneForAdmin(id);
   }
 
   @RequirePermissions("unionmember:create")
   @Post()
-  create(@Body() dto: CreateUnionMemberDto, @CurrentUser() actor: JwtAccessPayload): Promise<UnionMemberListItemDto> {
+  create(@Body() dto: CreateUnionMemberDto, @CurrentUser() actor: JwtAccessPayload): Promise<UnionMemberAdminDetailDto> {
     return this.unionMembersService.create(dto, actor.sub);
   }
 
@@ -43,7 +43,7 @@ export class AdminUnionMembersController {
     @Param("id") id: string,
     @Body() dto: UpdateUnionMemberDto,
     @CurrentUser() actor: JwtAccessPayload
-  ): Promise<UnionMemberListItemDto> {
+  ): Promise<UnionMemberAdminDetailDto> {
     return this.unionMembersService.update(id, dto, actor.sub);
   }
 

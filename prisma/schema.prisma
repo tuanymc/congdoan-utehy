@@ -429,9 +429,152 @@ model UnionMember {
   /// Mã gốc (NHANVIEN.MANV) từ web cũ — xem giải thích ở DocumentType.legacyCode.
   legacyCode String?
 
+  /// Hồ sơ nội bộ đầy đủ (~90 cột gốc NHANVIEN, CHỈ dành cho màn hình quản trị — xem UnionMemberProfile).
+  /// Optional 1-1: không phải công đoàn viên nào cũng có/cần nhập hồ sơ chi tiết ngay.
+  profile UnionMemberProfile?
+
   @@index([departmentId])
   @@index([legacyCode])
   @@map("union_members")
+}
+
+/// Hồ sơ nội bộ đầy đủ của công đoàn viên — bổ sung phần còn lại của NHANVIEN (~90 cột gốc) mà
+/// UnionMember (bảng danh bạ CÔNG KHAI ở trên) CHỦ ĐỘNG không nhập, theo đúng lý do đã ghi ở đầu domain
+/// block UNIONDIRECTORY. Model này CHỈ phục vụ màn hình quản trị nội bộ (apps/admin) — KHÔNG có endpoint
+/// công khai nào trả về field của model này, KHÔNG được UnionMembersService.listPublic()/tương đương
+/// include. Toàn bộ field optional vì dữ liệu ETL từ web cũ không đầy đủ cho mọi người.
+model UnionMemberProfile {
+  id String @id @default(uuid())
+
+  memberId String      @unique
+  member   UnionMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  // --- Thông tin cá nhân (NHANVIEN: BIDANH, GIOITINH, NGAYSINH, NOISINH, CMND...) ---
+  /// Bí danh — nguồn NHANVIEN.BIDANH.
+  alias String?
+  /// Giới tính — nguồn NHANVIEN.GIOITINH (lưu thẳng nhãn "Nam"/"Nữ" do dữ liệu gốc không có bảng danh
+  /// mục riêng, admin nhập tay hoặc chọn từ danh sách cố định phía FE).
+  gender String?
+  dateOfBirth      DateTime?
+  /// Nơi sinh — nguồn NHANVIEN.NOISINH.
+  placeOfBirth     String?
+  /// Số CMND/CCCD — nguồn NHANVIEN.CMND.
+  idCardNumber     String?
+  idCardIssuedDate DateTime?
+  /// Nơi cấp CMND/CCCD — nguồn NHANVIEN.NOICAPCMND.
+  idCardIssuedPlace String?
+  ethnicity  String?
+  religion   String?
+  nationality String?
+  /// Quê quán — nguồn NHANVIEN.QUEQUAN.
+  hometown   String?
+  /// Địa chỉ thường trú — nguồn NHANVIEN.DIACHITHUONGTRU.
+  permanentAddress String?
+  /// Nơi ở hiện nay — nguồn NHANVIEN.NOIOHIENNAY.
+  currentAddress   String?
+  /// Địa chỉ liên lạc (nếu khác nơi ở hiện nay) — nguồn NHANVIEN.DIACHILIENLAC.
+  contactAddress   String?
+  officePhone String?
+  homePhone   String?
+  maritalStatus     String?
+  /// Thành phần xuất thân — nguồn NHANVIEN.THANHPHANXUATTHAN.
+  familyBackground  String?
+  /// Diện ưu tiên gia đình — nguồn NHANVIEN.DIENUUTIENGIADINH.
+  familyPriorityGroup String?
+  /// Diện ưu tiên bản thân — nguồn NHANVIEN.DIENUUTIENBANTHAN.
+  selfPriorityGroup   String?
+  talent       String?
+  healthStatus String?
+  bloodType    String?
+  heightCm     Int?
+  weightKg     Int?
+  disability   String?
+
+  // --- Công tác (NHANVIEN: PHONGBAN, BOPHAN, SOQD, các mốc ngày vào ngành/hợp đồng/tuyển dụng...) ---
+  /// Phòng/Ban/Khoa công tác — nguồn NHANVIEN.PHONGBAN (khác UnionMember.department, đó là "công đoàn
+  /// bộ phận" nguồn CONGDOANBOPHAN dùng để lọc danh bạ công khai — 2 hệ phân loại độc lập ở web cũ).
+  facultyOrDepartmentLabel String?
+  /// Bộ phận công tác cụ thể (tổ/nhóm nhỏ hơn PHONGBAN) — nguồn NHANVIEN.BOPHAN.
+  workUnit                String?
+  /// Số quyết định (tuyển dụng/bổ nhiệm...) — nguồn NHANVIEN.SOQD.
+  decisionNumber          String?
+  joinedEducationSectorDate DateTime?
+  contractDate              DateTime?
+  recruitmentDate            DateTime?
+  joinedAgencyDate           DateTime?
+  recruitmentMethod   String?
+  recruitingAgency    String?
+  assignedJob String?
+  currentJob  String?
+
+  // --- Đảng (NHANVIEN: NGAYVAODANG, NGAYCHINHTHUCVAODANG, CHIBO...) ---
+  partyCandidateDate DateTime?
+  partyOfficialDate  DateTime?
+  partyJoinedPlace String?
+  partyPosition    String?
+  partyLeftDate      DateTime?
+  partyCardNumber String?
+  partyCell       String?
+
+  // --- Đoàn Thanh niên (NHANVIEN: NGAYVAODOAN, NOIVAODOAN, CHUCVUDOAN) ---
+  youthUnionJoinedDate  DateTime?
+  youthUnionJoinedPlace String?
+  youthUnionPosition    String?
+
+  // --- Công đoàn (NHANVIEN: NGAYVAOCONGDOAN, NOIVAOCONGDOAN, CHUCVUCONGDOAN, CONGDOANBOPHAN) ---
+  unionJoinedDate  DateTime?
+  unionJoinedPlace String?
+  /// Chức vụ công đoàn (khác UnionMember.positionTitle — đó là chức vụ chuyên môn NHANVIEN.CHUCVU).
+  unionPosition    String?
+  /// Nhãn "công đoàn bộ phận" ghi thẳng từ NHANVIEN.CONGDOANBOPHAN lúc ETL — chỉ để đối chiếu/tra cứu,
+  /// việc lọc danh bạ thật sự vẫn dùng UnionMember.departmentId (quan hệ UnionDepartment).
+  unionSectionLabel String?
+
+  // --- Học vấn / Đào tạo (NHANVIEN: TD_HOCVANNV, NGANHDAOTAO, NAMTOTNGHIEP...) ---
+  generalEducationLevel String?
+  hasGraduated          Boolean?
+  trainingField    String?
+  trainingMajor    String?
+  trainingPlace    String?
+  trainingMethod   String?
+  graduationYear         Int?
+  hasPedagogyTraining    Boolean?
+  politicalTheoryLevel   String?
+  stateManagementLevel   String?
+  educationManagementLevel String?
+  mainForeignLanguage String?
+  foreignLanguageLevel String?
+  otherForeignLanguage String?
+  itLevel              String?
+
+  // --- Lương / BHXH / trạng thái công tác (NHANVIEN: GhiChuLuong, SOBHXH, NGAYNGHIHUU...) ---
+  salaryNote    String?
+  seniorityNote String?
+  /// Chức danh nghề nghiệp (khác UnionMember.positionTitle) — nguồn NHANVIEN.CHUCDANHNGHENGHIEP.
+  jobTitle     String?
+  salaryGrade  String?
+  laborType    String?
+  socialInsuranceNumber    String?
+  oldSocialInsuranceNumber String?
+  retirementDate DateTime?
+  incomingStatus String?
+  incomingDate     DateTime?
+  outgoingStatus String?
+  outgoingDate     DateTime?
+
+  // --- Mã tra cứu nội bộ khác (giữ lại để đối chiếu, không phục vụ nghiệp vụ hiện tại) ---
+  /// Nguồn NHANVIEN.MALUONGNV.
+  salaryCode String?
+  /// Nguồn NHANVIEN.MAHOSONV.
+  fileCode   String?
+  /// Nguồn NHANVIEN.donvi — cột tên thường, ý nghĩa chính xác chưa rõ so với PHONGBAN (có thể là đơn
+  /// vị cấp cao hơn, vd trường/viện trực thuộc) — giữ nguyên để tra cứu, chưa suy diễn.
+  unitLabel  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("union_member_profiles")
 }
 
 // ============================================================================
