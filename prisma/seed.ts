@@ -35,7 +35,9 @@ const PERMISSION_SEED = [
   "contactmessage",
   "menuitem",
   "sitesetting",
-  "event"
+  "event",
+  "aitoolresource",
+  "survey"
 ].flatMap((module) =>
   ["view", "create", "update", "delete"].map((action) => ({
     key: `${module}:${action}`,
@@ -113,7 +115,9 @@ async function main() {
     "unionmember",
     "contactmessage",
     "menuitem",
-    "event"
+    "event",
+    "aitoolresource",
+    "survey"
   ];
   const clerkDocumentPermissions = await prisma.permission.findMany({
     where: { module: { in: clerkManagedModules }, action: { in: ["view", "create", "update"] } }

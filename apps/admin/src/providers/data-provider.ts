@@ -18,6 +18,10 @@
  *  - "events"              -> /admin/events (không phân trang ở UI — EventList tải pageSize lớn; danh
  *                            sách người đăng ký của 1 hoạt động gọi trực tiếp apiFetch trong
  *                            EventRegistrantsPage.tsx, không qua dataProvider vì không phải resource CRUD).
+ *  - "ai-tools"            -> /admin/ai-tools (không phân trang — danh sách công cụ nhỏ)
+ *  - "surveys"             -> /admin/surveys (không phân trang — chỉ metadata khảo sát; câu hỏi/kết
+ *                            quả là tài nguyên con, gọi thẳng apiFetch trong SurveyQuestionsPage.tsx/
+ *                            SurveyResultsPage.tsx, không qua dataProvider).
  *
  * Chỉ implement getList, getOne, create, update, deleteOne — đủ dùng cho toàn bộ UI CRUD hiện tại.
  */
@@ -36,7 +40,9 @@ type ResourceName =
   | "union-members"
   | "contact-messages"
   | "menu-items"
-  | "events";
+  | "events"
+  | "ai-tools"
+  | "surveys";
 
 /** Resource nhỏ, không phân trang ở BE — getList trả về toàn bộ mảng (giống "categories"/"document-types"). */
 const UNPAGINATED_RESOURCES: ResourceName[] = [
@@ -44,7 +50,9 @@ const UNPAGINATED_RESOURCES: ResourceName[] = [
   "document-types",
   "home-slides",
   "union-departments",
-  "menu-items"
+  "menu-items",
+  "ai-tools",
+  "surveys"
 ];
 
 interface ResourcePaths {
@@ -138,6 +146,20 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/events",
     update: (id) => `/admin/events/${id}`,
     remove: (id) => `/admin/events/${id}`
+  },
+  "ai-tools": {
+    list: "/admin/ai-tools",
+    one: (id) => `/admin/ai-tools/${id}`,
+    create: "/admin/ai-tools",
+    update: (id) => `/admin/ai-tools/${id}`,
+    remove: (id) => `/admin/ai-tools/${id}`
+  },
+  surveys: {
+    list: "/admin/surveys",
+    one: (id) => `/admin/surveys/${id}`,
+    create: "/admin/surveys",
+    update: (id) => `/admin/surveys/${id}`,
+    remove: (id) => `/admin/surveys/${id}`
   }
 };
 

@@ -41,6 +41,12 @@ import { SiteSettingsPage } from "./pages/site-settings/SiteSettingsPage";
 import { EventList } from "./pages/events/EventList";
 import { EventForm } from "./pages/events/EventForm";
 import { EventRegistrantsPage } from "./pages/events/EventRegistrantsPage";
+import { AiToolList } from "./pages/ai-tools/AiToolList";
+import { AiToolForm } from "./pages/ai-tools/AiToolForm";
+import { SurveyList } from "./pages/surveys/SurveyList";
+import { SurveyForm } from "./pages/surveys/SurveyForm";
+import { SurveyQuestionsPage } from "./pages/surveys/SurveyQuestionsPage";
+import { SurveyResultsPage } from "./pages/surveys/SurveyResultsPage";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -136,6 +142,20 @@ export function App() {
             create: "/events/create",
             edit: "/events/edit/:id",
             meta: { label: "Đăng ký hoạt động" }
+          },
+          {
+            name: "ai-tools",
+            list: "/ai-tools",
+            create: "/ai-tools/create",
+            edit: "/ai-tools/edit/:id",
+            meta: { label: "Kho công cụ AI" }
+          },
+          {
+            name: "surveys",
+            list: "/surveys",
+            create: "/surveys/create",
+            edit: "/surveys/edit/:id",
+            meta: { label: "Khảo sát ý kiến" }
           }
         ]}
         options={{
@@ -284,6 +304,34 @@ export function App() {
               <Route path="create" element={<EventForm mode="create" />} />
               <Route path="edit/:id" element={<EventForm mode="edit" />} />
               <Route path=":id/registrations" element={<EventRegistrantsPage />} />
+            </Route>
+
+            <Route
+              path="/ai-tools"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<AiToolList />} />
+              <Route path="create" element={<AiToolForm mode="create" />} />
+              <Route path="edit/:id" element={<AiToolForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/surveys"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<SurveyList />} />
+              <Route path="create" element={<SurveyForm mode="create" />} />
+              <Route path="edit/:id" element={<SurveyForm mode="edit" />} />
+              <Route path=":id/questions" element={<SurveyQuestionsPage />} />
+              <Route path=":id/results" element={<SurveyResultsPage />} />
             </Route>
 
             <Route

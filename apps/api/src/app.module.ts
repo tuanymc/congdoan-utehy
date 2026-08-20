@@ -14,6 +14,8 @@ import { ContactModule } from "./modules/contact/contact.module";
 import { MenuItemModule } from "./modules/menu-item/menu-item.module";
 import { SiteSettingsModule } from "./modules/site-settings/site-settings.module";
 import { EventsModule } from "./modules/events/events.module";
+import { AiToolsModule } from "./modules/ai-tools/ai-tools.module";
+import { SurveysModule } from "./modules/surveys/surveys.module";
 
 @Module({
   imports: [
@@ -30,7 +32,9 @@ import { EventsModule } from "./modules/events/events.module";
     ContactModule,
     MenuItemModule,
     SiteSettingsModule,
-    EventsModule
+    EventsModule,
+    AiToolsModule,
+    SurveysModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
 })

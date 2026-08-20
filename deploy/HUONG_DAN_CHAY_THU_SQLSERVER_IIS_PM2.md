@@ -759,6 +759,87 @@ kèm công văn) — dữ liệu hoạt động/đăng ký chỉ lưu trong SQL 
 
 ---
 
+## Bước 6.11 — Migrate schema đợt 7 (Kho công cụ AI + Khảo sát ý kiến — Phase 4c/4d Tiện ích số)
+
+Đợt này thêm 5 bảng MỚI (không đổi bảng nào có sẵn): `ai_tool_resources` (Kho công cụ AI, Phase 4c) và
+`surveys`/`survey_questions`/`survey_responses`/`survey_answers` (Khảo sát ý kiến, Phase 4d).
+
+- **Kho công cụ AI**: trang `/admin/ai-tools` để cán bộ Công đoàn quản lý danh sách công cụ AI (tên, mô
+  tả, đường dẫn, phân loại). Trang công khai `/tien-ich-so-cong-doan/cong-cu-ai` **yêu cầu đăng nhập**
+  (đoàn viên/cán bộ nào cũng xem được, không cần quyền quản trị riêng) — đây là kho/danh bạ công cụ AI
+  tuyển chọn (link ra ngoài), KHÔNG phải trợ lý AI thật xây trong web.
+- **Khảo sát ý kiến**: trang `/admin/surveys` để tạo khảo sát + trang con thêm/sửa/xoá câu hỏi (MVP chỉ
+  2 loại: trắc nghiệm 1 đáp án và tự luận) + trang xem kết quả tổng hợp (biểu đồ thanh đơn giản). Trang
+  công khai `/tien-ich-so-cong-doan/khao-sat` — **không yêu cầu đăng nhập** để trả lời (giống Đăng ký
+  hoạt động, Phase 4b), không lưu danh tính người trả lời (ẩn danh mặc định).
+
+Quyền quản trị `aitoolresource:*` và `survey:*` đã seed sẵn cho ADMIN và UNION_CLERK.
+
+```powershell
+cd C:\inetpub\congdoan-src
+pm2 stop all
+
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có CREATE TABLE ai_tool_resources, CREATE TABLE surveys, CREATE TABLE
+# survey_questions, CREATE TABLE survey_responses, CREATE TABLE survey_answers (kèm FK + index) — KHÔNG
+# được có DROP/ALTER nào trên bảng có sẵn. Nếu có gì lạ, dừng lại, đừng deploy, gửi lại nội dung để review.
+Get-Content prisma\migrations\tmp_diff.sql
+
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_ai_tools_and_surveys"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed
+pnpm build
+
+Copy-Item apps\web\dist\*   -Destination C:\inetpub\congdoan2026\web   -Recurse -Force
+Copy-Item apps\admin\dist\* -Destination C:\inetpub\congdoan2026\admin -Recurse -Force
+
+pm2 start deploy\ecosystem.config.js --env production
+pm2 status
+```
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_ai_tools_and_surveys/`)
+vào Git rồi push.
+
+Đợt này KHÔNG cần cấp thêm quyền ghi thư mục nào cho tài khoản chạy PM2 — dữ liệu chỉ lưu trong SQL
+Server, không ghi file lên đĩa (khác đợt 6.8 — file đính kèm công văn).
+
+### Kiểm tra end-to-end đợt này
+
+**Kho công cụ AI:**
+1. `http://localhost:8080/admin/ai-tools` — thêm thử 1 công cụ (tên, URL, phân loại, để "Hiển thị công
+   khai" = Có).
+2. Mở `http://localhost:8080/tien-ich-so-cong-doan` (khi CHƯA đăng nhập) — bấm card "Công cụ AI" phải
+   bị chuyển hướng sang trang đăng nhập.
+3. Đăng nhập bằng tài khoản bất kỳ (kể cả role MEMBER), quay lại trang đó — phải thấy công cụ vừa thêm,
+   nhóm theo phân loại. Bấm vào công cụ phải mở tab mới đúng URL đã nhập.
+4. Sửa công cụ đó, đặt "Hiển thị công khai" = Không — công cụ phải biến mất khỏi trang công khai (vẫn
+   còn trong `/admin/ai-tools`).
+
+**Khảo sát ý kiến:**
+5. `http://localhost:8080/admin/surveys` — tạo khảo sát mới, sau khi lưu sẽ tự chuyển sang màn hình
+   thêm câu hỏi. Thêm 1 câu trắc nghiệm (vd "Rất hài lòng/Hài lòng/Không hài lòng") + 1 câu tự luận.
+6. Mở `/tien-ich-so-cong-doan/khao-sat` (không cần đăng nhập) — phải thấy khảo sát vừa tạo, bấm vào trả
+   lời cả 2 câu rồi gửi — phải thấy thông báo cảm ơn.
+7. Thử gửi lại nhưng bỏ trống câu bắt buộc — phải báo lỗi yêu cầu trả lời đầy đủ, không cho gửi.
+8. Quay lại `/admin/surveys`, bấm "Kết quả" ở khảo sát vừa test — câu trắc nghiệm phải hiện đúng thanh
+   tỉ lệ (100% cho lựa chọn vừa chọn), câu tự luận phải hiện đúng nội dung đã nhập.
+9. Sửa khảo sát, đặt trạng thái "Đã đóng" — khảo sát phải biến mất khỏi trang công khai (vẫn xem được
+   kết quả ở trang quản trị).
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên

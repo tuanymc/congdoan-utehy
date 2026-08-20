@@ -39,15 +39,15 @@ const UTILITIES: UtilityCard[] = [
     icon: ClipboardList,
     title: "Khảo sát ý kiến",
     description: "Góp ý, khảo sát ý kiến đoàn viên về các chủ trương, hoạt động của Công đoàn.",
-    status: "soon",
-    comingSoonNote: "Sắp ra mắt"
+    to: "/tien-ich-so-cong-doan/khao-sat",
+    status: "available"
   },
   {
     icon: Sparkles,
     title: "Công cụ AI",
     description: "Kho công cụ AI hữu ích phục vụ giảng dạy, nghiên cứu — dành riêng cho đoàn viên đã đăng nhập.",
-    status: "soon",
-    comingSoonNote: "Sắp ra mắt — yêu cầu đăng nhập"
+    to: "/tien-ich-so-cong-doan/cong-cu-ai",
+    status: "available"
   }
 ];
 

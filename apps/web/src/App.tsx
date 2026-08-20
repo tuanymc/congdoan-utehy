@@ -15,6 +15,9 @@ import { DigitalUtilitiesPage } from "./pages/DigitalUtilitiesPage";
 import { DigitalFormsPage } from "./pages/DigitalFormsPage";
 import { EventsPage } from "./pages/EventsPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
+import { AiToolsPage } from "./pages/AiToolsPage";
+import { SurveysPage } from "./pages/SurveysPage";
+import { SurveyDetailPage } from "./pages/SurveyDetailPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 export default function App() {
@@ -32,6 +35,16 @@ export default function App() {
         <Route path="tien-ich-so-cong-doan/bieu-mau" element={<DigitalFormsPage />} />
         <Route path="tien-ich-so-cong-doan/dang-ky-hoat-dong" element={<EventsPage />} />
         <Route path="tien-ich-so-cong-doan/dang-ky-hoat-dong/:id" element={<EventDetailPage />} />
+        <Route path="tien-ich-so-cong-doan/khao-sat" element={<SurveysPage />} />
+        <Route path="tien-ich-so-cong-doan/khao-sat/:id" element={<SurveyDetailPage />} />
+        <Route
+          path="tien-ich-so-cong-doan/cong-cu-ai"
+          element={
+            <ProtectedRoute>
+              <AiToolsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="lien-he" element={<ContactPage />} />
         <Route path="dang-nhap" element={<LoginPage />} />
         <Route

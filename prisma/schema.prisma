@@ -593,6 +593,102 @@ model EventRegistration {
   @@map("event_registrations")
 }
 
+/// "Kho công cụ AI" (Tiện ích số, Phase 4c) — thư mục/kho công cụ AI được TUYỂN CHỌN (link ra ngoài,
+/// vd ChatGPT/NotebookLM/Claude/Gemini/công cụ soạn bài giảng...) phục vụ giảng dạy/nghiên cứu, KHÔNG
+/// phải tự xây AI/chatbot riêng — đã xác nhận phạm vi với người quản trị trước khi code (xem thiết kế
+/// Phase 4). Trang công khai `/tien-ich-so-cong-doan/cong-cu-ai` yêu cầu đăng nhập (ProtectedRoute có
+/// sẵn) nhưng KHÔNG cần permission riêng để XEM — bất kỳ role nào đã đăng nhập (kể cả MEMBER) đều xem
+/// được, chỉ CRUD ở trang quản trị mới cần permission "aitoolresource:*" (xem PublicAiToolsController
+/// dùng JwtAuthGuard đơn thuần, không có PermissionsGuard — giống pattern /auth/me).
+model AiToolResource {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.NVarChar(Max)
+  url         String
+  /// Nhãn phân loại tự do (vd "Soạn bài giảng", "Nghiên cứu", "Chấm điểm") — không tách bảng riêng vì
+  /// số lượng nhóm nhỏ, không cần CRUD riêng như Category/DocumentType.
+  category  String?
+  logoUrl   String?
+  sortOrder Int      @default(0)
+  /// false = ẩn khỏi trang công khai (nháp/đã ngừng dùng) nhưng vẫn giữ lại trong trang quản trị.
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ai_tool_resources")
+}
+
+/// "Khảo sát ý kiến" (Tiện ích số, Phase 4d) — MVP CHỈ hỗ trợ 2 loại câu hỏi (SINGLE_CHOICE/TEXT, xem
+/// SurveyQuestion.type), không có RATING/MULTIPLE_CHOICE (dời bản sau nếu cần). Theo đúng chính sách
+/// đã áp dụng cho Event/EventRegistration (Phase 4b) — form trả lời công khai, KHÔNG bắt buộc đăng
+/// nhập (isAnonymous mặc định true, không lưu userId trên SurveyResponse) để giữ nhất quán trải
+/// nghiệm giữa 2 tính năng "điền form công khai" trong Tiện ích số.
+model Survey {
+  id          String    @id @default(uuid())
+  title       String
+  description String?   @db.NVarChar(Max)
+  /// false = đã đóng, ẩn khỏi trang công khai nhưng vẫn xem được kết quả ở trang quản trị.
+  isOpen      Boolean   @default(true)
+  /// MVP luôn true (không lưu danh tính người trả lời) — field giữ sẵn cho bản sau nếu cần khảo sát
+  /// định danh (vd theo dõi ai đã trả lời để tránh gửi nhắc lại).
+  isAnonymous Boolean   @default(true)
+  startAt     DateTime?
+  endAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  questions SurveyQuestion[]
+  responses SurveyResponse[]
+
+  @@map("surveys")
+}
+
+model SurveyQuestion {
+  id       String @id @default(uuid())
+  surveyId String
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  text     String
+  /// "SINGLE_CHOICE" | "TEXT" (xem SurveyQuestionType trong @congdoan/types) — dùng String thay vì
+  /// Prisma enum theo đúng convention field `direction` ở OfficialDocument (xem ghi chú field đó).
+  type       String  @default("TEXT") @db.VarChar(20)
+  /// JSON string mảng lựa chọn (vd ["Rất hài lòng","Hài lòng","Không hài lòng"]) — CHỈ có giá trị khi
+  /// type="SINGLE_CHOICE", null khi type="TEXT".
+  optionsJson String? @db.NVarChar(Max)
+  sortOrder   Int     @default(0)
+  isRequired  Boolean @default(true)
+
+  answers SurveyAnswer[]
+
+  @@index([surveyId])
+  @@map("survey_questions")
+}
+
+model SurveyResponse {
+  id          String   @id @default(uuid())
+  surveyId    String
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  submittedAt DateTime @default(now())
+
+  answers SurveyAnswer[]
+
+  @@index([surveyId])
+  @@map("survey_responses")
+}
+
+model SurveyAnswer {
+  id         String         @id @default(uuid())
+  responseId String
+  response   SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  questionId String
+  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  /// Câu trả lời tự luận (type=TEXT), hoặc đúng 1 giá trị lựa chọn đã chọn (type=SINGLE_CHOICE).
+  value      String         @db.NVarChar(Max)
+
+  @@index([responseId])
+  @@index([questionId])
+  @@map("survey_answers")
+}
+
 // ============================================================================
 // TODO Phase 2 — DOMAIN: MEMBERSHIP (phần còn lại)
 //   Danh bạ công khai (UnionMember/UnionDepartment) đã triển khai ở trên — phần CÒN LẠI của Phase 2
@@ -600,7 +696,8 @@ model EventRegistration {
 //   (xem mục 4 CURSOR_PROMPT_Website_CongDoan_UTEHY.md để lấy đúng tên field)
 //
 // TODO Phase 4 — DOMAIN: DIGITALUTILITY ("Tiện ích số Công đoàn") — phần còn lại
-//   Event/EventRegistration (Phase 4b) đã triển khai ở trên. Còn lại:
+//   Event/EventRegistration (4b), AiToolResource (4c), Survey/SurveyQuestion/SurveyResponse/
+//   SurveyAnswer (4d) đã triển khai ở trên. Còn lại (chưa nằm trong 4 mục ưu tiên ban đầu):
 //   model EForm, EFormSubmission, UnionFeeLedger, SupportBooking,
-//         ChatbotConversation, ChatbotMessage, SurveyForm, SurveyResponse
+//         ChatbotConversation, ChatbotMessage
 // ============================================================================
