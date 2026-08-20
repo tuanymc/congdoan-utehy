@@ -2,6 +2,7 @@ import { useState, type ComponentType, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useGetIdentity, useLogout } from "@refinedev/core";
 import {
+  CalendarDays,
   FileText,
   FolderTree,
   Images,
@@ -49,7 +50,8 @@ const DOCUMENT_NAV_ITEMS: NavItem[] = [
   { to: "/union-members", label: "Công đoàn viên", icon: UsersRound },
   { to: "/union-departments", label: "Công đoàn bộ phận", icon: FolderTree },
   { to: "/contact-messages", label: "Liên hệ", icon: Mail },
-  { to: "/menu-items", label: "Menu điều hướng", icon: ListTree }
+  { to: "/menu-items", label: "Menu điều hướng", icon: ListTree },
+  { to: "/events", label: "Đăng ký hoạt động", icon: CalendarDays }
 ];
 
 function BrandTitle() {

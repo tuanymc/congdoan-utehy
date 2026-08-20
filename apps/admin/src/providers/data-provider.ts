@@ -15,6 +15,9 @@
  *  - "contact-messages"   -> /admin/contact-messages (có phân trang, lọc theo isRead) — không có trang
  *                            "create" riêng (tin nhắn chỉ tạo qua form công khai apps/web), chỉ
  *                            list + update (đánh dấu đã đọc) + delete.
+ *  - "events"              -> /admin/events (không phân trang ở UI — EventList tải pageSize lớn; danh
+ *                            sách người đăng ký của 1 hoạt động gọi trực tiếp apiFetch trong
+ *                            EventRegistrantsPage.tsx, không qua dataProvider vì không phải resource CRUD).
  *
  * Chỉ implement getList, getOne, create, update, deleteOne — đủ dùng cho toàn bộ UI CRUD hiện tại.
  */
@@ -32,7 +35,8 @@ type ResourceName =
   | "union-departments"
   | "union-members"
   | "contact-messages"
-  | "menu-items";
+  | "menu-items"
+  | "events";
 
 /** Resource nhỏ, không phân trang ở BE — getList trả về toàn bộ mảng (giống "categories"/"document-types"). */
 const UNPAGINATED_RESOURCES: ResourceName[] = [
@@ -127,6 +131,13 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/menu-items",
     update: (id) => `/admin/menu-items/${id}`,
     remove: (id) => `/admin/menu-items/${id}`
+  },
+  events: {
+    list: "/admin/events",
+    one: (id) => `/admin/events/${id}`,
+    create: "/admin/events",
+    update: (id) => `/admin/events/${id}`,
+    remove: (id) => `/admin/events/${id}`
   }
 };
 

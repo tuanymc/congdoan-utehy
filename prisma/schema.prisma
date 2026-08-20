@@ -547,14 +547,60 @@ model SiteSetting {
   @@map("site_settings")
 }
 
+/// "Đăng ký hoạt động" (Tiện ích số, Phase 4b) — 1 sự kiện/hoạt động do Công đoàn tổ chức mà đoàn viên
+/// có thể đăng ký tham gia trực tiếp trên web công khai, không cần đăng nhập (xem EventRegistration).
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.NVarChar(Max)
+  location    String?
+  startAt     DateTime?
+  endAt       DateTime?
+  /// Null = không giới hạn thời gian đăng ký (mở tới khi hết chỗ hoặc admin tự đóng bằng isPublic).
+  registrationDeadline DateTime?
+  /// Null = không giới hạn số lượng người đăng ký.
+  capacity  Int?
+  /// false = ẩn khỏi trang công khai (nháp/đã kết thúc) nhưng vẫn giữ lại lịch sử đăng ký cũ.
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  registrations EventRegistration[]
+
+  @@map("events")
+}
+
+/// 1 lượt đăng ký tham gia — email bắt buộc (KHÔNG optional) để dùng được unique constraint chặn đăng
+/// ký trùng theo [eventId, email]; nếu để optional sẽ đụng đúng pitfall SQL Server chỉ cho phép 1 NULL
+/// trên cột UNIQUE đã gặp ở MenuItem.code (xem ghi chú field đó) — tránh lặp lại bằng cách bắt buộc
+/// nhập email ngay từ đầu thay vì phải tự sinh giá trị giả như đã làm cho MenuItem.code.
+model EventRegistration {
+  id           String   @id @default(uuid())
+  fullName     String
+  email        String
+  phone        String?
+  note         String?  @db.NVarChar(Max)
+  registeredAt DateTime @default(now())
+
+  eventId String
+  /// onDelete Cascade có chủ đích — xoá 1 hoạt động thì xoá luôn danh sách đăng ký của nó (khác cách
+  /// làm dè dặt "NoAction" của các quan hệ dữ liệu nội bộ khác — đăng ký hoạt động không có giá trị
+  /// tham chiếu gì sau khi hoạt động gốc đã bị xoá).
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([eventId, email])
+  @@index([eventId])
+  @@map("event_registrations")
+}
+
 // ============================================================================
 // TODO Phase 2 — DOMAIN: MEMBERSHIP (phần còn lại)
 //   Danh bạ công khai (UnionMember/UnionDepartment) đã triển khai ở trên — phần CÒN LẠI của Phase 2
 //   (tài khoản đoàn viên tự quản lý, đóng đoàn phí, Leader/Position/Term đầy đủ...) làm sau nếu cần.
 //   (xem mục 4 CURSOR_PROMPT_Website_CongDoan_UTEHY.md để lấy đúng tên field)
 //
-// TODO Phase 4 — DOMAIN: DIGITALUTILITY ("Tiện ích số Công đoàn")
+// TODO Phase 4 — DOMAIN: DIGITALUTILITY ("Tiện ích số Công đoàn") — phần còn lại
+//   Event/EventRegistration (Phase 4b) đã triển khai ở trên. Còn lại:
 //   model EForm, EFormSubmission, UnionFeeLedger, SupportBooking,
-//         ChatbotConversation, ChatbotMessage, SurveyForm, SurveyResponse,
-//         Event, EventRegistration
+//         ChatbotConversation, ChatbotMessage, SurveyForm, SurveyResponse
 // ============================================================================

@@ -38,6 +38,9 @@ import { ContactMessageList } from "./pages/contact-messages/ContactMessageList"
 import { MenuItemList } from "./pages/menu-items/MenuItemList";
 import { MenuItemForm } from "./pages/menu-items/MenuItemForm";
 import { SiteSettingsPage } from "./pages/site-settings/SiteSettingsPage";
+import { EventList } from "./pages/events/EventList";
+import { EventForm } from "./pages/events/EventForm";
+import { EventRegistrantsPage } from "./pages/events/EventRegistrantsPage";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -126,6 +129,13 @@ export function App() {
             create: "/menu-items/create",
             edit: "/menu-items/edit/:id",
             meta: { label: "Menu điều hướng" }
+          },
+          {
+            name: "events",
+            list: "/events",
+            create: "/events/create",
+            edit: "/events/edit/:id",
+            meta: { label: "Đăng ký hoạt động" }
           }
         ]}
         options={{
@@ -260,6 +270,20 @@ export function App() {
               <Route index element={<MenuItemList />} />
               <Route path="create" element={<MenuItemForm mode="create" />} />
               <Route path="edit/:id" element={<MenuItemForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/events"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<EventList />} />
+              <Route path="create" element={<EventForm mode="create" />} />
+              <Route path="edit/:id" element={<EventForm mode="edit" />} />
+              <Route path=":id/registrations" element={<EventRegistrantsPage />} />
             </Route>
 
             <Route

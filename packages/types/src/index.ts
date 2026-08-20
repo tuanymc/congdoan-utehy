@@ -8,3 +8,4 @@ export * from "./home-slide";
 export * from "./contact";
 export * from "./menu";
 export * from "./site-setting";
+export * from "./event";

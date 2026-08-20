@@ -32,8 +32,8 @@ const UTILITIES: UtilityCard[] = [
     icon: CalendarCheck,
     title: "Đăng ký hoạt động",
     description: "Đăng ký tham gia các hoạt động, phong trào do Công đoàn trường tổ chức.",
-    status: "soon",
-    comingSoonNote: "Sắp ra mắt"
+    to: "/tien-ich-so-cong-doan/dang-ky-hoat-dong",
+    status: "available"
   },
   {
     icon: ClipboardList,

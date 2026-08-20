@@ -13,6 +13,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { MemberPortalPage } from "./pages/MemberPortalPage";
 import { DigitalUtilitiesPage } from "./pages/DigitalUtilitiesPage";
 import { DigitalFormsPage } from "./pages/DigitalFormsPage";
+import { EventsPage } from "./pages/EventsPage";
+import { EventDetailPage } from "./pages/EventDetailPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 export default function App() {
@@ -28,6 +30,8 @@ export default function App() {
         <Route path="danh-ba-cong-doan-vien" element={<UnionMembersPage />} />
         <Route path="tien-ich-so-cong-doan" element={<DigitalUtilitiesPage />} />
         <Route path="tien-ich-so-cong-doan/bieu-mau" element={<DigitalFormsPage />} />
+        <Route path="tien-ich-so-cong-doan/dang-ky-hoat-dong" element={<EventsPage />} />
+        <Route path="tien-ich-so-cong-doan/dang-ky-hoat-dong/:id" element={<EventDetailPage />} />
         <Route path="lien-he" element={<ContactPage />} />
         <Route path="dang-nhap" element={<LoginPage />} />
         <Route
