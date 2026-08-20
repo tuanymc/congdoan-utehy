@@ -471,9 +471,12 @@ model MenuItem {
   autoCategoryChildren Boolean @default(false)
 
   parentId String?
-  /// onDelete Restrict (không Cascade) — service tự xoá children trước khi xoá cha (xem
-  /// menu-items.service.ts#remove) để tránh phụ thuộc vào referential action tự động của SQL Server.
-  parent   MenuItem?  @relation("MenuItemChildren", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  /// onDelete NoAction (SQL Server không hỗ trợ "Restrict" như MySQL/Postgres — Prisma chỉ chấp nhận
+  /// Cascade/NoAction/SetNull/SetDefault cho provider sqlserver, xem lỗi P1012 nếu dùng nhầm Restrict).
+  /// NoAction có tác dụng tương đương Restrict ở đây: DB sẽ chặn xoá 1 mục cấp 1 nếu còn mục con trỏ
+  /// tới qua parentId — nhưng service luôn tự xoá children trước khi xoá cha (xem
+  /// menu-items.service.ts#remove) nên trên thực tế constraint này không bao giờ bị chạm tới.
+  parent   MenuItem?  @relation("MenuItemChildren", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children MenuItem[] @relation("MenuItemChildren")
 
   createdAt DateTime @default(now())
