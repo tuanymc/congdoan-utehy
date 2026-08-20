@@ -2,7 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth-context";
+import { SiteSettingsProvider } from "./lib/site-settings-context";
 import { TooltipProvider } from "./components/ui/tooltip";
+import { SiteSeo } from "./components/SiteSeo";
 import App from "./App";
 import "./index.css";
 
@@ -14,11 +16,14 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <TooltipProvider>
-          <App />
-        </TooltipProvider>
-      </AuthProvider>
+      <SiteSettingsProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <SiteSeo />
+            <App />
+          </TooltipProvider>
+        </AuthProvider>
+      </SiteSettingsProvider>
     </BrowserRouter>
   </StrictMode>
 );

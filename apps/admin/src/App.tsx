@@ -37,6 +37,7 @@ import { UnionMemberForm } from "./pages/union-members/UnionMemberForm";
 import { ContactMessageList } from "./pages/contact-messages/ContactMessageList";
 import { MenuItemList } from "./pages/menu-items/MenuItemList";
 import { MenuItemForm } from "./pages/menu-items/MenuItemForm";
+import { SiteSettingsPage } from "./pages/site-settings/SiteSettingsPage";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -260,6 +261,15 @@ export function App() {
               <Route path="create" element={<MenuItemForm mode="create" />} />
               <Route path="edit/:id" element={<MenuItemForm mode="edit" />} />
             </Route>
+
+            <Route
+              path="/site-settings"
+              element={
+                <RequireAdmin>
+                  <SiteSettingsPage />
+                </RequireAdmin>
+              }
+            />
           </Route>
 
           <Route

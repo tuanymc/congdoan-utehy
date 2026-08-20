@@ -571,6 +571,64 @@ push, giống lưu ý ở Bước 3/6.5/6.6.
 
 ---
 
+## Bước 6.8 — Migrate schema đợt 4 (Cấu hình chung: logo, liên hệ, SEO) + footer thiết kế lại
+
+Đợt này bổ sung 1 bảng mới — `site_settings` (CHỈ 1 dòng duy nhất, id cố định `"singleton"`) — chứa
+toàn bộ nội dung tĩnh trước đây hard-code trong `Header.tsx`/`Footer.tsx` (tên viết tắt, slogan, logo,
+địa chỉ, hotline, email, Facebook/Youtube, giờ hành chính, dòng bản quyền) cộng thêm cấu hình SEO mặc
+định (tiêu đề/mô tả/từ khoá/ảnh chia sẻ mạng xã hội) — quản lý qua trang admin mới "Cấu hình chung"
+(`/admin/site-settings`, chỉ ADMIN). Footer trang công khai cũng được thiết kế lại (dải nhấn màu ở
+trên, bố cục rõ ràng hơn, chỉ hiện Facebook/Youtube khi admin đã nhập URL thật).
+
+Cùng cách làm với các đợt trước:
+
+```powershell
+cd "D:\WEBSITE DA HOAN THANH\WebsiteCongDoan\CongDoan.utehy.edu.vn"
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có CREATE TABLE site_settings — KHÔNG được có DROP/ALTER nào khác
+# trên bảng cũ. Nếu có gì lạ, dừng lại, đừng deploy, gửi lại nội dung file để review trước.
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_site_setting"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Get-Content "prisma/migrations/tmp_diff.sql" | Set-Content -Encoding ascii "prisma/migrations/$name/migration.sql"
+Remove-Item "prisma/migrations/tmp_diff.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed   # thêm quyền sitesetting:* (chỉ ADMIN); tạo dòng cấu hình mặc định khớp y hệt nội dung cũ
+pnpm build          # build lại cả 3 app — admin có trang "Cấu hình chung" mới, web đọc Header/Footer/SEO từ API
+```
+
+Sau khi build xong, lặp lại thao tác copy ở Bước 5 để đưa `apps\web\dist`/`apps\admin\dist` mới vào
+physical path IIS, rồi `pm2 reload deploy\ecosystem.config.js --update-env` để API load Prisma Client
+mới.
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_site_setting/`) vào Git
+rồi push, giống lưu ý ở các bước trước.
+
+### Kiểm tra end-to-end đợt này
+
+1. `http://localhost:8080/` — header (thanh trên + logo) và footer hiển thị đúng như trước (nội dung
+   seed mặc định khớp y hệt nội dung cũ từng hard-code) — nếu đúng nghĩa là `GET /site-settings` trả
+   về đúng dữ liệu.
+2. `http://localhost:8080/admin/site-settings` — đăng nhập bằng tài khoản ADMIN (KHÔNG hiện với tài
+   khoản UNION_CLERK — kiểm tra menu bên trái không có mục "Cấu hình chung" khi đăng nhập bằng văn
+   thư), thấy đầy đủ form với dữ liệu đã seed.
+3. Thử đổi 1 trường (vd Hotline hoặc Slogan), bấm "Lưu cấu hình", tải lại trang chủ — header/footer
+   phải đổi theo ngay (không cần build lại, đọc từ DB tại runtime).
+4. Xem "View Page Source" (KHÔNG phải F12 Elements — phải xem source thật để thấy giá trị sau khi
+   JS đã chạy) hoặc dùng DevTools tab Elements sau khi trang tải xong — thẻ `<title>` phải khớp
+   "Tiêu đề trang" đã nhập ở bước 3 nếu có đổi seoTitle.
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên

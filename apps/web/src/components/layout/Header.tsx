@@ -4,6 +4,7 @@ import { Menu, LogOut, LogIn, User as UserIcon, ChevronDown } from "lucide-react
 import type { PublicMenuItemDto } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { useSiteSettings } from "@/lib/site-settings-context";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -30,6 +31,7 @@ function navLinkClassName({ isActive }: { isActive: boolean }): string {
  */
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { settings } = useSiteSettings();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menu, setMenu] = useState<PublicMenuItemDto[]>([]);
   const [openMobileGroups, setOpenMobileGroups] = useState<Record<string, boolean>>({});
@@ -55,8 +57,8 @@ export function Header() {
       <div className="hidden bg-primary text-primary-foreground md:block">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-1.5 text-xs">
           <div className="flex items-center gap-4">
-            <span>Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên</span>
-            <span className="hidden lg:inline">Đoàn kết – Trách nhiệm – Vì quyền lợi đoàn viên</span>
+            <span>{settings.siteName}</span>
+            {settings.slogan ? <span className="hidden lg:inline">{settings.slogan}</span> : null}
           </div>
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
@@ -84,12 +86,13 @@ export function Header() {
 
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link to="/" className="flex items-center gap-3">
-          {/* Logo trường/công đoàn — file tĩnh tại apps/web/public/logo.png (giữ nguyên tên file
-           * dùng chung cho cả apps/web và apps/admin). Fallback "CĐ" bằng CSS (onError) nếu chưa
-           * có file logo.png trên server — tránh vỡ layout thành icon ảnh lỗi mặc định của trình duyệt. */}
+          {/* Logo trường/công đoàn — đường dẫn lấy từ cấu hình chung (settings.logoUrl, quản lý qua
+           * admin "Cấu hình chung"), mặc định trỏ file tĩnh /logo.png. Fallback "CĐ" bằng CSS
+           * (onError) nếu logoUrl trỏ tới ảnh không tồn tại — tránh vỡ layout thành icon ảnh lỗi mặc
+           * định của trình duyệt. */}
           <img
-            src="/logo.png"
-            alt="Công đoàn UTEHY"
+            src={settings.logoUrl}
+            alt={settings.shortName}
             className="size-10 shrink-0 object-contain"
             onError={(event) => {
               event.currentTarget.style.display = "none";
@@ -101,7 +104,7 @@ export function Header() {
             CĐ
           </span>
           <span className="flex flex-col leading-tight">
-            <span className="text-sm font-bold text-primary sm:text-base">Công đoàn UTEHY</span>
+            <span className="text-sm font-bold text-primary sm:text-base">{settings.shortName}</span>
             <span className="hidden text-xs text-muted-foreground sm:block">
               Trường Đại học Sư phạm Kỹ thuật Hưng Yên
             </span>
@@ -137,7 +140,7 @@ export function Header() {
           </SheetTrigger>
           <SheetContent side="right">
             <SheetHeader>
-              <SheetTitle>Công đoàn UTEHY</SheetTitle>
+              <SheetTitle>{settings.shortName}</SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col gap-1 overflow-y-auto px-4">
               {menu.map((item) =>

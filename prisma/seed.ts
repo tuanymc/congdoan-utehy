@@ -33,7 +33,8 @@ const PERMISSION_SEED = [
   "uniondepartment",
   "unionmember",
   "contactmessage",
-  "menuitem"
+  "menuitem",
+  "sitesetting"
 ].flatMap((module) =>
   ["view", "create", "update", "delete"].map((action) => ({
     key: `${module}:${action}`,
@@ -275,6 +276,36 @@ async function main() {
       console.log('  (bỏ qua mục menu "Thông báo" — chưa tìm thấy loại công văn tên "Thông báo" trong CSDL)');
     }
   }
+
+  // Cấu hình chung toàn site — chỉ "create" (update: {}), giữ đúng nội dung đang hard-code sẵn ở
+  // Footer.tsx/Header.tsx làm giá trị khởi tạo để đổi sang lấy từ CSDL mà giao diện không đổi khác gì
+  // — admin tự sửa qua trang "Cấu hình chung" sau lần seed đầu tiên, các lần seed sau không ghi đè.
+  console.log("Seeding cấu hình chung (site settings)...");
+  await prisma.siteSetting.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: {
+      id: "singleton",
+      siteName: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên",
+      shortName: "Công đoàn UTEHY",
+      slogan: "Đoàn kết – Trách nhiệm – Vì quyền lợi đoàn viên",
+      description:
+        "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — tổ chức đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của cán bộ, giảng viên, người lao động nhà trường.",
+      logoUrl: "/logo.png",
+      address: "Xã Dân Tiến, Huyện Khoái Châu, Tỉnh Hưng Yên",
+      hotline: "0962.490.411",
+      officePhone: "03123.713.108",
+      email: "congdoanutehy@gmail.com",
+      workingHoursWeekday: "Thứ Hai – Thứ Sáu: 7h30 – 17h00",
+      workingHoursLunch: "Nghỉ trưa: 11h30 – 13h30",
+      workingHoursWeekend: "Thứ Bảy, Chủ nhật: Nghỉ",
+      copyrightText: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên. Bảo lưu mọi quyền.",
+      seoTitle: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên",
+      seoDescription:
+        "Cổng thông tin điện tử Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — tin tức, hoạt động và tiện ích số dành cho đoàn viên.",
+      seoKeywords: "công đoàn, UTEHY, công đoàn UTEHY, đại học sư phạm kỹ thuật hưng yên"
+    }
+  });
 
   console.log("Done. Tài khoản admin mặc định:", adminEmail, "(đổi mật khẩu ngay sau lần đăng nhập đầu tiên)");
 }

@@ -11,6 +11,7 @@ import {
   Mail,
   Menu,
   Newspaper,
+  Settings,
   Tags,
   Users as UsersIcon,
   UsersRound
@@ -34,6 +35,9 @@ const BASE_NAV_ITEMS: NavItem[] = [
 ];
 
 const USERS_NAV_ITEM: NavItem = { to: "/users", label: "Người dùng", icon: UsersIcon };
+// "sitesetting" chỉ cấp cho ADMIN (không nằm trong clerkManagedModules ở prisma/seed.ts) — thông tin
+// định danh/SEO toàn site, không phải nội dung vận hành hàng ngày như UNION_CLERK quản lý.
+const SITE_SETTINGS_NAV_ITEM: NavItem = { to: "/site-settings", label: "Cấu hình chung", icon: Settings };
 
 // Chỉ ADMIN/UNION_CLERK có quyền "document:*"/"documenttype:*"/"homeslide:*"/"uniondepartment:*"/
 // "unionmember:*"/"contactmessage:*" (xem prisma/seed.ts) — cùng điều kiện với RequireDocumentAccess
@@ -93,7 +97,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const navItems: NavItem[] = [
     ...BASE_NAV_ITEMS,
     ...(hasDocumentAccess ? DOCUMENT_NAV_ITEMS : []),
-    ...(isAdmin ? [USERS_NAV_ITEM] : [])
+    ...(isAdmin ? [USERS_NAV_ITEM, SITE_SETTINGS_NAV_ITEM] : [])
   ];
 
   return (

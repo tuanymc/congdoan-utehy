@@ -487,6 +487,57 @@ model MenuItem {
 }
 
 // ============================================================================
+// DOMAIN: SITESETTING — cấu hình chung toàn site (logo, thông tin liên hệ, SEO mặc định)
+//
+// Bảng chỉ có DUY NHẤT 1 dòng (id cố định "singleton", không cho tạo thêm — xem
+// site-settings.service.ts#getOrCreate) — không dùng model rời cho từng field vì đây là cấu hình
+// tổng thể chỉnh sửa qua 1 form admin duy nhất, không cần lịch sử nhiều bản ghi. apps/web (Header,
+// Footer, thẻ <title>/<meta>) đọc qua GET /site-settings công khai; sửa qua PUT /admin/site-settings
+// (chỉ ADMIN, xem prisma/seed.ts — "sitesetting" KHÔNG nằm trong clerkManagedModules).
+// ============================================================================
+
+model SiteSetting {
+  /// Cố định "singleton" — đảm bảo chỉ có 1 dòng duy nhất, KHÔNG @default(uuid()) như các model khác.
+  id String @id @default("singleton")
+
+  siteName  String  @default("Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên")
+  shortName String  @default("Công đoàn UTEHY")
+  slogan    String?
+  /// Đoạn giới thiệu ngắn hiển thị ở footer — KHÔNG dùng cho thẻ meta description (xem seoDescription).
+  description String? @db.NVarChar(Max)
+  /// Đường dẫn ảnh logo — nhập tay giống HomeSlide.imageUrl (chưa có upload file qua admin ở bản MVP
+  /// này), mặc định trỏ file tĩnh có sẵn tại apps/web/public/logo.png và apps/admin/public/logo.png.
+  logoUrl String @default("/logo.png")
+
+  address     String?
+  hotline     String?
+  officePhone String?
+  email       String?
+  facebookUrl String?
+  youtubeUrl  String?
+
+  workingHoursWeekday String?
+  workingHoursLunch   String?
+  workingHoursWeekend String?
+
+  /// Dòng bản quyền cuối footer — KHÔNG gồm năm (footer tự chèn năm hiện tại phía trước, xem
+  /// Footer.tsx) để không phải sửa cấu hình này mỗi khi sang năm mới.
+  copyrightText String?
+
+  /// Mặc định cho thẻ <title>/<meta name="description">/<meta name="keywords"> toàn site — áp dụng
+  /// site-wide (chưa hỗ trợ SEO riêng theo từng trang ở bản MVP này).
+  seoTitle       String?
+  seoDescription String? @db.NVarChar(Max)
+  seoKeywords    String?
+  /// Ảnh chia sẻ mạng xã hội (og:image) — cùng quy ước nhập tay như logoUrl.
+  ogImageUrl String?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+// ============================================================================
 // TODO Phase 2 — DOMAIN: MEMBERSHIP (phần còn lại)
 //   Danh bạ công khai (UnionMember/UnionDepartment) đã triển khai ở trên — phần CÒN LẠI của Phase 2
 //   (tài khoản đoàn viên tự quản lý, đóng đoàn phí, Leader/Position/Term đầy đủ...) làm sau nếu cần.

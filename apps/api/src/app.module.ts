@@ -12,6 +12,7 @@ import { UnionDirectoryModule } from "./modules/union-directory/union-directory.
 import { HomeSlideModule } from "./modules/home-slide/home-slide.module";
 import { ContactModule } from "./modules/contact/contact.module";
 import { MenuItemModule } from "./modules/menu-item/menu-item.module";
+import { SiteSettingsModule } from "./modules/site-settings/site-settings.module";
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { MenuItemModule } from "./modules/menu-item/menu-item.module";
     UnionDirectoryModule,
     HomeSlideModule,
     ContactModule,
-    MenuItemModule
+    MenuItemModule,
+    SiteSettingsModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
 })
