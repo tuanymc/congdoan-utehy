@@ -1,13 +1,28 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, StreamableFile, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  StreamableFile,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors
+} from "@nestjs/common";
+import { FilesInterceptor } from "@nestjs/platform-express";
 import { createReadStream } from "node:fs";
 import type { Response } from "express";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import type { JwtAccessPayload, OfficialDocumentDetailDto, OfficialDocumentListItemDto, PaginatedResult } from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { RequirePermissions } from "../../common/decorators/roles.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
-import { OfficialDocumentsService } from "./official-documents.service";
+import { OfficialDocumentsService, type UploadedAttachmentFile } from "./official-documents.service";
 import { CreateOfficialDocumentDto } from "./dto/create-official-document.dto";
 import { UpdateOfficialDocumentDto } from "./dto/update-official-document.dto";
 import { QueryOfficialDocumentsDto } from "./dto/query-official-documents.dto";
@@ -73,5 +88,33 @@ export class AdminOfficialDocumentsController {
       "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`
     });
     return new StreamableFile(createReadStream(physicalPath));
+  }
+
+  // Cho phép chọn 1 hoặc nhiều file cùng lúc (field "files" lặp lại nhiều lần trong multipart/form-data
+  // — FormData.append("files", file) gọi nhiều lần phía client, xem OfficialDocumentForm.tsx). Dùng
+  // permission "document:update" (không tạo riêng "document:upload") vì đính kèm thêm file cho 1 công
+  // văn đã tồn tại về bản chất là 1 dạng cập nhật công văn đó. Multer mặc định dùng memory storage khi
+  // không truyền option `storage` — file nằm trong RAM dạng buffer tới khi service tự ghi ra đĩa (xem
+  // OfficialDocumentsService.addAttachments), tránh phải khai báo đường dẫn lưu ngay tại decorator.
+  @RequirePermissions("document:update")
+  @ApiConsumes("multipart/form-data")
+  @UseInterceptors(FilesInterceptor("files", 10))
+  @Post(":id/attachments")
+  uploadAttachments(
+    @Param("id") id: string,
+    @UploadedFiles() files: UploadedAttachmentFile[] | undefined,
+    @CurrentUser() actor: JwtAccessPayload
+  ): Promise<OfficialDocumentDetailDto> {
+    return this.officialDocumentsService.addAttachments(id, files ?? [], actor.sub);
+  }
+
+  @RequirePermissions("document:update")
+  @Delete(":id/attachments/:attachmentId")
+  removeAttachment(
+    @Param("id") id: string,
+    @Param("attachmentId") attachmentId: string,
+    @CurrentUser() actor: JwtAccessPayload
+  ): Promise<void> {
+    return this.officialDocumentsService.removeAttachment(id, attachmentId, actor.sub);
   }
 }

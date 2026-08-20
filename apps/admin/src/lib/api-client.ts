@@ -212,3 +212,52 @@ export async function apiFetchBlob(path: string): Promise<{ blob: Blob; fileName
   const blob = await response.blob();
   return { blob, fileName };
 }
+
+/**
+ * Upload multipart/form-data (vd chọn 1 hoặc nhiều file đính kèm công văn/biểu mẫu) — không dùng được
+ * apiFetch() vì hàm đó luôn JSON.stringify body và set Content-Type: application/json, trong khi
+ * FormData cần trình duyệt tự set Content-Type kèm boundary. Có tự refresh token khi 401 giống
+ * apiFetch() (khác apiFetchBlob) vì upload là thao tác ghi dữ liệu, đáng để retry hơn là báo lỗi ngay.
+ */
+export async function apiFetchUpload<T>(path: string, formData: FormData, _isRetry = false): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (currentAccessToken) {
+    headers.Authorization = `Bearer ${currentAccessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: formData });
+
+  if (response.status === 401) {
+    if (_isRetry) {
+      clearTokens();
+      const errorBody = await parseErrorBody(response);
+      throw new ApiError(
+        errorBody?.message ?? "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
+        401,
+        errorBody?.errorCode ?? "AUTH_SESSION_EXPIRED",
+        errorBody?.details
+      );
+    }
+    try {
+      await refreshAccessToken();
+    } catch (refreshError) {
+      clearTokens();
+      if (refreshError instanceof ApiError) throw refreshError;
+      throw new ApiError("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.", 401, "AUTH_SESSION_EXPIRED");
+    }
+    return apiFetchUpload<T>(path, formData, true);
+  }
+
+  if (!response.ok) {
+    const errorBody = await parseErrorBody(response);
+    throw new ApiError(
+      errorBody?.message ?? "Tải file lên thất bại, vui lòng thử lại sau.",
+      response.status,
+      errorBody?.errorCode ?? "UNKNOWN_ERROR",
+      errorBody?.details
+    );
+  }
+
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}

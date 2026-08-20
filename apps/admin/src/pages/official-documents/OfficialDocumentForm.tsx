@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCreate, useList, useOne, useUpdate } from "@refinedev/core";
-import { Download } from "lucide-react";
+import { Download, Trash2, Upload } from "lucide-react";
 import type {
   CreateOfficialDocumentRequest,
   DocumentDirection,
@@ -16,9 +16,16 @@ import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { PageLoading } from "../../components/common/PageLoading";
-import { apiFetchBlob } from "../../lib/api-client";
+import { apiFetch, apiFetchBlob, apiFetchUpload } from "../../lib/api-client";
 import { pushToast } from "../../components/common/toast-store";
 import { DIRECTION_OPTIONS, STATUS_OPTIONS } from "./constants";
+
+/** vd "2.4 MB" — chỉ dùng để hiển thị cho người chọn file xem trước khi tải lên. */
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface OfficialDocumentFormProps {
   mode: "create" | "edit";
@@ -41,12 +48,16 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
   const navigate = useNavigate();
 
   const { data: typesResult, isLoading: typesLoading } = useList<DocumentTypeDto>({ resource: "document-types" });
-  const { data: docResult, isLoading: docLoading } = useOne<OfficialDocumentDetailDto>({
+  const {
+    data: docResult,
+    isLoading: docLoading,
+    refetch: refetchDocument
+  } = useOne<OfficialDocumentDetailDto>({
     resource: "official-documents",
     id,
     queryOptions: { enabled: mode === "edit" && Boolean(id) }
   });
-  const { mutate: createDocument, isLoading: isCreating } = useCreate();
+  const { mutate: createDocument, isLoading: isCreating } = useCreate<OfficialDocumentDetailDto>();
   const { mutate: updateDocument, isLoading: isUpdating } = useUpdate();
 
   const [title, setTitle] = useState("");
@@ -63,6 +74,9 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
   const [summary, setSummary] = useState("");
   const [content, setContent] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode === "edit" && docResult?.data) {
@@ -110,13 +124,83 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
     if (mode === "create") {
       createDocument(
         { resource: "official-documents", values: payload },
-        { onSuccess: () => navigate("/official-documents") }
+        {
+          onSuccess: async (response) => {
+            const newId = response.data?.id;
+            // Đã chọn sẵn file trước khi bấm Lưu (xem card "File đính kèm" ở dưới) — công văn phải có id
+            // thật (vừa tạo xong) mới upload được vì DocumentAttachment.documentId bắt buộc, không thể
+            // upload trước khi có công văn. Lỗi upload ở đây KHÔNG chặn điều hướng — công văn đã lưu
+            // thành công, chỉ báo lỗi để người dùng biết cần vào Sửa để thử tải lại file.
+            if (newId && pendingFiles.length > 0) {
+              await uploadFilesToDocument(newId, pendingFiles);
+            }
+            navigate("/official-documents");
+          }
+        }
       );
     } else if (id) {
       updateDocument(
         { resource: "official-documents", id, values: payload },
         { onSuccess: () => navigate("/official-documents") }
       );
+    }
+  }
+
+  /** Dùng chung cho cả 2 luồng: upload ngay sau khi vừa tạo công văn (mode=create) và bấm nút "Tải lên"
+   * trong card File đính kèm khi đang sửa (mode=edit). Field "files" lặp lại nhiều lần trong FormData
+   * — khớp FilesInterceptor("files", 10) phía API, cho phép chọn 1 hoặc nhiều file cùng lúc. */
+  async function uploadFilesToDocument(documentId: string, files: File[]): Promise<void> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+    try {
+      await apiFetchUpload(`/admin/official-documents/${documentId}/attachments`, formData);
+    } catch (error) {
+      pushToast({
+        variant: "error",
+        message: "Tải file lên thất bại",
+        description: error instanceof Error ? error.message : "Vui lòng thử lại sau."
+      });
+    }
+  }
+
+  function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const list = event.target.files;
+    if (!list || list.length === 0) return;
+    setPendingFiles((prev) => [...prev, ...Array.from(list)]);
+    // Reset value để chọn lại đúng file vừa gỡ (bấm Xoá) vẫn kích hoạt lại được sự kiện change.
+    event.target.value = "";
+  }
+
+  function removePendingFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleUploadPendingFiles() {
+    if (!id || pendingFiles.length === 0) return;
+    setIsUploading(true);
+    try {
+      await uploadFilesToDocument(id, pendingFiles);
+      setPendingFiles([]);
+      await refetchDocument();
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleDeleteAttachment(attachmentId: string) {
+    if (!id) return;
+    setDeletingAttachmentId(attachmentId);
+    try {
+      await apiFetch(`/admin/official-documents/${id}/attachments/${attachmentId}`, { method: "DELETE" });
+      await refetchDocument();
+    } catch (error) {
+      pushToast({
+        variant: "error",
+        message: "Không xoá được file đính kèm",
+        description: error instanceof Error ? error.message : "Vui lòng thử lại sau."
+      });
+    } finally {
+      setDeletingAttachmentId(null);
     }
   }
 
@@ -321,18 +405,54 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
         </Card>
       )}
 
-      {mode === "edit" && document && (
-        <Card>
-          <CardContent className="flex flex-col gap-3 pt-6">
-            <div>
-              <h2 className="text-lg font-semibold">File đính kèm ({document.attachments.length})</h2>
-              <p className="text-sm text-muted-foreground">
-                Nhập từ web cũ — hệ thống hiện chưa hỗ trợ đính kèm file mới trực tiếp qua trang này.
-              </p>
-            </div>
+      <Card>
+        <CardContent className="flex flex-col gap-3 pt-6">
+          <div>
+            <h2 className="text-lg font-semibold">
+              File đính kèm{document ? ` (${document.attachments.length})` : ""}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {mode === "create"
+                ? "Chọn 1 hoặc nhiều file — sẽ tự động tải lên ngay sau khi lưu công văn ở trên."
+                : 'Chọn thêm file rồi bấm "Tải lên", hoặc tải xuống/xoá file đã có bên dưới.'}
+            </p>
+          </div>
 
-            {document.attachments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Không có file đính kèm.</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input type="file" multiple onChange={handleFilesSelected} className="sm:max-w-sm" />
+            {mode === "edit" && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={pendingFiles.length === 0 || isUploading}
+                onClick={() => void handleUploadPendingFiles()}
+              >
+                <Upload className="size-4" />
+                {isUploading ? "Đang tải lên..." : `Tải lên${pendingFiles.length ? ` (${pendingFiles.length})` : ""}`}
+              </Button>
+            )}
+          </div>
+
+          {pendingFiles.length > 0 && (
+            <ul className="flex flex-col divide-y rounded-md border">
+              {pendingFiles.map((file, index) => (
+                <li key={`${file.name}-${index}-${file.size}`} className="flex items-center justify-between gap-3 px-4 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removePendingFile(index)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {mode === "edit" && document && (
+            document.attachments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Chưa có file đính kèm nào.</p>
             ) : (
               <ul className="flex flex-col divide-y rounded-md border">
                 {document.attachments.map((attachment) => (
@@ -343,23 +463,34 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
                         <p className="truncate text-sm text-muted-foreground">{attachment.description}</p>
                       )}
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={downloadingId === attachment.id}
-                      onClick={() => handleDownload(attachment.id)}
-                    >
-                      <Download className="size-4" />
-                      {downloadingId === attachment.id ? "Đang tải..." : "Tải xuống"}
-                    </Button>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={downloadingId === attachment.id}
+                        onClick={() => handleDownload(attachment.id)}
+                      >
+                        <Download className="size-4" />
+                        {downloadingId === attachment.id ? "Đang tải..." : "Tải xuống"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={deletingAttachmentId === attachment.id}
+                        onClick={() => void handleDeleteAttachment(attachment.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            )
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

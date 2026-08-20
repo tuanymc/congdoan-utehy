@@ -277,6 +277,23 @@ async function main() {
     }
   }
 
+  // "Biểu mẫu Công đoàn" — DocumentType MỚI phục vụ tính năng Kho biểu mẫu (Tiện ích số, Phase 4a),
+  // KHÔNG có trong dữ liệu ETL từ web cũ (web cũ trỏ thẳng /van-ban tới trang tải file tĩnh, không có
+  // khái niệm loại công văn tương ứng — xem ghi chú CHILD_MENU_SEED ở trên). DocumentType không có
+  // @unique trên `name` nên phải tự tra trước bằng findFirst rồi mới create, để chạy lại seed nhiều
+  // lần không tạo trùng lặp (khác upsert theo code như các DocumentType khác vốn không áp dụng được ở
+  // đây vì DocumentType này không có legacyCode để tra).
+  console.log("Seeding loại công văn 'Biểu mẫu Công đoàn' (Kho biểu mẫu)...");
+  const bieuMauType = await prisma.documentType.findFirst({ where: { name: "Biểu mẫu Công đoàn" } });
+  if (!bieuMauType) {
+    await prisma.documentType.create({
+      data: {
+        name: "Biểu mẫu Công đoàn",
+        description: "Biểu mẫu, đơn từ dùng chung cho đoàn viên — hiển thị ở trang Kho biểu mẫu trong Tiện ích số."
+      }
+    });
+  }
+
   // Cấu hình chung toàn site — chỉ "create" (update: {}), giữ đúng nội dung đang hard-code sẵn ở
   // Footer.tsx/Header.tsx làm giá trị khởi tạo để đổi sang lấy từ CSDL mà giao diện không đổi khác gì
   // — admin tự sửa qua trang "Cấu hình chung" sau lần seed đầu tiên, các lần seed sau không ghi đè.

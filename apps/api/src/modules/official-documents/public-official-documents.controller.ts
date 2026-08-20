@@ -23,6 +23,14 @@ export class PublicOfficialDocumentsController {
     return this.officialDocumentsService.listPublic(query);
   }
 
+  // Đặt TRƯỚC ":id" (bắt buộc — Nest/Express khớp route theo thứ tự khai báo trong class, để sau thì
+  // "forms" sẽ bị ":id" nuốt mất, hiểu nhầm "forms" là 1 id). Dùng cho trang "Kho biểu mẫu" trong Tiện
+  // ích số — xem listPublicForms() ở service.
+  @Get("forms")
+  listForms(@Query() query: QueryPublicOfficialDocumentsDto): Promise<PaginatedResult<PublicOfficialDocumentListItemDto>> {
+    return this.officialDocumentsService.listPublicForms(query);
+  }
+
   @Get(":id")
   findOne(@Param("id") id: string): Promise<PublicOfficialDocumentDetailDto> {
     return this.officialDocumentsService.findOnePublic(id);

@@ -11,6 +11,8 @@ import { DocumentDetailPage } from "./pages/DocumentDetailPage";
 import { UnionMembersPage } from "./pages/UnionMembersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MemberPortalPage } from "./pages/MemberPortalPage";
+import { DigitalUtilitiesPage } from "./pages/DigitalUtilitiesPage";
+import { DigitalFormsPage } from "./pages/DigitalFormsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 export default function App() {
@@ -24,6 +26,8 @@ export default function App() {
         <Route path="van-ban" element={<DocumentsPage />} />
         <Route path="van-ban/:id" element={<DocumentDetailPage />} />
         <Route path="danh-ba-cong-doan-vien" element={<UnionMembersPage />} />
+        <Route path="tien-ich-so-cong-doan" element={<DigitalUtilitiesPage />} />
+        <Route path="tien-ich-so-cong-doan/bieu-mau" element={<DigitalFormsPage />} />
         <Route path="lien-he" element={<ContactPage />} />
         <Route path="dang-nhap" element={<LoginPage />} />
         <Route

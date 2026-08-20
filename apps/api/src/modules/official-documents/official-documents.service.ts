@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { randomUUID } from "node:crypto";
 import type {
   DocumentDirection,
   DocumentStatus,
@@ -16,6 +17,30 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
 import { CreateOfficialDocumentDto } from "./dto/create-official-document.dto";
 import { UpdateOfficialDocumentDto } from "./dto/update-official-document.dto";
+
+/** Tối thiểu những field cần đọc từ file multer — tự khai báo thay vì phụ thuộc gói @types/multer
+ * (chưa cài trong repo) để không phải thêm dependency mới chỉ vì 1 type. Khớp đúng shape multer trả
+ * về khi dùng memory storage (mặc định của FilesInterceptor khi không truyền `storage`) — xem
+ * admin-official-documents.controller.ts. */
+export interface UploadedAttachmentFile {
+  originalname: string;
+  buffer: Buffer;
+  size: number;
+  mimetype: string;
+}
+
+/** Giới hạn dung lượng mỗi file đính kèm mới upload qua admin — công văn/biểu mẫu thường là PDF/Word/
+ * Excel scan, 25MB đủ rộng rãi cho các trường hợp thường gặp mà vẫn chặn được upload nhầm file quá khổ. */
+const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024;
+
+/** Bỏ dấu phân cách thư mục và ký tự khác chữ/số/dấu chấm/gạch ngang khỏi tên file gốc trước khi ghép
+ * vào tên file lưu trên đĩa — tên file gốc do người dùng chọn, KHÔNG được tin tưởng tuyệt đối (chặn
+ * path traversal kiểu "../../x" hoặc ký tự đặc biệt gây lỗi trên NTFS). Tên hiển thị cho người dùng
+ * (DocumentAttachment.fileName) vẫn giữ nguyên bản gốc, chỉ tên VẬT LÝ trên đĩa mới bị làm sạch. */
+function sanitizeFileNameForDisk(name: string): string {
+  const cleaned = name.replace(/[\\/]/g, "_").replace(/[^\w.-]+/g, "_");
+  return cleaned.slice(-150) || "file";
+}
 
 /**
  * DocumentAttachment.path giữ nguyên định dạng tương đối từ web cũ, ví dụ "DocumentFiles/admin/xxx.pdf"
@@ -209,6 +234,43 @@ export class OfficialDocumentsService {
     return { items: documents.map(toPublicListItem), total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
+  /** Công khai — danh sách "Kho biểu mẫu" (Tiện ích số, Phase 4a): mọi công văn isPublic=true thuộc
+   * DocumentType "Biểu mẫu Công đoàn" (xem seed.ts). Tra theo TÊN thay vì hard-code id vì DocumentType
+   * này được tạo lúc seed với id sinh tự động, không có legacyCode cố định để tham chiếu — cùng cách
+   * làm với mục menu "Thông báo" ở seed.ts. orderBy createdAt (không phải issuedAt như listPublic())
+   * vì biểu mẫu thường không có ngày ban hành, sắp theo issuedAt sẽ khiến hầu hết mục (issuedAt=null)
+   * xếp lộn xộn. */
+  async listPublicForms(
+    query: PaginationQuery & { search?: string }
+  ): Promise<PaginatedResult<PublicOfficialDocumentListItemDto>> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+
+    const formsType = await this.prisma.documentType.findFirst({ where: { name: "Biểu mẫu Công đoàn" } });
+    if (!formsType) {
+      return { items: [], total: 0, page, pageSize, totalPages: 0 };
+    }
+
+    const where: Prisma.OfficialDocumentWhereInput = {
+      isPublic: true,
+      documentTypeId: formsType.id,
+      ...(query.search ? { OR: [{ title: { contains: query.search } }, { summary: { contains: query.search } }] } : {})
+    };
+
+    const [total, documents] = await this.prisma.$transaction([
+      this.prisma.officialDocument.count({ where }),
+      this.prisma.officialDocument.findMany({
+        where,
+        ...documentWithRelations,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      })
+    ]);
+
+    return { items: documents.map(toPublicListItem), total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+  }
+
   async findOnePublic(id: string): Promise<PublicOfficialDocumentDetailDto> {
     const document = await this.prisma.officialDocument.findFirst({
       where: { id, isPublic: true },
@@ -302,5 +364,70 @@ export class OfficialDocumentsService {
     const document = await this.prisma.officialDocument.findFirst({ where: { id: documentId, isPublic: true } });
     if (!document) throw new NotFoundException("Không tìm thấy công văn.");
     return this.getAttachmentForDownload(documentId, attachmentId);
+  }
+
+  /** Upload 1 hoặc nhiều file đính kèm mới cho 1 công văn/biểu mẫu đã tồn tại — ghi file vào
+   * "<documentFilesDir>/admin-uploads/<documentId>/<uuid>-<tên gốc đã làm sạch>" (KHÔNG đụng vào cây
+   * thư mục DocumentFiles gộp từ web cũ) rồi tạo bản ghi DocumentAttachment tương ứng. path lưu dạng
+   * tương đối "admin-uploads/..." nên getAttachmentForDownload() dùng lại được nguyên vẹn, không cần
+   * sửa logic tải xuống đã có. */
+  async addAttachments(
+    documentId: string,
+    files: UploadedAttachmentFile[],
+    actorUserId: string
+  ): Promise<OfficialDocumentDetailDto> {
+    await this.findOne(documentId);
+    if (!files.length) {
+      throw new BadRequestException("Chưa chọn file nào để tải lên.");
+    }
+    for (const file of files) {
+      if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+        throw new BadRequestException(
+          `File "${file.originalname}" vượt quá giới hạn ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB.`
+        );
+      }
+    }
+
+    for (const file of files) {
+      const diskName = `${randomUUID()}-${sanitizeFileNameForDisk(file.originalname)}`;
+      const relPath = `admin-uploads/${documentId}/${diskName}`;
+      const physicalPath = resolve(join(resolve(this.documentFilesDir), relPath));
+      mkdirSync(dirname(physicalPath), { recursive: true });
+      writeFileSync(physicalPath, file.buffer);
+
+      await this.prisma.documentAttachment.create({
+        data: {
+          documentId,
+          fileName: file.originalname,
+          path: relPath,
+          uploadedAt: new Date()
+        }
+      });
+    }
+
+    await this.auditLog.record({ actorUserId, action: "update", entityType: "OfficialDocument", entityId: documentId });
+    return this.findOne(documentId);
+  }
+
+  /** Xoá 1 file đính kèm khỏi công văn. Luôn xoá bản ghi CSDL; CHỈ xoá file vật lý trên đĩa nếu path
+   * nằm trong "admin-uploads/" (tức do chính endpoint upload ở trên tạo ra) — file đính kèm nhập từ
+   * ETL web cũ nằm trong cây DocumentFiles dùng chung, KHÔNG được đụng tới dù admin xoá nhầm bản ghi. */
+  async removeAttachment(documentId: string, attachmentId: string, actorUserId: string): Promise<void> {
+    const attachment = await this.prisma.documentAttachment.findFirst({ where: { id: attachmentId, documentId } });
+    if (!attachment) throw new NotFoundException("Không tìm thấy file đính kèm.");
+
+    await this.prisma.documentAttachment.delete({ where: { id: attachmentId } });
+
+    if (attachment.path.startsWith("admin-uploads/")) {
+      try {
+        const physicalPath = resolveAttachmentPhysicalPath(this.documentFilesDir, attachment.path);
+        if (existsSync(physicalPath)) unlinkSync(physicalPath);
+      } catch {
+        // Best-effort — bản ghi CSDL đã xoá xong là quan trọng nhất; lỡ không xoá được file vật lý
+        // (vd quyền NTFS) thì chỉ để lại rác trên đĩa, không chặn thao tác của admin.
+      }
+    }
+
+    await this.auditLog.record({ actorUserId, action: "update", entityType: "OfficialDocument", entityId: documentId });
   }
 }
