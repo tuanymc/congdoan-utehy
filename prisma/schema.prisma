@@ -445,6 +445,45 @@ model ContactMessage {
 }
 
 // ============================================================================
+// DOMAIN: MENUITEM — menu điều hướng chính trang công khai (apps/web Header.tsx)
+//
+// Trước đây menu bị hard-code trong Header.tsx (Trang chủ, Giới thiệu▾, Tin hoạt động▾, Văn bản▾...),
+// mỗi lần đổi cấu trúc menu đều phải sửa code + build/deploy lại. Model này đưa toàn bộ menu vào DB
+// để quản trị viên tự sửa qua trang admin — không migrate gì từ web cũ, tính năng mới hoàn toàn.
+// Tối đa 2 cấp (tự tham chiếu qua parentId) — khớp đúng độ sâu menu web cũ (mục cấp 1 + dropdown con),
+// KHÔNG cho phép cấp 3 (xem validate ở menu-items.service.ts).
+// ============================================================================
+
+model MenuItem {
+  id    String @id @default(uuid())
+  /// Mã cố định dùng để seed lại an toàn (upsert theo code, xem prisma/seed.ts) — KHÔNG hiển thị cho
+  /// người dùng. Mục do admin tự tạo thêm sau này để null.
+  code  String? @unique
+  label String
+  /// Đường dẫn khi bấm vào mục — vd "/gioi-thieu", "/tin-tuc?category=van-hoa-doc", "/gioi-thieu#lien-he".
+  url       String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+  /// Chỉ có ý nghĩa khi parentId=null (mục cấp 1) — bật thì khi dựng cây công khai (GET /menu),
+  /// dropdown mục này được tự động chèn thêm các Category thật (isAboutSection=false, chưa gắn ở
+  /// menu item nào khác) vào SAU danh sách mục con thủ công — dùng cho "Tin hoạt động" để menu tự
+  /// cập nhật khi thêm chuyên mục mới, không cần sửa menu thủ công mỗi lần.
+  autoCategoryChildren Boolean @default(false)
+
+  parentId String?
+  /// onDelete Restrict (không Cascade) — service tự xoá children trước khi xoá cha (xem
+  /// menu-items.service.ts#remove) để tránh phụ thuộc vào referential action tự động của SQL Server.
+  parent   MenuItem?  @relation("MenuItemChildren", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  children MenuItem[] @relation("MenuItemChildren")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@map("menu_items")
+}
+
+// ============================================================================
 // TODO Phase 2 — DOMAIN: MEMBERSHIP (phần còn lại)
 //   Danh bạ công khai (UnionMember/UnionDepartment) đã triển khai ở trên — phần CÒN LẠI của Phase 2
 //   (tài khoản đoàn viên tự quản lý, đóng đoàn phí, Leader/Position/Term đầy đủ...) làm sau nếu cần.

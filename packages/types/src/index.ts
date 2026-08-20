@@ -6,3 +6,4 @@ export * from "./official-document";
 export * from "./union-directory";
 export * from "./home-slide";
 export * from "./contact";
+export * from "./menu";

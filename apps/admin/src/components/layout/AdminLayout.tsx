@@ -6,6 +6,7 @@ import {
   FolderTree,
   Images,
   LayoutDashboard,
+  ListTree,
   LogOut,
   Mail,
   Menu,
@@ -43,7 +44,8 @@ const DOCUMENT_NAV_ITEMS: NavItem[] = [
   { to: "/home-slides", label: "Banner trang chủ", icon: Images },
   { to: "/union-members", label: "Công đoàn viên", icon: UsersRound },
   { to: "/union-departments", label: "Công đoàn bộ phận", icon: FolderTree },
-  { to: "/contact-messages", label: "Liên hệ", icon: Mail }
+  { to: "/contact-messages", label: "Liên hệ", icon: Mail },
+  { to: "/menu-items", label: "Menu điều hướng", icon: ListTree }
 ];
 
 function BrandTitle() {

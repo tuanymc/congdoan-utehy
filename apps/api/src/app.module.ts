@@ -11,6 +11,7 @@ import { OfficialDocumentsModule } from "./modules/official-documents/official-d
 import { UnionDirectoryModule } from "./modules/union-directory/union-directory.module";
 import { HomeSlideModule } from "./modules/home-slide/home-slide.module";
 import { ContactModule } from "./modules/contact/contact.module";
+import { MenuItemModule } from "./modules/menu-item/menu-item.module";
 
 @Module({
   imports: [
@@ -24,7 +25,8 @@ import { ContactModule } from "./modules/contact/contact.module";
     OfficialDocumentsModule,
     UnionDirectoryModule,
     HomeSlideModule,
-    ContactModule
+    ContactModule,
+    MenuItemModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
 })

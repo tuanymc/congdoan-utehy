@@ -35,6 +35,8 @@ import { UnionDepartmentForm } from "./pages/union-departments/UnionDepartmentFo
 import { UnionMemberList } from "./pages/union-members/UnionMemberList";
 import { UnionMemberForm } from "./pages/union-members/UnionMemberForm";
 import { ContactMessageList } from "./pages/contact-messages/ContactMessageList";
+import { MenuItemList } from "./pages/menu-items/MenuItemList";
+import { MenuItemForm } from "./pages/menu-items/MenuItemForm";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -116,6 +118,13 @@ export function App() {
             name: "contact-messages",
             list: "/contact-messages",
             meta: { label: "Liên hệ" }
+          },
+          {
+            name: "menu-items",
+            list: "/menu-items",
+            create: "/menu-items/create",
+            edit: "/menu-items/edit/:id",
+            meta: { label: "Menu điều hướng" }
           }
         ]}
         options={{
@@ -237,6 +246,19 @@ export function App() {
               }
             >
               <Route index element={<ContactMessageList />} />
+            </Route>
+
+            <Route
+              path="/menu-items"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<MenuItemList />} />
+              <Route path="create" element={<MenuItemForm mode="create" />} />
+              <Route path="edit/:id" element={<MenuItemForm mode="edit" />} />
             </Route>
           </Route>
 

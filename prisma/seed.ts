@@ -32,7 +32,8 @@ const PERMISSION_SEED = [
   "homeslide",
   "uniondepartment",
   "unionmember",
-  "contactmessage"
+  "contactmessage",
+  "menuitem"
 ].flatMap((module) =>
   ["view", "create", "update", "delete"].map((action) => ({
     key: `${module}:${action}`,
@@ -102,7 +103,15 @@ async function main() {
   // view/create/update, KHÔNG cấp delete (tránh xoá nhầm dữ liệu đã migrate từ web cũ hoặc do người
   // dùng gửi; xoá vẫn làm được qua ADMIN khi thật sự cần).
   console.log("Seeding quyền công văn + nội dung công khai cho UNION_CLERK...");
-  const clerkManagedModules = ["documenttype", "document", "homeslide", "uniondepartment", "unionmember", "contactmessage"];
+  const clerkManagedModules = [
+    "documenttype",
+    "document",
+    "homeslide",
+    "uniondepartment",
+    "unionmember",
+    "contactmessage",
+    "menuitem"
+  ];
   const clerkDocumentPermissions = await prisma.permission.findMany({
     where: { module: { in: clerkManagedModules }, action: { in: ["view", "create", "update"] } }
   });
@@ -141,6 +150,85 @@ async function main() {
     update: {},
     create: { slug: "tin-chung", name: "Tin chung", sortOrder: 0 }
   });
+
+  // Menu điều hướng mặc định — khớp y hệt cấu trúc từng hard-code ở apps/web Header.tsx trước khi có
+  // trang quản lý menu trong admin. Chỉ "create" (update: {}) — sau lần seed đầu tiên, admin có thể tự
+  // sửa/xoá/thêm mục qua trang quản trị mà không lo lần "pnpm prisma:seed" sau ghi đè mất tuỳ chỉnh.
+  console.log("Seeding menu điều hướng mặc định...");
+  const TOP_MENU_SEED = [
+    { code: "top-home", label: "Trang chủ", url: "/", sortOrder: 0 },
+    { code: "top-about", label: "Giới thiệu", url: "/gioi-thieu", sortOrder: 10 },
+    { code: "top-activity", label: "Tin hoạt động", url: "/tin-tuc", sortOrder: 20, autoCategoryChildren: true },
+    { code: "top-document", label: "Văn bản", url: "/van-ban", sortOrder: 30 },
+    { code: "top-members", label: "Công đoàn viên", url: "/danh-ba-cong-doan-vien", sortOrder: 40 },
+    { code: "top-feedback", label: "Ý kiến Công đoàn viên", url: "/tin-tuc?category=tin-tuc-khac", sortOrder: 50 },
+    { code: "top-reading", label: "Văn hóa đọc", url: "/tin-tuc?category=van-hoa-doc", sortOrder: 60 }
+  ];
+  const topMenuIds = new Map<string, string>();
+  for (const m of TOP_MENU_SEED) {
+    const item = await prisma.menuItem.upsert({
+      where: { code: m.code },
+      update: {},
+      create: {
+        code: m.code,
+        label: m.label,
+        url: m.url,
+        sortOrder: m.sortOrder,
+        autoCategoryChildren: m.autoCategoryChildren ?? false
+      }
+    });
+    topMenuIds.set(m.code, item.id);
+  }
+
+  const CHILD_MENU_SEED = [
+    {
+      code: "about-child-chung",
+      parentCode: "top-about",
+      label: "Giới thiệu chung",
+      url: "/gioi-thieu#gioi-thieu-chung",
+      sortOrder: 0
+    },
+    {
+      code: "about-child-bch",
+      parentCode: "top-about",
+      label: "Ban Chấp hành Công đoàn",
+      url: "/gioi-thieu#ban-chap-hanh-cong-doan",
+      sortOrder: 10
+    },
+    {
+      code: "about-child-cbcm",
+      parentCode: "top-about",
+      label: "Các ban chuyên môn",
+      url: "/gioi-thieu#cac-ban-chuyen-mon",
+      sortOrder: 20
+    },
+    { code: "about-child-lienhe", parentCode: "top-about", label: "Liên hệ", url: "/lien-he", sortOrder: 30 },
+    { code: "activity-child-all", parentCode: "top-activity", label: "Tất cả tin tức", url: "/tin-tuc", sortOrder: 0 },
+    { code: "document-child-all", parentCode: "top-document", label: "Tất cả văn bản", url: "/van-ban", sortOrder: 0 },
+    {
+      code: "document-child-outgoing",
+      parentCode: "top-document",
+      label: "Công văn đi",
+      url: "/van-ban?direction=OUTGOING",
+      sortOrder: 10
+    },
+    {
+      code: "document-child-incoming",
+      parentCode: "top-document",
+      label: "Công văn đến",
+      url: "/van-ban?direction=INCOMING",
+      sortOrder: 20
+    }
+  ];
+  for (const c of CHILD_MENU_SEED) {
+    const parentId = topMenuIds.get(c.parentCode);
+    if (!parentId) continue;
+    await prisma.menuItem.upsert({
+      where: { code: c.code },
+      update: {},
+      create: { code: c.code, label: c.label, url: c.url, sortOrder: c.sortOrder, parentId }
+    });
+  }
 
   console.log("Done. Tài khoản admin mặc định:", adminEmail, "(đổi mật khẩu ngay sau lần đăng nhập đầu tiên)");
 }

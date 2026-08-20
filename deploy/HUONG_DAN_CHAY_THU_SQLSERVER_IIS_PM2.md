@@ -512,6 +512,65 @@ công khai sẽ tự hiển thị nội dung từ các chuyên mục đó thay v
 
 ---
 
+## Bước 6.7 — Migrate schema đợt 3 (Menu điều hướng quản lý qua admin)
+
+Đợt này bổ sung 1 bảng mới — `menu_items` (menu chính trang công khai, tự tham chiếu tối đa 2 cấp
+qua `parentId`) — trước đây menu bị hard-code trong `apps/web/src/components/layout/Header.tsx`, mỗi
+lần đổi cấu trúc menu phải sửa code + build lại; nay quản lý qua trang admin "Menu điều hướng"
+(`/admin/menu-items`). `pnpm prisma:seed` sẽ tự tạo sẵn 7 mục cấp 1 + 8 mục con khớp y hệt menu hiện
+tại (Trang chủ, Giới thiệu▾, Tin hoạt động▾, Văn bản▾, Công đoàn viên, Ý kiến Công đoàn viên, Văn hóa
+đọc) — sau lần đầu, admin tự sửa/xoá/thêm mục qua trang quản trị mà không sợ `prisma:seed` chạy lại
+ghi đè mất tuỳ chỉnh (seed chỉ tạo mới, không update mục đã tồn tại).
+
+Cùng cách làm với Bước 6.5/6.6 (`--from-schema-datasource`, không cần quyền `CREATE DATABASE`):
+
+```powershell
+cd "D:\WEBSITE DA HOAN THANH\WebsiteCongDoan\CongDoan.utehy.edu.vn"
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có CREATE TABLE menu_items (kèm 1 FK tự tham chiếu MenuItem ->
+# MenuItem qua parentId) — KHÔNG được có DROP/ALTER nào khác trên bảng cũ. Nếu có gì lạ, dừng lại,
+# đừng deploy, gửi lại nội dung file để review trước.
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_menu_item"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Get-Content "prisma/migrations/tmp_diff.sql" | Set-Content -Encoding ascii "prisma/migrations/$name/migration.sql"
+Remove-Item "prisma/migrations/tmp_diff.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed   # thêm quyền menuitem:*, cấp view/create/update (không delete) cho UNION_CLERK; tạo 7 mục menu mặc định + 8 mục con
+pnpm build          # build lại cả 3 app — admin có trang quản trị "Menu điều hướng" mới, web đọc menu từ API thay vì hard-code
+```
+
+Sau khi build xong, lặp lại thao tác copy ở Bước 5 (hoặc dùng `deploy\scripts\deploy.ps1` nếu đã
+cài CI/CD ở Bước 7) để đưa `apps\web\dist`/`apps\admin\dist` mới vào physical path IIS, rồi
+`pm2 reload deploy\ecosystem.config.js --update-env` để API load Prisma Client mới.
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_menu_item/`) vào Git rồi
+push, giống lưu ý ở Bước 3/6.5/6.6.
+
+### Kiểm tra end-to-end đợt này
+
+1. `http://localhost:8080/` — menu chính hiển thị đúng như trước (Trang chủ, Giới thiệu▾, Tin hoạt
+   động▾, Văn bản▾, Công đoàn viên, Ý kiến Công đoàn viên, Văn hóa đọc) — nếu đúng nghĩa là seed mặc
+   định đã chạy thành công và `GET /menu` trả về đúng cây.
+2. `http://localhost:8080/admin/menu-items` — đăng nhập admin, thấy danh sách 7 mục cấp 1 (kèm mục
+   con thụt lề bên dưới từng mục).
+3. Thử sửa nhãn 1 mục (vd đổi "Văn hóa đọc" thành tên khác), lưu lại, tải lại trang chủ — menu công
+   khai phải đổi theo ngay (không cần build lại, vì menu đọc từ DB tại runtime).
+4. Thử thêm 1 chuyên mục mới qua `/admin/categories` (không tick "Thuộc trang Giới thiệu") rồi mở lại
+   dropdown "Tin hoạt động" ở trang chủ — chuyên mục mới phải tự xuất hiện (nhờ mục "Tin hoạt động"
+   có `autoCategoryChildren=true`).
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên

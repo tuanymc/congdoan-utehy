@@ -31,10 +31,17 @@ type ResourceName =
   | "home-slides"
   | "union-departments"
   | "union-members"
-  | "contact-messages";
+  | "contact-messages"
+  | "menu-items";
 
 /** Resource nhỏ, không phân trang ở BE — getList trả về toàn bộ mảng (giống "categories"/"document-types"). */
-const UNPAGINATED_RESOURCES: ResourceName[] = ["categories", "document-types", "home-slides", "union-departments"];
+const UNPAGINATED_RESOURCES: ResourceName[] = [
+  "categories",
+  "document-types",
+  "home-slides",
+  "union-departments",
+  "menu-items"
+];
 
 interface ResourcePaths {
   /** Đường dẫn dùng cho getList. */
@@ -113,6 +120,13 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/contact-messages",
     update: (id) => `/admin/contact-messages/${id}`,
     remove: (id) => `/admin/contact-messages/${id}`
+  },
+  "menu-items": {
+    list: "/admin/menu-items",
+    one: (id) => `/admin/menu-items/${id}`,
+    create: "/admin/menu-items",
+    update: (id) => `/admin/menu-items/${id}`,
+    remove: (id) => `/admin/menu-items/${id}`
   }
 };
 
