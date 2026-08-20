@@ -148,18 +148,23 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
 
   /** Dùng chung cho cả 2 luồng: upload ngay sau khi vừa tạo công văn (mode=create) và bấm nút "Tải lên"
    * trong card File đính kèm khi đang sửa (mode=edit). Field "files" lặp lại nhiều lần trong FormData
-   * — khớp FilesInterceptor("files", 10) phía API, cho phép chọn 1 hoặc nhiều file cùng lúc. */
-  async function uploadFilesToDocument(documentId: string, files: File[]): Promise<void> {
+   * — khớp FilesInterceptor("files", 10) phía API, cho phép chọn 1 hoặc nhiều file cùng lúc. Trả về
+   * true/false thay vì throw để nơi gọi biết CHẮC CHẮN có nên xoá pendingFiles/refetch hay không —
+   * trước đây lỡ nuốt luôn lỗi rồi vẫn xoá pendingFiles dù upload thất bại, khiến người dùng phải chọn
+   * lại file từ đầu mà không rõ vì sao. */
+  async function uploadFilesToDocument(documentId: string, files: File[]): Promise<boolean> {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     try {
       await apiFetchUpload(`/admin/official-documents/${documentId}/attachments`, formData);
+      return true;
     } catch (error) {
       pushToast({
         variant: "error",
         message: "Tải file lên thất bại",
         description: error instanceof Error ? error.message : "Vui lòng thử lại sau."
       });
+      return false;
     }
   }
 
@@ -176,12 +181,22 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
   }
 
   async function handleUploadPendingFiles() {
-    if (!id || pendingFiles.length === 0) return;
+    if (!id) return;
+    // Nút bấm bị disabled khi chưa chọn file (xem pendingFiles.length === 0 ở JSX) nên về lý thuyết
+    // không bao giờ vào đây với danh sách rỗng — vẫn báo rõ bằng toast thay vì im lặng bỏ qua, để nếu
+    // người dùng bấm nhầm hoặc bấm trước khi chọn file thì biết ngay cần làm gì tiếp, không tưởng nhầm
+    // là hệ thống bị treo.
+    if (pendingFiles.length === 0) {
+      pushToast({ variant: "error", message: "Chưa chọn file nào để tải lên" });
+      return;
+    }
     setIsUploading(true);
     try {
-      await uploadFilesToDocument(id, pendingFiles);
-      setPendingFiles([]);
-      await refetchDocument();
+      const ok = await uploadFilesToDocument(id, pendingFiles);
+      if (ok) {
+        setPendingFiles([]);
+        await refetchDocument();
+      }
     } finally {
       setIsUploading(false);
     }
@@ -425,6 +440,7 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
                 type="button"
                 variant="secondary"
                 size="sm"
+                title={pendingFiles.length === 0 ? "Chọn file ở ô bên trái trước đã" : undefined}
                 disabled={pendingFiles.length === 0 || isUploading}
                 onClick={() => void handleUploadPendingFiles()}
               >
