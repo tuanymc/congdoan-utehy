@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CalendarCheck, ClipboardList, FileText, Sparkles, Users } from "lucide-react";
+import { CalendarCheck, ClipboardList, FileText, HandHeart, Sparkles, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -47,6 +47,14 @@ const UTILITIES: UtilityCard[] = [
     title: "Công cụ AI",
     description: "Kho công cụ AI hữu ích phục vụ giảng dạy, nghiên cứu — dành riêng cho đoàn viên đã đăng nhập.",
     to: "/tien-ich-so-cong-doan/cong-cu-ai",
+    status: "available"
+  },
+  {
+    icon: HandHeart,
+    title: "Dịch vụ công",
+    description:
+      "Tra cứu thủ tục hành chính thường gặp, hướng dẫn từng bước, kho liên kết chính thống và gửi yêu cầu Công đoàn hỗ trợ.",
+    to: "/tien-ich-so-cong-doan/dich-vu-cong",
     status: "available"
   }
 ];

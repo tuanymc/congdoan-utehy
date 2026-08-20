@@ -840,6 +840,110 @@ Server, không ghi file lên đĩa (khác đợt 6.8 — file đính kèm công 
 
 ---
 
+## Bước 6.12 — Migrate schema đợt 8 (Dịch vụ công — Phase 4e Tiện ích số)
+
+Đợt này thêm 4 bảng MỚI (không đổi bảng nào có sẵn): `public_service_procedures` (thủ tục + hướng dẫn
+từng bước), `public_service_links` (kho biểu mẫu/đường dẫn chính thống), `public_service_support_requests`
+("Công đoàn hỗ trợ tôi"), `public_service_notices` (cảnh báo và nhắc việc).
+
+- **Thủ tục dịch vụ công**: trang `/admin/public-service-procedures` để cán bộ Công đoàn quản lý danh
+  sách thủ tục (tên, nhóm, 8 phần hướng dẫn: Điều kiện/Hồ sơ/Nơi thực hiện/Các bước/Phí/Thời hạn/Cách
+  nhận kết quả/Lỗi thường gặp). **QUAN TRỌNG**: `pnpm prisma:seed` sẽ tự thêm ~9 thủ tục mẫu do AI soạn
+  sẵn (căn cước, cư trú, hộ tịch, BHXH/BHYT, thuế TNCN, lý lịch tư pháp, GPLX, đăng ký phương tiện, VNeID)
+  nhưng **TẤT CẢ đều ở trạng thái "Nháp" (isActive=false)** — nội dung này CHƯA được cán bộ Công đoàn rà
+  soát, KHÔNG hiển thị công khai cho tới khi cán bộ vào `/admin/public-service-procedures` kiểm tra lại
+  từng thủ tục (đặc biệt mức phí, thời hạn xử lý, tên cổng dịch vụ công — các thông tin này thay đổi khá
+  thường xuyên) rồi mới chuyển sang "Đã duyệt".
+- **Kho biểu mẫu và đường dẫn chính thống**: trang `/admin/public-service-links` — cùng lý do thận trọng
+  như trên, seed sẵn 5 liên kết mẫu (Cổng DVC Quốc gia, VNeID, BHXH Việt Nam, Cơ quan thuế, Cổng DVC Bộ
+  Công an) nhưng **cũng ở trạng thái ẩn (isActive=false)** — cán bộ cần tự kiểm tra link còn hoạt động
+  đúng rồi mới bật hiển thị. Trang công khai tự sinh mã QR từ URL (dùng dịch vụ ảnh QR công khai
+  `api.qrserver.com`, không lưu ảnh QR trong CSDL) — máy chủ deploy cần cho phép trình duyệt người dùng
+  gọi ra `api.qrserver.com` (không phải server tự gọi, không cần mở thêm gì ở tường lửa server).
+- **Công đoàn hỗ trợ tôi**: trang `/admin/public-service-support-requests` để cán bộ xem + đổi trạng
+  thái/tự nhận xử lý/ghi chú nội bộ. Trang công khai `/tien-ich-so-cong-doan/dich-vu-cong/ho-tro` —
+  **không yêu cầu đăng nhập** để gửi yêu cầu (giống Đăng ký hoạt động/Khảo sát ý kiến), chỉ cần tên +
+  số điện thoại HOẶC email.
+- **Cảnh báo và nhắc việc**: trang `/admin/public-service-notices` — bảng tin CHUNG do cán bộ đăng,
+  KHÔNG cá nhân hoá theo từng người, không yêu cầu đăng nhập để xem. Seed sẵn 1 thông báo chào mừng tính
+  năng mới (đã "Đang hiện" luôn, nội dung trung tính không có rủi ro pháp lý).
+
+Quyền quản trị `publicserviceprocedure:*`, `publicservicelink:*`, `publicservicesupportrequest:*`,
+`publicservicenotice:*` đã seed sẵn cho ADMIN và UNION_CLERK.
+
+```powershell
+cd C:\inetpub\congdoan-src
+pm2 stop all
+
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có CREATE TABLE public_service_procedures, CREATE TABLE
+# public_service_links, CREATE TABLE public_service_support_requests, CREATE TABLE
+# public_service_notices (kèm FK + index) — KHÔNG được có DROP/ALTER nào trên bảng có sẵn. Nếu có gì lạ,
+# dừng lại, đừng deploy, gửi lại nội dung để review.
+Get-Content prisma\migrations\tmp_diff.sql
+
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_public_services"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed
+pnpm build
+
+Copy-Item apps\web\dist\*   -Destination C:\inetpub\congdoan2026\web   -Recurse -Force
+Copy-Item apps\admin\dist\* -Destination C:\inetpub\congdoan2026\admin -Recurse -Force
+
+pm2 start deploy\ecosystem.config.js --env production
+pm2 status
+```
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_public_services/`) vào Git
+rồi push.
+
+Đợt này KHÔNG cần cấp thêm quyền ghi thư mục nào cho tài khoản chạy PM2 — dữ liệu chỉ lưu trong SQL
+Server, không ghi file lên đĩa.
+
+### Kiểm tra end-to-end đợt này
+
+**Thủ tục dịch vụ công (nhóm 1+2):**
+1. `http://localhost:8080/admin/public-service-procedures` — phải thấy ~9 thủ tục mẫu, tất cả ghi
+   "Nháp — chờ rà soát". Mở 1 thủ tục bất kỳ, đọc qua nội dung, sửa nếu cần rồi đặt trạng thái = "Đã
+   duyệt", lưu lại.
+2. Mở `/tien-ich-so-cong-doan/dich-vu-cong` (không cần đăng nhập) — bấm vào nhóm thủ tục vừa duyệt ở
+   lưới "Tra cứu nhanh dịch vụ công", phải thấy đúng thủ tục đó (các thủ tục còn "Nháp" KHÔNG được hiện).
+3. Bấm vào thủ tục — phải thấy đủ các phần hướng dẫn đã điền, và nút "Công đoàn hỗ trợ tôi" ở cuối
+   trang.
+
+**Kho biểu mẫu và đường dẫn chính thống (nhóm 3):**
+4. `http://localhost:8080/admin/public-service-links` — kiểm tra lại 5 link mẫu, đặt "Hiển thị công
+   khai" = Có cho link nào đã xác minh đúng.
+5. Mở `/tien-ich-so-cong-doan/dich-vu-cong/lien-ket` — phải thấy link vừa bật, kèm ảnh mã QR bên cạnh;
+   dùng điện thoại quét thử phải mở đúng URL.
+
+**Công đoàn hỗ trợ tôi (nhóm 4):**
+6. Mở `/tien-ich-so-cong-doan/dich-vu-cong/ho-tro` (không đăng nhập) — điền tên + số điện thoại, chọn 1
+   thủ tục, ghi "đang vướng ở bước nào", gửi — phải thấy thông báo cảm ơn.
+7. Thử gửi lại nhưng để trống CẢ số điện thoại lẫn email — phải báo lỗi, không cho gửi.
+8. Quay lại `/admin/public-service-support-requests` — phải thấy yêu cầu vừa gửi, bấm "Xử lý", bấm
+   "Nhận xử lý (tôi)", đổi trạng thái sang "Đang xử lý", ghi chú nội bộ, lưu lại — kiểm tra cột "Phụ
+   trách" đã hiện đúng tên mình.
+
+**Cảnh báo và nhắc việc (nhóm 5):**
+9. Mở `/tien-ich-so-cong-doan/dich-vu-cong/thong-bao` — phải thấy thông báo chào mừng đã seed sẵn.
+   Vào `/admin/public-service-notices`, thêm 1 thông báo mới, đặt "Ghim lên đầu" = Có, lưu lại — quay
+   lại trang công khai phải thấy thông báo mới ghim lên trên cùng.
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên

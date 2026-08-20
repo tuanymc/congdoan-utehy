@@ -11,3 +11,4 @@ export * from "./site-setting";
 export * from "./event";
 export * from "./ai-tool-resource";
 export * from "./survey";
+export * from "./public-service";

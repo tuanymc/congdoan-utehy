@@ -18,6 +18,12 @@ import { EventDetailPage } from "./pages/EventDetailPage";
 import { AiToolsPage } from "./pages/AiToolsPage";
 import { SurveysPage } from "./pages/SurveysPage";
 import { SurveyDetailPage } from "./pages/SurveyDetailPage";
+import { PublicServiceHubPage } from "./pages/public-service/PublicServiceHubPage";
+import { PublicServiceProceduresPage } from "./pages/public-service/PublicServiceProceduresPage";
+import { PublicServiceProcedureDetailPage } from "./pages/public-service/PublicServiceProcedureDetailPage";
+import { PublicServiceLinksPage } from "./pages/public-service/PublicServiceLinksPage";
+import { PublicServiceSupportPage } from "./pages/public-service/PublicServiceSupportPage";
+import { PublicServiceNoticesPage } from "./pages/public-service/PublicServiceNoticesPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 export default function App() {
@@ -37,6 +43,12 @@ export default function App() {
         <Route path="tien-ich-so-cong-doan/dang-ky-hoat-dong/:id" element={<EventDetailPage />} />
         <Route path="tien-ich-so-cong-doan/khao-sat" element={<SurveysPage />} />
         <Route path="tien-ich-so-cong-doan/khao-sat/:id" element={<SurveyDetailPage />} />
+        <Route path="tien-ich-so-cong-doan/dich-vu-cong" element={<PublicServiceHubPage />} />
+        <Route path="tien-ich-so-cong-doan/dich-vu-cong/thu-tuc" element={<PublicServiceProceduresPage />} />
+        <Route path="tien-ich-so-cong-doan/dich-vu-cong/thu-tuc/:slug" element={<PublicServiceProcedureDetailPage />} />
+        <Route path="tien-ich-so-cong-doan/dich-vu-cong/lien-ket" element={<PublicServiceLinksPage />} />
+        <Route path="tien-ich-so-cong-doan/dich-vu-cong/ho-tro" element={<PublicServiceSupportPage />} />
+        <Route path="tien-ich-so-cong-doan/dich-vu-cong/thong-bao" element={<PublicServiceNoticesPage />} />
         <Route
           path="tien-ich-so-cong-doan/cong-cu-ai"
           element={

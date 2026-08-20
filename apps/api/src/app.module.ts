@@ -16,6 +16,7 @@ import { SiteSettingsModule } from "./modules/site-settings/site-settings.module
 import { EventsModule } from "./modules/events/events.module";
 import { AiToolsModule } from "./modules/ai-tools/ai-tools.module";
 import { SurveysModule } from "./modules/surveys/surveys.module";
+import { PublicServicesModule } from "./modules/public-services/public-services.module";
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { SurveysModule } from "./modules/surveys/surveys.module";
     SiteSettingsModule,
     EventsModule,
     AiToolsModule,
-    SurveysModule
+    SurveysModule,
+    PublicServicesModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
 })

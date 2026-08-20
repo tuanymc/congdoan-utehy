@@ -47,6 +47,13 @@ import { SurveyList } from "./pages/surveys/SurveyList";
 import { SurveyForm } from "./pages/surveys/SurveyForm";
 import { SurveyQuestionsPage } from "./pages/surveys/SurveyQuestionsPage";
 import { SurveyResultsPage } from "./pages/surveys/SurveyResultsPage";
+import { PublicServiceProcedureList } from "./pages/public-service-procedures/PublicServiceProcedureList";
+import { PublicServiceProcedureForm } from "./pages/public-service-procedures/PublicServiceProcedureForm";
+import { PublicServiceLinkList } from "./pages/public-service-links/PublicServiceLinkList";
+import { PublicServiceLinkForm } from "./pages/public-service-links/PublicServiceLinkForm";
+import { PublicServiceNoticeList } from "./pages/public-service-notices/PublicServiceNoticeList";
+import { PublicServiceNoticeForm } from "./pages/public-service-notices/PublicServiceNoticeForm";
+import { PublicServiceSupportRequestList } from "./pages/public-service-support-requests/PublicServiceSupportRequestList";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -156,6 +163,32 @@ export function App() {
             create: "/surveys/create",
             edit: "/surveys/edit/:id",
             meta: { label: "Khảo sát ý kiến" }
+          },
+          {
+            name: "public-service-procedures",
+            list: "/public-service-procedures",
+            create: "/public-service-procedures/create",
+            edit: "/public-service-procedures/edit/:id",
+            meta: { label: "Thủ tục dịch vụ công" }
+          },
+          {
+            name: "public-service-links",
+            list: "/public-service-links",
+            create: "/public-service-links/create",
+            edit: "/public-service-links/edit/:id",
+            meta: { label: "Kho biểu mẫu, đường dẫn" }
+          },
+          {
+            name: "public-service-support-requests",
+            list: "/public-service-support-requests",
+            meta: { label: "Công đoàn hỗ trợ tôi" }
+          },
+          {
+            name: "public-service-notices",
+            list: "/public-service-notices",
+            create: "/public-service-notices/create",
+            edit: "/public-service-notices/edit/:id",
+            meta: { label: "Cảnh báo và nhắc việc" }
           }
         ]}
         options={{
@@ -332,6 +365,56 @@ export function App() {
               <Route path="edit/:id" element={<SurveyForm mode="edit" />} />
               <Route path=":id/questions" element={<SurveyQuestionsPage />} />
               <Route path=":id/results" element={<SurveyResultsPage />} />
+            </Route>
+
+            <Route
+              path="/public-service-procedures"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<PublicServiceProcedureList />} />
+              <Route path="create" element={<PublicServiceProcedureForm mode="create" />} />
+              <Route path="edit/:id" element={<PublicServiceProcedureForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/public-service-links"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<PublicServiceLinkList />} />
+              <Route path="create" element={<PublicServiceLinkForm mode="create" />} />
+              <Route path="edit/:id" element={<PublicServiceLinkForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/public-service-support-requests"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<PublicServiceSupportRequestList />} />
+            </Route>
+
+            <Route
+              path="/public-service-notices"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<PublicServiceNoticeList />} />
+              <Route path="create" element={<PublicServiceNoticeForm mode="create" />} />
+              <Route path="edit/:id" element={<PublicServiceNoticeForm mode="edit" />} />
             </Route>
 
             <Route

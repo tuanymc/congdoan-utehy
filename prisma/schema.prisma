@@ -42,6 +42,10 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
   authoredPosts Post[]
+  /// Cán bộ được phân công xử lý yêu cầu hỗ trợ "Dịch vụ công" (Phase 4e) — xem
+  /// PublicServiceSupportRequest.assignedTo. onDelete: SetNull ở phía kia (không cascade xoá yêu cầu
+  /// hỗ trợ khi xoá tài khoản cán bộ).
+  assignedPublicServiceSupportRequests PublicServiceSupportRequest[]
 
   @@map("users")
 }
@@ -696,6 +700,166 @@ model SurveyAnswer {
 }
 
 // ============================================================================
+// DOMAIN: PUBLICSERVICE — "Dịch vụ công" (Tiện ích số, Phase 4e) — đồng hành cùng viên chức, người lao
+// động trong sử dụng dịch vụ công trực tuyến. Tính năng MỚI hoàn toàn, không migrate gì từ web cũ.
+// Thiết kế theo 4 quyết định đã thống nhất với người quản trị (không hỏi lại):
+//   1. Nội dung 8 trường hướng dẫn (PublicServiceProcedure) do Claude soạn sẵn dựa trên quy định hiện
+//      hành cho ~8-9 thủ tục phổ biến, LUÔN seed isActive=false (nháp) — cán bộ Công đoàn phải tự rà
+//      soát rồi mới bật hiển thị công khai qua trang quản trị (nội dung pháp lý cần xác minh lại).
+//   2. "Cảnh báo và nhắc việc" (PublicServiceNotice) là bảng tin CHUNG do cán bộ đăng, KHÔNG cá nhân
+//      hoá theo từng người dùng (không yêu cầu đăng nhập, không lưu hạn dùng riêng của từng người).
+//   3. "Công đoàn hỗ trợ tôi" (PublicServiceSupportRequest) — gửi yêu cầu KHÔNG bắt buộc đăng nhập,
+//      cùng chính sách với EventRegistration (4b)/SurveyResponse (4d).
+//   4. Toàn bộ 4 model dưới đây triển khai 1 lượt duy nhất (không chia đợt nhỏ như 4a-4d).
+// LƯU Ý cascade path (bài học P1012 từ domain Survey ở trên): PublicServiceSupportRequest có 2 quan hệ
+// tuỳ chọn (procedure, assignedTo) — CẢ HAI đều dùng onDelete: SetNull (không Cascade), nên không có
+// nguy cơ hội tụ nhiều đường cascade như Survey->SurveyResponse/SurveyQuestion->SurveyAnswer.
+// ============================================================================
+
+/// Nhóm 1 (Tra cứu nhanh dịch vụ công) + Nhóm 2 (Hướng dẫn từng bước, mẫu 8 phần cố định) — gộp 1 model
+/// vì nhóm 2 chỉ là phần chi tiết mở rộng của đúng 1 bản ghi nhóm 1 (1-1), không phải quan hệ cha-con.
+model PublicServiceProcedure {
+  id    String @id @default(uuid())
+  /// Dùng cho URL trang chi tiết công khai (/tien-ich-so-cong-doan/dich-vu-cong/thu-tuc/:slug).
+  slug  String @unique
+  title String
+
+  /// Nhãn phân loại CỐ ĐỊNH cho lưới "Tra cứu nhanh" nhóm 1 — xem PUBLIC_SERVICE_PROCEDURE_CATEGORIES
+  /// trong @congdoan/types (CAN_CUOC/CU_TRU/HO_TICH/BHXH_BHYT/THUE_TNCN/LY_LICH_TU_PHAP/GPLX/
+  /// DANG_KY_PHUONG_TIEN/KHAC — đúng danh sách người quản trị đã liệt kê). Dùng String thay vì Prisma
+  /// enum, cùng convention OfficialDocument.direction/SurveyQuestion.type (SQL Server connector của
+  /// Prisma không hỗ trợ enum gốc).
+  category String @db.VarChar(30)
+
+  /// Mô tả ngắn hiển thị ở thẻ/lưới danh sách (khác nội dung chi tiết 8 phần bên dưới).
+  summary String? @db.NVarChar(Max)
+
+  // Mẫu 8 phần cố định của nhóm 2 (Hướng dẫn từng bước) — TẤT CẢ optional vì có thể chưa soạn đủ hết,
+  // trang chi tiết công khai chỉ hiện phần nào có nội dung.
+  /// 1. Điều kiện
+  conditions String? @db.NVarChar(Max)
+  /// 2. Hồ sơ cần chuẩn bị
+  requiredDocuments String? @db.NVarChar(Max)
+  /// 3. Nơi thực hiện
+  whereToApply String? @db.NVarChar(Max)
+  /// 4. Các bước thao tác
+  steps String? @db.NVarChar(Max)
+  /// 5. Phí/lệ phí
+  fee String? @db.NVarChar(Max)
+  /// 6. Thời hạn
+  processingTime String? @db.NVarChar(Max)
+  /// 7. Cách nhận kết quả
+  resultDelivery String? @db.NVarChar(Max)
+  /// 8. Lỗi thường gặp
+  commonMistakes String? @db.NVarChar(Max)
+
+  sortOrder Int @default(0)
+  /// false = nháp — mặc định false khi seed nội dung do Claude soạn sẵn (xem ghi chú domain block phía
+  /// trên); admin CHỈ bật true sau khi đã rà soát nội dung là chính xác/còn hiệu lực.
+  isActive Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supportRequests PublicServiceSupportRequest[]
+
+  @@index([category])
+  @@index([isActive, sortOrder])
+  @@map("public_service_procedures")
+}
+
+/// Nhóm 3 (Kho biểu mẫu và đường dẫn chính thống) — thư mục link ra các cổng dịch vụ công chính thống
+/// (Cổng DVC Quốc gia, VNeID, BHXH Việt Nam, Cơ quan thuế, cổng chuyên ngành...). QR code để quét
+/// nhanh được TẠO Ở PHÍA CLIENT (apps/web) trực tiếp từ field `url` bằng ảnh QR sinh động (API ảnh QR
+/// công khai) — KHÔNG lưu ảnh QR trong CSDL, tránh phải tự dựng/host thư viện tạo mã QR mới.
+model PublicServiceLink {
+  id          String  @id @default(uuid())
+  title       String
+  url         String
+  description String? @db.NVarChar(Max)
+  /// Nhãn nhóm tự do (vd "Cổng Dịch vụ công Quốc gia", "Định danh điện tử - VNeID", "BHXH Việt Nam",
+  /// "Cơ quan thuế", "Cổng chuyên ngành khác") — cùng convention AiToolResource.category, không tách
+  /// bảng riêng vì số lượng nhóm nhỏ.
+  group     String?
+  logoUrl   String?
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("public_service_links")
+}
+
+/// Nhóm 4 ("Công đoàn hỗ trợ tôi") — PHẦN NỔI BẬT NHẤT theo yêu cầu người quản trị. Người lao động chọn
+/// "Tôi cần làm thủ tục gì?" (procedureId nếu có trong danh mục, hoặc procedureOther nếu không) → "Tôi
+/// đang vướng ở bước nào?" (stuckStep) → gửi yêu cầu, KHÔNG bắt buộc đăng nhập (cùng chính sách
+/// EventRegistration/SurveyResponse). Cán bộ Công đoàn triage qua trang quản trị: đổi status, phân công
+/// cán bộ (assignedTo), ghi chú nội bộ (staffNote).
+model PublicServiceSupportRequest {
+  id    String  @id @default(uuid())
+  fullName String
+  /// Ít nhất 1 trong 2 (phone/email) phải có — validate ở tầng DTO/service (KHÔNG dùng CHECK constraint
+  /// CSDL, giữ đơn giản như các form công khai khác trong dự án).
+  phone String?
+  email String?
+
+  procedureId String?
+  /// onDelete: SetNull (KHÔNG Cascade) — xoá 1 thủ tục trong kho tra cứu không được xoá luôn lịch sử
+  /// yêu cầu hỗ trợ đã gửi, chỉ mất liên kết tới thủ tục gốc (procedureOther vẫn còn nguyên làm tham
+      /// khảo). onUpdate NoAction theo đúng convention các quan hệ optional khác trong dự án.
+  procedure PublicServiceProcedure? @relation(fields: [procedureId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  /// Tên thủ tục tự nhập khi người dùng không chọn được thủ tục có sẵn trong danh mục (vd thủ tục mới/
+  /// hiếm gặp chưa có trong Tra cứu nhanh).
+  procedureOther String?
+
+  /// "Tôi đang vướng ở bước nào?" — mô tả người dùng tự nhập.
+  stuckStep   String? @db.NVarChar(Max)
+  description String? @db.NVarChar(Max)
+
+  /// "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" (xem PublicServiceSupportRequestStatus trong
+  /// @congdoan/types) — String thay vì Prisma enum, cùng convention OfficialDocument.status.
+  status String @default("NEW") @db.VarChar(20)
+
+  assignedToUserId String?
+  /// onDelete: SetNull — xoá tài khoản cán bộ không được xoá lịch sử yêu cầu, chỉ bỏ phân công.
+  assignedTo User? @relation(fields: [assignedToUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  /// Ghi chú nội bộ của cán bộ xử lý — KHÔNG hiển thị ra trang công khai.
+  staffNote String? @db.NVarChar(Max)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([procedureId])
+  @@index([assignedToUserId])
+  @@map("public_service_support_requests")
+}
+
+/// Nhóm 5 (Cảnh báo và nhắc việc) — bảng tin CHUNG do cán bộ Công đoàn đăng (hết hạn GPLX theo mùa,
+/// đổi chính sách BHXH/BHYT, hạn quyết toán thuế TNCN, hạn thực hiện thủ tục liên quan viên chức, dịch
+/// vụ công mới...), hiển thị công khai cho MỌI người xem, KHÔNG cá nhân hoá/không yêu cầu đăng nhập
+/// (xem ghi chú domain block phía trên — quyết định đã chốt, không xây bản theo dõi hạn riêng từng
+/// người ở vòng này).
+model PublicServiceNotice {
+  id      String @id @default(uuid())
+  title   String
+  content String @db.NVarChar(Max)
+  /// Nhãn phân loại cố định — xem PUBLIC_SERVICE_NOTICE_CATEGORIES trong @congdoan/types.
+  category String? @db.VarChar(30)
+  /// true = ghim lên đầu danh sách (thông báo quan trọng/khẩn).
+  isPinned Boolean @default(false)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, isPinned, createdAt])
+  @@map("public_service_notices")
+}
+
+// ============================================================================
 // TODO Phase 2 — DOMAIN: MEMBERSHIP (phần còn lại)
 //   Danh bạ công khai (UnionMember/UnionDepartment) đã triển khai ở trên — phần CÒN LẠI của Phase 2
 //   (tài khoản đoàn viên tự quản lý, đóng đoàn phí, Leader/Position/Term đầy đủ...) làm sau nếu cần.
@@ -703,7 +867,9 @@ model SurveyAnswer {
 //
 // TODO Phase 4 — DOMAIN: DIGITALUTILITY ("Tiện ích số Công đoàn") — phần còn lại
 //   Event/EventRegistration (4b), AiToolResource (4c), Survey/SurveyQuestion/SurveyResponse/
-//   SurveyAnswer (4d) đã triển khai ở trên. Còn lại (chưa nằm trong 4 mục ưu tiên ban đầu):
-//   model EForm, EFormSubmission, UnionFeeLedger, SupportBooking,
+//   SurveyAnswer (4d), PublicServiceProcedure/PublicServiceLink/PublicServiceSupportRequest/
+//   PublicServiceNotice (4e — Dịch vụ công) đã triển khai ở trên. Còn lại (chưa nằm trong các mục ưu
+//   tiên ban đầu):
+//   model EForm, EFormSubmission, UnionFeeLedger,
 //         ChatbotConversation, ChatbotMessage
 // ============================================================================

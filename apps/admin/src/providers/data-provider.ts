@@ -22,6 +22,14 @@
  *  - "surveys"             -> /admin/surveys (không phân trang — chỉ metadata khảo sát; câu hỏi/kết
  *                            quả là tài nguyên con, gọi thẳng apiFetch trong SurveyQuestionsPage.tsx/
  *                            SurveyResultsPage.tsx, không qua dataProvider).
+ *  - "public-service-procedures"       -> /admin/public-service-procedures (không phân trang)
+ *  - "public-service-links"            -> /admin/public-service-links (không phân trang)
+ *  - "public-service-notices"          -> /admin/public-service-notices (không phân trang)
+ *  - "public-service-support-requests" -> /admin/public-service-support-requests (không phân trang —
+ *                            trang quản trị chỉ list + xem chi tiết + update (đổi status/phân công/ghi
+ *                            chú), KHÔNG có create/deleteOne thật ở BE — UI (PublicServiceSupportRequestList.tsx)
+ *                            chỉ dùng useList/useOne/useUpdate, không bao giờ gọi useCreate/useDelete
+ *                            cho resource này, xem PublicServiceSupportRequestsController).
  *
  * Chỉ implement getList, getOne, create, update, deleteOne — đủ dùng cho toàn bộ UI CRUD hiện tại.
  */
@@ -42,7 +50,11 @@ type ResourceName =
   | "menu-items"
   | "events"
   | "ai-tools"
-  | "surveys";
+  | "surveys"
+  | "public-service-procedures"
+  | "public-service-links"
+  | "public-service-notices"
+  | "public-service-support-requests";
 
 /** Resource nhỏ, không phân trang ở BE — getList trả về toàn bộ mảng (giống "categories"/"document-types"). */
 const UNPAGINATED_RESOURCES: ResourceName[] = [
@@ -52,7 +64,11 @@ const UNPAGINATED_RESOURCES: ResourceName[] = [
   "union-departments",
   "menu-items",
   "ai-tools",
-  "surveys"
+  "surveys",
+  "public-service-procedures",
+  "public-service-links",
+  "public-service-notices",
+  "public-service-support-requests"
 ];
 
 interface ResourcePaths {
@@ -160,6 +176,36 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/surveys",
     update: (id) => `/admin/surveys/${id}`,
     remove: (id) => `/admin/surveys/${id}`
+  },
+  "public-service-procedures": {
+    list: "/admin/public-service-procedures",
+    one: (id) => `/admin/public-service-procedures/${id}`,
+    create: "/admin/public-service-procedures",
+    update: (id) => `/admin/public-service-procedures/${id}`,
+    remove: (id) => `/admin/public-service-procedures/${id}`
+  },
+  "public-service-links": {
+    list: "/admin/public-service-links",
+    one: (id) => `/admin/public-service-links/${id}`,
+    create: "/admin/public-service-links",
+    update: (id) => `/admin/public-service-links/${id}`,
+    remove: (id) => `/admin/public-service-links/${id}`
+  },
+  "public-service-notices": {
+    list: "/admin/public-service-notices",
+    one: (id) => `/admin/public-service-notices/${id}`,
+    create: "/admin/public-service-notices",
+    update: (id) => `/admin/public-service-notices/${id}`,
+    remove: (id) => `/admin/public-service-notices/${id}`
+  },
+  "public-service-support-requests": {
+    list: "/admin/public-service-support-requests",
+    one: (id) => `/admin/public-service-support-requests/${id}`,
+    // Không có endpoint create/delete thật ở BE (xem ghi chú đầu file) — 2 path dưới đây KHÔNG BAO GIỜ
+    // được gọi tới trong UI, chỉ khai để thoả kiểu ResourcePaths.
+    create: "/admin/public-service-support-requests",
+    update: (id) => `/admin/public-service-support-requests/${id}`,
+    remove: (id) => `/admin/public-service-support-requests/${id}`
   }
 };
 
