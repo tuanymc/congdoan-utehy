@@ -81,17 +81,24 @@ export function NavDropdown({
       </div>
 
       {open ? (
-        <div className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-lg border bg-popover p-1.5 shadow-lg">
-          {items.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="block rounded-md px-3 py-2 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-primary"
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
+        // Bọc ngoài bám sát top-full (không margin) và dùng pt-2 để tạo khoảng cách trực quan tới
+        // trigger — padding vẫn tính là 1 phần diện tích "hover" của phần tử, khác với margin (nằm
+        // ngoài box, không nhận sự kiện chuột). Trước đây dùng mt-2 trên chính panel nên có 1 dải
+        // trống ~8px giữa trigger và panel không thuộc phần tử nào -> di chuột qua đó bị coi là rời
+        // khỏi container (mouseleave) -> panel đóng trước khi chuột kịp tới, không bấm được submenu.
+        <div className="absolute left-1/2 top-full z-50 w-64 -translate-x-1/2 pt-2">
+          <div className="rounded-lg border bg-popover p-1.5 shadow-lg">
+            {items.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="block rounded-md px-3 py-2 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-primary"
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
