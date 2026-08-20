@@ -148,8 +148,9 @@ export class SurveysService {
 
   async remove(id: string, actorUserId: string): Promise<void> {
     await this.findOne(id);
-    // onDelete: Cascade trên SurveyQuestion/SurveyResponse/SurveyAnswer (xem schema.prisma) — xoá
-    // khảo sát tự xoá luôn câu hỏi + toàn bộ lượt trả lời, không cần tự xoá children ở đây.
+    // onDelete: Cascade trên Survey->SurveyQuestion và Survey->SurveyResponse->SurveyAnswer (xem
+    // schema.prisma) — xoá khảo sát tự xoá luôn câu hỏi + toàn bộ lượt trả lời (mọi SurveyAnswer đều
+    // thuộc đúng 1 SurveyResponse nên đã được dọn hết qua đường này), không cần tự xoá children ở đây.
     await this.prisma.survey.delete({ where: { id } });
     await this.auditLog.record({ actorUserId, action: "delete", entityType: "Survey", entityId: id });
   }
@@ -225,9 +226,11 @@ export class SurveysService {
 
   async removeQuestion(surveyId: string, questionId: string, actorUserId: string): Promise<void> {
     await this.findQuestionOrThrow(surveyId, questionId);
-    // onDelete: Cascade trên SurveyAnswer.question — xoá câu hỏi tự xoá luôn các câu trả lời đã ghi
-    // nhận cho câu hỏi đó (chấp nhận mất dữ liệu thống kê của riêng câu hỏi này, không ảnh hưởng câu
-    // hỏi khác trong cùng khảo sát).
+    // SurveyAnswer.question là onDelete: NoAction (KHÔNG cascade — xem ghi chú field đó trong
+    // schema.prisma, lý do là tránh 2 đường cascade cùng hội tụ về SurveyAnswer mà SQL Server không
+    // cho phép) nên phải TỰ xoá các câu trả lời của câu hỏi này trước, nếu không lệnh xoá bên dưới sẽ
+    // vướng lỗi ràng buộc khoá ngoại (FK constraint) khi câu hỏi đã có người trả lời.
+    await this.prisma.surveyAnswer.deleteMany({ where: { questionId } });
     await this.prisma.surveyQuestion.delete({ where: { id: questionId } });
     await this.auditLog.record({ actorUserId, action: "delete", entityType: "SurveyQuestion", entityId: questionId });
   }

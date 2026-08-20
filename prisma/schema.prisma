@@ -680,7 +680,13 @@ model SurveyAnswer {
   responseId String
   response   SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   questionId String
-  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  /// onDelete: NoAction (KHÔNG Cascade) — vì Survey -> SurveyResponse -> SurveyAnswer đã là 1 đường
+  /// cascade từ Survey xuống bảng này; nếu quan hệ này cũng Cascade thì có 2 đường cascade cùng hội tụ
+  /// về SurveyAnswer (qua SurveyResponse VÀ qua SurveyQuestion), SQL Server không cho phép (lỗi Prisma
+  /// P1012 "referential actions ... cascade ... through multiple paths"). Do đó SurveysService.
+  /// removeQuestion() phải tự xoá SurveyAnswer liên quan bằng tay (deleteMany) TRƯỚC khi xoá
+  /// SurveyQuestion, thay vì trông chờ CSDL tự dọn — xem service đó.
+  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   /// Câu trả lời tự luận (type=TEXT), hoặc đúng 1 giá trị lựa chọn đã chọn (type=SINGLE_CHOICE).
   value      String         @db.NVarChar(Max)
 
