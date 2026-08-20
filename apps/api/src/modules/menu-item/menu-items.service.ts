@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { MenuItemDto, PublicMenuItemDto } from "@congdoan/types";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -42,6 +43,13 @@ export class MenuItemsService {
 
     const item = await this.prisma.menuItem.create({
       data: {
+        // SQL Server chỉ cho phép TỐI ĐA 1 dòng có giá trị NULL trên cột có UNIQUE constraint (khác
+        // Postgres/MySQL cho phép nhiều NULL) — nếu để `code` là null cho mọi mục do admin tự tạo thì
+        // mục thứ 2 trở đi sẽ luôn văng lỗi "Unique constraint failed on dbo.menu_items". `code` chỉ
+        // thực sự cần thiết để seed.ts upsert lại an toàn (xem ghi chú field trong schema.prisma) —
+        // mục do admin tạo không bao giờ được seed.ts đụng tới, nên sinh 1 giá trị ngẫu nhiên duy nhất
+        // ở đây là đủ, KHÔNG cần đổi schema (không cần migration).
+        code: randomUUID(),
         label: dto.label,
         url: dto.url,
         sortOrder: dto.sortOrder ?? 0,

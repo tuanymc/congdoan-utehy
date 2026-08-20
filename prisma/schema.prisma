@@ -464,7 +464,10 @@ model ContactMessage {
 model MenuItem {
   id    String @id @default(uuid())
   /// Mã cố định dùng để seed lại an toàn (upsert theo code, xem prisma/seed.ts) — KHÔNG hiển thị cho
-  /// người dùng. Mục do admin tự tạo thêm sau này để null.
+  /// người dùng. Mục do admin tự tạo thêm sau này được service tự sinh 1 UUID ngẫu nhiên làm code (xem
+  /// MenuItemsService.create) — KHÔNG để null, vì SQL Server chỉ cho phép tối đa 1 dòng NULL trên cột
+  /// có UNIQUE constraint (khác Postgres/MySQL), để null sẽ khiến mục admin tạo thứ 2 trở đi bị lỗi
+  /// "Unique constraint failed".
   code  String? @unique
   label String
   /// Đường dẫn khi bấm vào mục — vd "/gioi-thieu", "/tin-tuc?category=van-hoa-doc", "/gioi-thieu#lien-he".
