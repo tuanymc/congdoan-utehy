@@ -28,6 +28,10 @@ export function DocumentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const direction = (searchParams.get("direction") ?? "") as DocumentDirection | "";
+  // Đến từ mục menu "Thông báo" (Header.tsx -> /van-ban?documentTypeId=...) — lọc theo loại công văn
+  // cụ thể, khác với `direction` (lọc theo chiều đi/đến). Không có picker riêng vì trang này chỉ cần
+  // phục vụ đúng đường dẫn từ menu, không phải bộ lọc tự chọn loại công văn đầy đủ.
+  const documentTypeId = searchParams.get("documentTypeId") ?? "";
 
   const [result, setResult] = useState<PaginatedResult<PublicOfficialDocumentListItemDto> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +43,7 @@ export function DocumentsPage() {
 
     const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
     if (direction) query.set("direction", direction);
+    if (documentTypeId) query.set("documentTypeId", documentTypeId);
 
     apiFetch<PaginatedResult<PublicOfficialDocumentListItemDto>>(`/official-documents?${query.toString()}`)
       .then((data) => {
@@ -51,7 +56,14 @@ export function DocumentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, direction]);
+  }, [page, direction, documentTypeId]);
+
+  function clearDocumentTypeFilter() {
+    const params = new URLSearchParams(searchParams);
+    params.delete("documentTypeId");
+    params.delete("page");
+    setSearchParams(params);
+  }
 
   function selectDirection(next: DocumentDirection | "") {
     const params = new URLSearchParams(searchParams);
@@ -101,6 +113,18 @@ export function DocumentsPage() {
           </button>
         ))}
       </div>
+
+      {documentTypeId ? (
+        <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+          <span>
+            Đang lọc theo loại văn bản
+            {result && result.items.length > 0 ? `: ${result.items[0]?.documentType.name}` : ""}.
+          </span>
+          <button type="button" onClick={clearDocumentTypeFilter} className="text-primary hover:underline">
+            Xóa lọc
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-8">
         {error ? (

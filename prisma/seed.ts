@@ -180,6 +180,27 @@ async function main() {
     topMenuIds.set(m.code, item.id);
   }
 
+  /* Đối chiếu trực tiếp với menu web cũ (khối "menu-tuan" ở trang chủ) — dropdown "Giới thiệu" web cũ
+   * có 14 mục (Giới thiệu chung, Chức năng nhiệm vụ, Ban chấp hành, Cơ cấu tổ chức, BCH qua các thời
+   * kỳ, Ủy ban kiểm tra, Ban Tuyên giáo nữ công, Ban Văn thể, Ban Tài chính, Ban Thanh tra nhân dân, Ban
+   * Chính sách pháp luật, Văn phòng, Ban chuyên môn, Liên hệ) nhưng ở web mới TOÀN BỘ nội dung đó chỉ
+   * là các bài viết (Post) trong 1 category "gioi-thieu" duy nhất, được AboutPage.tsx tự gom lại thành
+   * đúng 3 nhóm cố định (id neo "gioi-thieu-chung"/"ban-chap-hanh-cong-doan"/"cac-ban-chuyen-mon" — xem
+   * GROUPS trong AboutPage.tsx) — 9/13 mục con của web cũ KHÔNG phải trang/neo riêng biệt nên KHÔNG
+   * thêm thành 14 mục trùng lặp trỏ về cùng 3 neo (rối menu, sai khác biệt thật). 4 mục dưới đây đã là
+   * đầy đủ những gì trang Giới thiệu web mới thực sự hỗ trợ.
+   * Dropdown "Tin hoạt động" web cũ (14 mục) KHÔNG cần seed tay — top-activity đã bật
+   * autoCategoryChildren=true, tự động liệt kê MỌI category thật (Công tác tổ chức, Tuyên truyền giáo
+   * dục, Chính sách pháp luật, Công tác Nữ công giới, Câu lạc bộ, Hoạt động chuyên môn, ủng hộ hỗ trợ,
+   * UBKT, giao lưu, công đoàn bộ phận, Tin tức khác, Gương nhà giáo, Đồng hành cùng con, Khoẻ cùng
+   * chuyên gia...) đã ETL từ web cũ — xem MenuItemsService.buildAutoCategoryEntries().
+   * Dropdown "Văn bản" web cũ có 6 mục: 3 mục dưới đây (Tất cả/Công văn đi/Công văn đến + Thông báo nếu
+   * tìm thấy loại công văn cùng tên, xem đoạn seed riêng bên dưới) có trang thật tương ứng. 3 mục còn
+   * lại CHỦ ĐỘNG bỏ qua vì không có tính năng tương ứng ở web mới: "Quy trình, Biểu mẫu" (web cũ trỏ
+   * thẳng /van-ban — trang tải biểu mẫu tĩnh, chưa ETL nội dung này), "Văn bản nội bộ" (trỏ
+   * /cv2/Login.aspx — hệ quản lý công văn nội bộ có luồng duyệt riêng, đã chủ động không xây lại, xem
+   * ghi chú domain OFFICIALDOCUMENT trong schema.prisma), "Báo Cáo" (trỏ /so-lieu-thong-ke — trang số
+   * liệu thống kê, chưa có trang tương đương ở web mới). */
   const CHILD_MENU_SEED = [
     {
       code: "about-child-chung",
@@ -210,14 +231,14 @@ async function main() {
       parentCode: "top-document",
       label: "Công văn đi",
       url: "/van-ban?direction=OUTGOING",
-      sortOrder: 10
+      sortOrder: 20
     },
     {
       code: "document-child-incoming",
       parentCode: "top-document",
       label: "Công văn đến",
       url: "/van-ban?direction=INCOMING",
-      sortOrder: 20
+      sortOrder: 30
     }
   ];
   for (const c of CHILD_MENU_SEED) {
@@ -228,6 +249,31 @@ async function main() {
       update: {},
       create: { code: c.code, label: c.label, url: c.url, sortOrder: c.sortOrder, parentId }
     });
+  }
+
+  // "Thông báo" (mục con "Văn bản") — web cũ lọc theo loại công văn (tblDocumentKind.Name), không có
+  // id cố định để hard-code như các mục khác vì DocumentType được ETL từ dữ liệu thật của từng server
+  // (mỗi lần chạy migrate-legacy-content.ts có thể sinh id UUID khác nhau) — tra theo đúng tên "Thông
+  // báo" lúc seed, CHỈ thêm mục menu nếu tìm thấy loại công văn này thật sự tồn tại; bỏ qua êm nếu
+  // chưa ETL hoặc tên khác đi, không tạo mục trỏ tới id rỗng/sai.
+  const documentTopId = topMenuIds.get("top-document");
+  if (documentTopId) {
+    const thongBaoType = await prisma.documentType.findFirst({ where: { name: "Thông báo" } });
+    if (thongBaoType) {
+      await prisma.menuItem.upsert({
+        where: { code: "document-child-thongbao" },
+        update: {},
+        create: {
+          code: "document-child-thongbao",
+          label: "Thông báo",
+          url: `/van-ban?documentTypeId=${thongBaoType.id}`,
+          sortOrder: 10,
+          parentId: documentTopId
+        }
+      });
+    } else {
+      console.log('  (bỏ qua mục menu "Thông báo" — chưa tìm thấy loại công văn tên "Thông báo" trong CSDL)');
+    }
   }
 
   console.log("Done. Tài khoản admin mặc định:", adminEmail, "(đổi mật khẩu ngay sau lần đăng nhập đầu tiên)");
