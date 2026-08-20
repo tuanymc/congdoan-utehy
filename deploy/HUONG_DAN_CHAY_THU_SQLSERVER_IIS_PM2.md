@@ -691,6 +691,74 @@ vào Git rồi push.
 
 ---
 
+## Bước 6.10 — Migrate schema đợt 6 (Đăng ký hoạt động — Phase 4b Tiện ích số)
+
+Đợt này thêm 2 bảng MỚI `events`/`event_registrations` (không đổi bảng nào có sẵn) — tính năng
+"Đăng ký hoạt động" trong Tiện ích số Công đoàn: trang `/admin/events` để cán bộ Công đoàn tạo/sửa/xoá
+hoạt động và xem danh sách người đăng ký; trang công khai
+`/tien-ich-so-cong-doan/dang-ky-hoat-dong` để đoàn viên xem và đăng ký tham gia (không cần đăng nhập).
+Quyền quản trị `event:*` đã seed sẵn cho ADMIN và UNION_CLERK (giống các module công văn/banner khác).
+
+```powershell
+cd C:\inetpub\congdoan-src
+pm2 stop all
+
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có CREATE TABLE events, CREATE TABLE event_registrations (kèm FK +
+# unique index [eventId, email]) — KHÔNG được có DROP/ALTER nào trên bảng có sẵn. Nếu có gì lạ, dừng
+# lại, đừng deploy, gửi lại nội dung để review.
+Get-Content prisma\migrations\tmp_diff.sql
+
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_events"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed
+pnpm build
+
+Copy-Item apps\web\dist\*   -Destination C:\inetpub\congdoan2026\web   -Recurse -Force
+Copy-Item apps\admin\dist\* -Destination C:\inetpub\congdoan2026\admin -Recurse -Force
+
+pm2 start deploy\ecosystem.config.js --env production
+pm2 status
+```
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_events/`) vào Git rồi push.
+
+Đợt này KHÔNG cần cấp thêm quyền ghi thư mục nào cho tài khoản chạy PM2 (khác đợt 6.8 — file đính
+kèm công văn) — dữ liệu hoạt động/đăng ký chỉ lưu trong SQL Server, không ghi file lên đĩa.
+
+### Kiểm tra end-to-end đợt này
+
+1. `http://localhost:8080/admin` — đăng nhập ADMIN hoặc UNION_CLERK, menu trái phải thấy mục "Đăng ký
+   hoạt động" (biểu tượng lịch). Bấm vào, tạo thử 1 hoạt động (điền tên, thời gian bắt đầu/kết thúc,
+   hạn đăng ký, số lượng tối đa, để "Hiển thị công khai" = Có).
+2. Mở `http://localhost:8080/tien-ich-so-cong-doan` — card "Đăng ký hoạt động" phải chuyển từ badge
+   "Sắp ra mắt" sang bấm được, dẫn tới `/tien-ich-so-cong-doan/dang-ky-hoat-dong` liệt kê đúng hoạt
+   động vừa tạo.
+3. Bấm vào hoạt động đó, điền form đăng ký (họ tên + email bắt buộc) rồi gửi — phải thấy thông báo
+   cảm ơn, KHÔNG cần đăng nhập.
+4. Gửi lại lần 2 với CÙNG email cho cùng hoạt động — phải báo lỗi "Email này đã đăng ký hoạt động này
+   rồi" (kiểm tra unique constraint `[eventId, email]` hoạt động đúng).
+5. Quay lại `/admin/events`, bấm "Người đăng ký" ở hoạt động vừa test — phải thấy đúng 1 người đã
+   đăng ký ở bước 3 (không thấy lượt bị từ chối ở bước 4).
+6. Sửa hoạt động, đặt "Số lượng tối đa" = 1 (đã có sẵn 1 người đăng ký) — mở lại trang công khai của
+   hoạt động đó, form đăng ký phải bị thay bằng badge "Hoạt động đã đủ số lượng đăng ký".
+7. Sửa lại "Hiển thị công khai" = Không — hoạt động phải biến mất khỏi trang danh sách công khai
+   (nhưng vẫn còn trong `/admin/events` và lịch sử đăng ký vẫn giữ nguyên).
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên
