@@ -629,6 +629,68 @@ rồi push, giống lưu ý ở các bước trước.
 
 ---
 
+## Bước 6.9 — Migrate schema đợt 5 (Ẩn/hiện chuyên mục khỏi menu)
+
+Đợt này CHỈ thêm 1 cột mới `showInMenu` (mặc định `true`) vào bảng `categories` có sẵn — trước đây
+mục "Tin hoạt động" tự động liệt kê MỌI chuyên mục (trừ vài slug loại trừ cố định trong code), không
+có cách nào ẩn bớt 1 chuyên mục khỏi menu mà không sửa code. Nay trang `/admin/categories` có thêm cột
+"Hiện trong menu" — bấm trực tiếp vào badge để ẩn/hiện ngay, không cần mở form Sửa. Chỉ ẩn MỤC MENU,
+KHÔNG ẩn bài viết khỏi trang `/tin-tuc`.
+
+Cùng cách làm với các đợt trước — LƯU Ý: từ đợt này đổi sang dùng `Move-Item` thay vì
+`Get-Content | Set-Content -Encoding ascii` khi tạo file `migration.sql` (rút kinh nghiệm từ đợt
+6.8 — `-Encoding ascii` sẽ xoá mất dấu tiếng Việt nếu migration có chữ Việt trong giá trị mặc định;
+`Move-Item` giữ nguyên byte gốc do Prisma ghi ra, an toàn với mọi trường hợp nên dùng làm cách chuẩn
+từ nay về sau):
+
+```powershell
+cd C:\inetpub\congdoan-src
+pm2 stop all
+
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có ALTER TABLE categories ADD showInMenu (kèm giá trị mặc định 1)
+# — KHÔNG được có DROP/ALTER nào khác. Nếu có gì lạ, dừng lại, đừng deploy, gửi lại nội dung để review.
+Get-Content prisma\migrations\tmp_diff.sql
+
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_category_show_in_menu"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed
+pnpm build
+
+Copy-Item apps\web\dist\*   -Destination C:\inetpub\congdoan2026\web   -Recurse -Force
+Copy-Item apps\admin\dist\* -Destination C:\inetpub\congdoan2026\admin -Recurse -Force
+
+pm2 start deploy\ecosystem.config.js --env production
+pm2 status
+```
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_category_show_in_menu/`)
+vào Git rồi push.
+
+### Kiểm tra end-to-end đợt này
+
+1. `http://localhost:8080/admin/categories` — thấy cột "Hiện trong menu" với badge "Đang hiện"/"Đang
+   ẩn" cho từng chuyên mục (mặc định tất cả "Đang hiện" — khớp hành vi cũ, không ai bị ẩn nhầm).
+2. Bấm vào badge của 1 chuyên mục để chuyển sang "Đang ẩn", tải lại trang chủ — dropdown "Tin hoạt
+   động" phải mất mục chuyên mục đó ngay (không cần build lại).
+3. Mở lại trang `/tin-tuc?category=<slug-vừa-ẩn>` trực tiếp bằng URL — bài viết chuyên mục đó vẫn xem
+   được bình thường (chỉ ẩn mục menu, không ẩn nội dung).
+4. Bấm lại badge để chuyển về "Đang hiện" — mục menu phải xuất hiện lại.
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên

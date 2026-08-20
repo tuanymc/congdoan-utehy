@@ -38,7 +38,8 @@ export class CategoriesService {
         slug,
         description: dto.description,
         sortOrder: dto.sortOrder ?? 0,
-        isAboutSection: dto.isAboutSection ?? false
+        isAboutSection: dto.isAboutSection ?? false,
+        showInMenu: dto.showInMenu ?? true
       }
     });
     await this.auditLog.record({ actorUserId, action: "create", entityType: "Category", entityId: category.id });
@@ -54,7 +55,8 @@ export class CategoriesService {
         slug: dto.slug ? slugify(dto.slug) : undefined,
         description: dto.description,
         sortOrder: dto.sortOrder,
-        isAboutSection: dto.isAboutSection
+        isAboutSection: dto.isAboutSection,
+        showInMenu: dto.showInMenu
       }
     });
     await this.auditLog.record({ actorUserId, action: "update", entityType: "Category", entityId: id });

@@ -154,6 +154,13 @@ model Category {
   /// mục này vào trang "Giới thiệu" thay vì phải hard-code nội dung tĩnh như trước.
   isAboutSection Boolean @default(false)
 
+  /// false = KHÔNG hiện chuyên mục này trong dropdown "Tin hoạt động" tự động ở menu chính (xem
+  /// MenuItemsService.buildAutoCategoryEntries() — trước đây MỌI category isAboutSection=false đều
+  /// tự hiện trong menu, không có cách nào ẩn bớt trừ khi hard-code danh sách loại trừ trong code).
+  /// KHÔNG ảnh hưởng gì tới việc bài viết chuyên mục này có hiển thị ở trang /tin-tuc hay không — chỉ
+  /// ẩn/hiện MỤC MENU trỏ tới chuyên mục, bài viết vẫn xem được bình thường nếu biết đường dẫn/slug.
+  showInMenu Boolean @default(true)
+
   posts Post[]
 
   @@index([legacyCode])

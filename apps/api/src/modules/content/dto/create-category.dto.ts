@@ -26,4 +26,11 @@ export class CreateCategoryDto implements CreateCategoryRequest {
   @IsOptional()
   @IsBoolean()
   isAboutSection?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'false = ẩn mục menu tự động trỏ tới chuyên mục này khỏi dropdown "Tin hoạt động".'
+  })
+  @IsOptional()
+  @IsBoolean()
+  showInMenu?: boolean;
 }

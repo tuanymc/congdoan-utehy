@@ -33,6 +33,7 @@ export function CategoryForm({ mode }: CategoryFormProps) {
   const [description, setDescription] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [isAboutSection, setIsAboutSection] = useState<"true" | "false">("false");
+  const [showInMenu, setShowInMenu] = useState<"true" | "false">("true");
 
   useEffect(() => {
     if (mode === "edit" && categoryResult?.data) {
@@ -42,6 +43,7 @@ export function CategoryForm({ mode }: CategoryFormProps) {
       setDescription(category.description ?? "");
       setSortOrder(String(category.sortOrder));
       setIsAboutSection(category.isAboutSection ? "true" : "false");
+      setShowInMenu(category.showInMenu ? "true" : "false");
     }
   }, [mode, categoryResult]);
 
@@ -56,7 +58,8 @@ export function CategoryForm({ mode }: CategoryFormProps) {
       slug: slug.trim() || undefined,
       description: description.trim() || undefined,
       sortOrder: sortOrder.trim() ? Number(sortOrder) : undefined,
-      isAboutSection: isAboutSection === "true"
+      isAboutSection: isAboutSection === "true",
+      showInMenu: showInMenu === "true"
     };
 
     if (mode === "create") {
@@ -133,6 +136,23 @@ export function CategoryForm({ mode }: CategoryFormProps) {
               <p className="text-xs text-muted-foreground">
                 Dùng cho các chuyên mục dạng "Giới thiệu chung", "Ban chấp hành"... — apps/web sẽ gom bài viết
                 các chuyên mục này vào trang Giới thiệu thay vì trang Tin tức.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="showInMenu">Hiện trong menu chính</Label>
+              <Select value={showInMenu} onValueChange={(value) => setShowInMenu(value as "true" | "false")}>
+                <SelectTrigger id="showInMenu">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Có — hiện trong dropdown "Tin hoạt động"</SelectItem>
+                  <SelectItem value="false">Không — ẩn khỏi menu (bài viết vẫn xem được bình thường)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Chỉ ẩn/hiện MỤC MENU trỏ tới chuyên mục này — không ảnh hưởng tới việc bài viết có hiển thị ở
+                trang Tin tức hay không. Có thể bấm ẩn/hiện nhanh ngay ở trang danh sách Chuyên mục.
               </p>
             </div>
 

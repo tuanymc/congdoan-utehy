@@ -15,6 +15,9 @@ export interface CategoryDto {
   /** true nếu chuyên mục thuộc nhóm "Giới thiệu" ở web cũ — dùng để apps/web gom bài viết vào trang
    * Giới thiệu thay vì phải hard-code nội dung tĩnh. Xem Category.isAboutSection trong schema.prisma. */
   isAboutSection: boolean;
+  /** false = ẩn mục menu tự động trỏ tới chuyên mục này khỏi dropdown "Tin hoạt động" — KHÔNG ẩn bài
+   * viết khỏi trang /tin-tuc. Xem Category.showInMenu trong schema.prisma. */
+  showInMenu: boolean;
 }
 
 export interface PostListItemDto {
@@ -53,6 +56,7 @@ export interface CreateCategoryRequest {
   description?: string;
   sortOrder?: number;
   isAboutSection?: boolean;
+  showInMenu?: boolean;
 }
 
 export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}

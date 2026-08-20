@@ -127,11 +127,12 @@ export class MenuItemsService {
     });
   }
 
-  /** Chuyên mục thật đủ điều kiện tự động liệt kê — không thuộc "Giới thiệu", không nằm trong danh
-   * sách loại trừ cố định AUTO_CATEGORY_EXCLUDED_SLUGS. */
+  /** Chuyên mục thật đủ điều kiện tự động liệt kê — không thuộc "Giới thiệu", chưa bị admin ẩn khỏi
+   * menu qua trang Chuyên mục (Category.showInMenu — xem ghi chú trong schema.prisma), và không nằm
+   * trong danh sách loại trừ cố định AUTO_CATEGORY_EXCLUDED_SLUGS. */
   private async buildAutoCategoryEntries(): Promise<PublicMenuItemDto[]> {
     const categories = await this.prisma.category.findMany({
-      where: { isAboutSection: false },
+      where: { isAboutSection: false, showInMenu: true },
       orderBy: { sortOrder: "asc" }
     });
     return categories
