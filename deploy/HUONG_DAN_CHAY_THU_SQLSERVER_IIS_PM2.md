@@ -944,6 +944,63 @@ Server, không ghi file lên đĩa.
 
 ---
 
+## Bước 6.13 — Migrate schema đợt 9 (Hồ sơ nội bộ công đoàn viên)
+
+Đợt này thêm 1 bảng MỚI: `union_member_profiles` (quan hệ 1-1 với `union_members` qua cột `memberId`
+unique) — bổ sung gần 90 cột còn lại của `NHANVIEN` ở web cũ (CMND, ngày sinh, đảng tịch, đoàn, lương,
+BHXH, học vấn...) mà trước đó **CHỦ ĐỘNG** không nhập vì lý do bảo mật (xem domain block
+UNIONDIRECTORY trong `prisma/schema.prisma`). Bảng mới này **CHỈ dùng cho màn hình quản trị**
+(`/admin/union-members`, khu vực "Hồ sơ nội bộ chi tiết") — không có endpoint công khai nào trả về.
+
+Không đổi/xoá bảng nào có sẵn — chỉ thêm bảng mới, an toàn để chạy trên dữ liệu production hiện có.
+
+```powershell
+cd C:\inetpub\congdoan-src
+pm2 stop all
+
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có CREATE TABLE union_member_profiles (kèm FK tới union_members +
+# unique index trên memberId) — KHÔNG được có DROP/ALTER nào trên bảng có sẵn. Nếu có gì lạ, dừng lại,
+# đừng deploy, gửi lại nội dung để review.
+Get-Content prisma\migrations\tmp_diff.sql
+
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_union_member_profile"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm build
+
+Copy-Item apps\web\dist\*   -Destination C:\inetpub\congdoan2026\web   -Recurse -Force
+Copy-Item apps\admin\dist\* -Destination C:\inetpub\congdoan2026\admin -Recurse -Force
+
+pm2 start deploy\ecosystem.config.js --env production
+pm2 status
+```
+
+**Nhớ commit thư mục migration vừa tạo** (`prisma/migrations/<timestamp>_add_union_member_profile/`)
+vào Git rồi push — nếu không, lần deploy sau (máy khác hoặc CI) sẽ lại không thấy bảng
+`union_member_profiles` giống lần này.
+
+**Kiểm tra nhanh sau khi deploy**: vào `/admin/union-members`, mở sửa 1 công đoàn viên bất kỳ — phải
+load được (không còn lỗi 500 "table does not exist"), thấy khu vực "Hồ sơ nội bộ chi tiết" ở cuối
+form, điền thử vài trường rồi lưu, mở lại phải thấy đúng dữ liệu vừa lưu.
+
+Muốn nhập luôn dữ liệu thật từ CSDL web cũ vào bảng này: chạy `pnpm migrate:legacy` (nên thử
+`LEGACY_MIGRATE_DRY_RUN=true pnpm migrate:legacy` trước để xem log, chưa ghi gì vào CSDL — xem đầu
+file `prisma/migrate-legacy-content.ts` để biết cách cấu hình `LEGACY_DB_*` trong `.env`).
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên
