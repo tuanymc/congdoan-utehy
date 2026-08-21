@@ -30,18 +30,15 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-      include: { roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } }
-    });
+    const user = await this.findUserByLoginIdentifier(email.trim());
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException("Email hoặc mật khẩu không đúng.");
+      throw new UnauthorizedException("Email/mã cán bộ hoặc mật khẩu không đúng.");
     }
 
     const passwordOk = await compare(password, user.passwordHash);
     if (!passwordOk) {
-      throw new UnauthorizedException("Email hoặc mật khẩu không đúng.");
+      throw new UnauthorizedException("Email/mã cán bộ hoặc mật khẩu không đúng.");
     }
 
     const roles = user.roles.map((ur) => ur.role.code as SystemRoleCode);
@@ -55,6 +52,24 @@ export class AuthService {
 
     const authUser: AuthUser = { id: user.id, email: user.email, fullName: user.fullName, roles };
     return { ...tokens, user: authUser };
+  }
+
+  /** Tra user theo email đăng nhập, hoặc theo mã cán bộ (UnionMember.legacyCode) đã gắn User. */
+  private async findUserByLoginIdentifier(identifier: string) {
+    const include = {
+      roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } }
+    };
+
+    const byEmail = await this.prisma.user.findUnique({ where: { email: identifier }, include });
+    if (byEmail) return byEmail;
+    if (identifier.includes("@")) return null;
+
+    const member = await this.prisma.unionMember.findFirst({
+      where: { legacyCode: identifier },
+      select: { userId: true }
+    });
+    if (!member?.userId) return null;
+    return this.prisma.user.findUnique({ where: { id: member.userId }, include });
   }
 
   private async issueTokenPair(

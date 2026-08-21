@@ -4,6 +4,7 @@ import type {
   PaginatedResult,
   PaginationQuery,
   UnionMemberAdminDetailDto,
+  UnionMemberAdminListItemDto,
   UnionMemberListItemDto,
   UnionMemberProfileDto,
   UpsertUnionMemberProfileRequest
@@ -153,8 +154,21 @@ function toProfileDto(p: UnionMemberProfile): UnionMemberProfileDto {
   };
 }
 
+function toAdminListDto(m: MemberWithRelations): UnionMemberAdminListItemDto {
+  return {
+    ...toDto(m),
+    legacyCode: m.legacyCode,
+    hasLogin: Boolean(m.userId)
+  };
+}
+
 function toAdminDetailDto(m: MemberWithProfile): UnionMemberAdminDetailDto {
-  return { ...toDto(m), profile: m.profile ? toProfileDto(m.profile) : null, linkedUserEmail: m.user?.email ?? null };
+  return {
+    ...toDto(m),
+    profile: m.profile ? toProfileDto(m.profile) : null,
+    linkedUserEmail: m.user?.email ?? null,
+    legacyCode: m.legacyCode
+  };
 }
 
 /** Chuyển payload profile (string ISO date từ FE) sang object field-value thô cho Prisma nested write
@@ -212,8 +226,35 @@ export class UnionMembersService {
   }
 
   /** Quản trị — trả toàn bộ, không lọc isPublic, để admin có thể bật lại người đang bị ẩn. */
-  async listForAdmin(query: PaginationQuery & { departmentId?: string }): Promise<PaginatedResult<UnionMemberListItemDto>> {
-    return this.queryList(query);
+  async listForAdmin(query: PaginationQuery & { departmentId?: string }): Promise<PaginatedResult<UnionMemberAdminListItemDto>> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 24;
+    const search = query.search?.trim();
+    const where: Prisma.UnionMemberWhereInput = {
+      ...(query.departmentId ? { departmentId: query.departmentId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { fullName: { contains: search } },
+              { legacyCode: { contains: search } },
+              { email: { contains: search } }
+            ]
+          }
+        : {})
+    };
+
+    const [total, members] = await this.prisma.$transaction([
+      this.prisma.unionMember.count({ where }),
+      this.prisma.unionMember.findMany({
+        where,
+        ...memberWithRelations,
+        orderBy: [{ sortOrder: "asc" }, { fullName: "asc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      })
+    ]);
+
+    return { items: members.map(toAdminListDto), total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   private async queryList(

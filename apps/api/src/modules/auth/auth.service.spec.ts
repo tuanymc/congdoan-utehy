@@ -20,6 +20,9 @@ describe("AuthService", () => {
         update: jest.fn().mockResolvedValue({}),
         findUniqueOrThrow: jest.fn()
       },
+      unionMember: {
+        findFirst: jest.fn().mockResolvedValue(null)
+      },
       refreshToken: {
         create: jest.fn().mockResolvedValue({}),
         findUnique: jest.fn(),
@@ -91,5 +94,32 @@ describe("AuthService", () => {
       roles: []
     });
     await expect(service.login("khoa@utehy.edu.vn", password)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("đăng nhập thành công bằng mã cán bộ khi hồ sơ đã gắn tài khoản", async () => {
+    prisma.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "u2",
+        email: "nv@utehy.edu.vn",
+        fullName: "Nguyễn Văn A",
+        isActive: true,
+        passwordHash,
+        roles: [{ role: { code: "MEMBER", permissions: [] } }]
+      });
+    prisma.unionMember.findFirst.mockResolvedValue({ userId: "u2" });
+
+    const result = await service.login("NV001", password);
+
+    expect(result.user).toEqual({
+      id: "u2",
+      email: "nv@utehy.edu.vn",
+      fullName: "Nguyễn Văn A",
+      roles: ["MEMBER"]
+    });
+    expect(prisma.unionMember.findFirst).toHaveBeenCalledWith({
+      where: { legacyCode: "NV001" },
+      select: { userId: true }
+    });
   });
 });

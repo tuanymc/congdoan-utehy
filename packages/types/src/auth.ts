@@ -1,6 +1,7 @@
 import type { SystemRoleCode } from "./common";
 
 export interface LoginRequest {
+  /** Email đăng nhập, hoặc mã cán bộ (UnionMember.legacyCode) nếu tài khoản đã được gắn hồ sơ. */
   email: string;
   password: string;
 }

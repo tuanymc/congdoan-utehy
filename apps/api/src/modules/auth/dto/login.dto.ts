@@ -1,10 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsString, MinLength } from "class-validator";
+import { IsString, MinLength } from "class-validator";
 import type { LoginRequest } from "@congdoan/types";
 
 export class LoginDto implements LoginRequest {
-  @ApiProperty({ example: "admin@congdoan.utehy.edu.vn" })
-  @IsEmail({}, { message: "Email không hợp lệ." })
+  @ApiProperty({ example: "admin@congdoan.utehy.edu.vn", description: "Email hoặc mã cán bộ" })
+  @IsString({ message: "Email hoặc mã cán bộ không được để trống." })
+  @MinLength(1, { message: "Email hoặc mã cán bộ không được để trống." })
   email!: string;
 
   @ApiProperty()

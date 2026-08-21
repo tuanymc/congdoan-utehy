@@ -18,21 +18,24 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import type {
+  CreateUnionMemberLoginsResultDto,
   JwtAccessPayload,
   PaginatedResult,
   UnionMemberAdminDetailDto,
-  UnionMemberImportResultDto,
-  UnionMemberListItemDto
+  UnionMemberAdminListItemDto,
+  UnionMemberImportResultDto
 } from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { RequirePermissions } from "../../common/decorators/roles.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { UnionMembersService } from "./union-members.service";
+import { UnionMembersLoginService } from "./union-members-login.service";
 import { UnionMembersExcelService, type UploadedExcelFile } from "./union-members-excel.service";
 import { CreateUnionMemberDto } from "./dto/create-union-member.dto";
 import { UpdateUnionMemberDto } from "./dto/update-union-member.dto";
 import { QueryUnionMembersDto } from "./dto/query-union-members.dto";
+import { CreateUnionMemberLoginsDto } from "./dto/create-union-member-logins.dto";
 
 /** CRUD "Công đoàn viên" cho trang quản trị — bảo vệ theo permission "unionmember:*". Khác endpoint
  * công khai, trả về TOÀN BỘ (kể cả isPublic=false) để admin có thể tự bật/tắt hiển thị. */
@@ -43,12 +46,13 @@ import { QueryUnionMembersDto } from "./dto/query-union-members.dto";
 export class AdminUnionMembersController {
   constructor(
     private readonly unionMembersService: UnionMembersService,
-    private readonly unionMembersExcelService: UnionMembersExcelService
+    private readonly unionMembersExcelService: UnionMembersExcelService,
+    private readonly unionMembersLoginService: UnionMembersLoginService
   ) {}
 
   @RequirePermissions("unionmember:view")
   @Get()
-  list(@Query() query: QueryUnionMembersDto): Promise<PaginatedResult<UnionMemberListItemDto>> {
+  list(@Query() query: QueryUnionMembersDto): Promise<PaginatedResult<UnionMemberAdminListItemDto>> {
     return this.unionMembersService.listForAdmin(query);
   }
 
@@ -80,6 +84,17 @@ export class AdminUnionMembersController {
       throw new BadRequestException("Chưa chọn file Excel để import.");
     }
     return this.unionMembersExcelService.importFromBuffer(file, actor.sub);
+  }
+
+  // Đặt TRƯỚC @Post() tạo công đoàn viên và @Get(":id") — path tĩnh "create-logins" không được để
+  // Nest nuốt thành id. UNION_CLERK có unionmember:update (không cần user:create, endpoint /users là ADMIN-only).
+  @RequirePermissions("unionmember:update")
+  @Post("create-logins")
+  createLogins(
+    @Body() dto: CreateUnionMemberLoginsDto,
+    @CurrentUser() actor: JwtAccessPayload
+  ): Promise<CreateUnionMemberLoginsResultDto> {
+    return this.unionMembersLoginService.createLogins(dto, actor.sub);
   }
 
   @RequirePermissions("unionmember:view")

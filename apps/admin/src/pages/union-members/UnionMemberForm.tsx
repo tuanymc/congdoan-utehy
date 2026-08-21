@@ -13,6 +13,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { PageLoading } from "../../components/common/PageLoading";
+import { CreateUnionMemberLoginDialog } from "./CreateUnionMemberLoginDialog";
 
 interface UnionMemberFormProps {
   mode: "create" | "edit";
@@ -207,7 +208,7 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
   const navigate = useNavigate();
 
   const { data: deptsResult, isLoading: deptsLoading } = useList<UnionDepartmentDto>({ resource: "union-departments" });
-  const { data: memberResult, isLoading: memberLoading } = useOne<UnionMemberAdminDetailDto>({
+  const { data: memberResult, isLoading: memberLoading, refetch } = useOne<UnionMemberAdminDetailDto>({
     resource: "union-members",
     id,
     queryOptions: { enabled: mode === "edit" && Boolean(id) }
@@ -226,6 +227,7 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
   const [isPublic, setIsPublic] = useState<"true" | "false">("true");
   const [linkedUserEmail, setLinkedUserEmail] = useState("");
   const [profile, setProfile] = useState<Record<string, string>>(() => buildInitialProfileState(null));
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
 
   useEffect(() => {
     if (mode === "edit" && memberResult?.data) {
@@ -336,9 +338,17 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
                 onChange={(event) => setLinkedUserEmail(event.target.value)}
               />
               <p className="text-sm text-muted-foreground">
-                Nhập đúng email của một tài khoản đăng nhập đã tồn tại để công đoàn viên tự sửa thông tin và đổi
-                mật khẩu ở màn hình "/cong-doan-vien". Xoá trắng để gỡ liên kết hiện có.
+                Nhập đúng email của một tài khoản đăng nhập đã tồn tại để liên kết thủ công, hoặc bấm "Tạo tài
+                khoản" để tạo mới từ mã cán bộ với mật khẩu mặc định/ngẫu nhiên gửi email. Xoá trắng để gỡ liên
+                kết hiện có.
               </p>
+              {mode === "edit" && id && !linkedUserEmail ? (
+                <div>
+                  <Button type="button" variant="outline" onClick={() => setLoginDialogOpen(true)}>
+                    Tạo tài khoản từ hồ sơ này
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-2">
@@ -433,6 +443,18 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
           </form>
         </CardContent>
       </Card>
+
+      {mode === "edit" && id ? (
+        <CreateUnionMemberLoginDialog
+          open={loginDialogOpen}
+          onOpenChange={setLoginDialogOpen}
+          selectedIds={[id]}
+          selectedLabel={fullName}
+          onSuccess={() => {
+            void refetch();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

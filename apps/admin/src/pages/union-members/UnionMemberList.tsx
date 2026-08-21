@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDelete, useList, useTable } from "@refinedev/core";
 import type { CrudFilter } from "@refinedev/core";
-import type { UnionDepartmentDto, UnionMemberImportResultDto, UnionMemberListItemDto } from "@congdoan/types";
+import type { UnionDepartmentDto, UnionMemberImportResultDto, UnionMemberAdminListItemDto } from "@congdoan/types";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
 import { pushToast } from "../../components/common/toast-store";
 import { apiFetchBlob, apiFetchUpload } from "../../lib/api-client";
+import { CreateUnionMemberLoginDialog } from "./CreateUnionMemberLoginDialog";
 
 /** Trang quản trị danh bạ Công đoàn viên (thay modules/GioiThieuCongDoanVien.aspx phần quản lý web
  * cũ) — khác endpoint công khai, hiển thị TOÀN BỘ kể cả người đang "Đang ẩn" (isPublic=false) để admin
@@ -26,7 +27,10 @@ export function UnionMemberList() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [departmentId, setDepartmentId] = useState<string>("ALL");
-  const [deleteTarget, setDeleteTarget] = useState<UnionMemberListItemDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UnionMemberAdminListItemDto | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [loginTarget, setLoginTarget] = useState<UnionMemberAdminListItemDto | null>(null);
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -38,7 +42,7 @@ export function UnionMemberList() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { tableQueryResult, current, setCurrent, pageCount, setFilters } = useTable<UnionMemberListItemDto>({
+  const { tableQueryResult, current, setCurrent, pageCount, setFilters } = useTable<UnionMemberAdminListItemDto>({
     resource: "union-members",
     pagination: { current: 1, pageSize: 24 }
   });
@@ -54,6 +58,19 @@ export function UnionMemberList() {
   const total = tableQueryResult.data?.total ?? 0;
   const isLoading = tableQueryResult.isLoading;
   const departments = deptsResult?.data ?? [];
+  const pageIds = members.map((member) => member.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+
+  function toggleSelectAllOnPage(checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return Array.from(new Set([...prev, ...pageIds]));
+      return prev.filter((id) => !pageIds.includes(id));
+    });
+  }
+
+  function toggleSelect(id: string, checked: boolean) {
+    setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((item) => item !== id)));
+  }
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -124,6 +141,15 @@ export function UnionMemberList() {
           <Button variant="outline" onClick={handleImportClick} disabled={isImporting}>
             {isImporting ? "Đang nhập..." : "Nhập Excel"}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setLoginTarget(null);
+              setLoginDialogOpen(true);
+            }}
+          >
+            Tạo tài khoản
+          </Button>
           <input
             ref={importInputRef}
             type="file"
@@ -136,12 +162,14 @@ export function UnionMemberList() {
       </div>
       <p className="text-sm text-muted-foreground">
         Xuất Excel để tải toàn bộ hồ sơ (kể cả các trường nội bộ) ra file mẫu, chỉnh sửa rồi nhập lại — dòng có
-        "Mã cán bộ" khớp sẵn có sẽ được cập nhật, dòng mới hoặc không khớp sẽ tự tạo công đoàn viên mới.
+        "Mã cán bộ" khớp sẵn có sẽ được cập nhật, dòng mới hoặc không khớp sẽ tự tạo công đoàn viên mới. Tạo
+        tài khoản dùng mã cán bộ + email trên hồ sơ; mật khẩu mặc định <code>utehy123</code> hoặc mật khẩu
+        ngẫu nhiên gửi về email.
       </p>
 
       <div className="flex flex-col gap-3 lg:flex-row">
         <Input
-          placeholder="Tìm theo họ tên..."
+          placeholder="Tìm theo họ tên, mã cán bộ, email..."
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           className="lg:max-w-xs"
@@ -165,11 +193,19 @@ export function UnionMemberList() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Chọn tất cả trên trang này"
+                  checked={allPageSelected}
+                  onChange={(event) => toggleSelectAllOnPage(event.target.checked)}
+                />
+              </TableHead>
               <TableHead>Họ tên</TableHead>
-              <TableHead>Chức vụ</TableHead>
+              <TableHead>Mã cán bộ</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Bộ phận</TableHead>
-              <TableHead>Điện thoại</TableHead>
-              <TableHead>Trạng thái</TableHead>
+              <TableHead>Tài khoản</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
@@ -177,7 +213,7 @@ export function UnionMemberList() {
             {isLoading &&
               Array.from({ length: 8 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -185,7 +221,7 @@ export function UnionMemberList() {
 
             {!isLoading && members.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   Không có công đoàn viên nào phù hợp.
                 </TableCell>
               </TableRow>
@@ -194,17 +230,37 @@ export function UnionMemberList() {
             {!isLoading &&
               members.map((member) => (
                 <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.fullName}</TableCell>
-                  <TableCell className="text-muted-foreground">{member.positionTitle ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{member.department?.name ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{member.phone ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={member.isPublic ? "default" : "secondary"}>
-                      {member.isPublic ? "Đang hiển thị" : "Đang ẩn"}
+                    <input
+                      type="checkbox"
+                      aria-label={`Chọn ${member.fullName}`}
+                      checked={selectedIds.includes(member.id)}
+                      onChange={(event) => toggleSelect(member.id, event.target.checked)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{member.fullName}</TableCell>
+                  <TableCell className="text-muted-foreground">{member.legacyCode ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{member.email ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{member.department?.name ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={member.hasLogin ? "default" : "secondary"}>
+                      {member.hasLogin ? "Đã có TK" : "Chưa có TK"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {!member.hasLogin ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoginTarget(member);
+                            setLoginDialogOpen(true);
+                          }}
+                        >
+                          Tạo TK
+                        </Button>
+                      ) : null}
                       <Button variant="outline" size="sm" onClick={() => navigate(`/union-members/edit/${member.id}`)}>
                         Sửa
                       </Button>
@@ -268,6 +324,20 @@ export function UnionMemberList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CreateUnionMemberLoginDialog
+        open={loginDialogOpen}
+        onOpenChange={(open) => {
+          setLoginDialogOpen(open);
+          if (!open) setLoginTarget(null);
+        }}
+        selectedIds={loginTarget ? [loginTarget.id] : selectedIds}
+        selectedLabel={loginTarget ? `${loginTarget.fullName}${loginTarget.legacyCode ? ` (${loginTarget.legacyCode})` : ""}` : undefined}
+        onSuccess={() => {
+          void tableQueryResult.refetch();
+          setSelectedIds([]);
+        }}
+      />
     </div>
   );
 }

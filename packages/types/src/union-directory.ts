@@ -143,12 +143,59 @@ export interface UpsertUnionMemberProfileRequest extends Partial<Omit<UnionMembe
   hasPedagogyTraining?: boolean;
 }
 
+/** Dòng danh sách trên trang quản trị — thêm mã cán bộ và trạng thái tài khoản đăng nhập (không trả
+ * các field này qua endpoint công khai). */
+export interface UnionMemberAdminListItemDto extends UnionMemberListItemDto {
+  /** Mã cán bộ (NHANVIEN.MANV / UnionMember.legacyCode) — dùng làm định danh khi tạo tài khoản. */
+  legacyCode: string | null;
+  /** true nếu đã gắn User (có thể đăng nhập cổng đoàn viên). */
+  hasLogin: boolean;
+}
+
 /** Chi tiết công đoàn viên dành cho màn hình quản trị — có thêm hồ sơ nội bộ (null nếu chưa nhập). */
 export interface UnionMemberAdminDetailDto extends UnionMemberListItemDto {
   profile: UnionMemberProfileDto | null;
   /** Email tài khoản đăng nhập (User) đang liên kết để công đoàn viên tự sửa thông tin ở
    * "/cong-doan-vien" — null nếu chưa liên kết. Xem UnionMember.userId trong prisma/schema.prisma. */
   linkedUserEmail: string | null;
+  legacyCode: string | null;
+}
+
+/** Mật khẩu mặc định khi admin tạo tài khoản công đoàn viên (có thể chọn ngẫu nhiên thay thế). */
+export const DEFAULT_UNION_MEMBER_PASSWORD = "utehy123";
+
+export type CreateUnionMemberLoginPasswordMode = "default" | "random";
+
+/** Payload tạo tài khoản đăng nhập từ hồ sơ công đoàn viên (theo mã cán bộ / dòng đang chọn). */
+export interface CreateUnionMemberLoginsRequest {
+  passwordMode: CreateUnionMemberLoginPasswordMode;
+  /** Id hồ sơ cụ thể (vd các dòng đang chọn trên bảng). */
+  memberIds?: string[];
+  /** Danh sách mã cán bộ (legacyCode), mỗi phần tử 1 mã. */
+  staffCodes?: string[];
+  /** true = mọi hồ sơ chưa có tài khoản, có email hợp lệ và có mã cán bộ. */
+  allEligible?: boolean;
+}
+
+export interface CreateUnionMemberLoginItemResult {
+  memberId: string | null;
+  fullName: string | null;
+  legacyCode: string | null;
+  email: string | null;
+  status: "created" | "linked_existing" | "skipped";
+  reason?: string;
+  emailSent?: boolean;
+  /** Chỉ trả khi passwordMode=random và gửi mail thất bại — để admin copy gửi thủ công. */
+  temporaryPassword?: string;
+}
+
+export interface CreateUnionMemberLoginsResultDto {
+  created: number;
+  linkedExisting: number;
+  skipped: number;
+  emailed: number;
+  mailConfigured: boolean;
+  items: CreateUnionMemberLoginItemResult[];
 }
 
 export interface CreateUnionMemberRequest {

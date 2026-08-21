@@ -43,24 +43,25 @@ export function LoginPage() {
         <CardHeader>
           <CardTitle>Đăng nhập cổng đoàn viên</CardTitle>
           <CardDescription>
-            Dành cho cán bộ, giảng viên, người lao động là đoàn viên Công đoàn UTEHY.
+            Dành cho cán bộ, giảng viên, người lao động là đoàn viên Công đoàn UTEHY. Đăng nhập bằng email
+            hoặc mã cán bộ.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
             <div className="space-y-1.5">
               <label htmlFor="login-email" className="text-sm font-medium">
-                Email
+                Email hoặc mã cán bộ
               </label>
               <input
                 id="login-email"
-                type="email"
+                type="text"
                 required
-                autoComplete="email"
+                autoComplete="username"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="w-full rounded-md border bg-input-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
-                placeholder="ten@utehy.edu.vn"
+                placeholder="ten@utehy.edu.vn hoặc mã cán bộ"
               />
             </div>
             <div className="space-y-1.5">
