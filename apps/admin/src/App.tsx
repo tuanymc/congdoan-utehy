@@ -77,7 +77,7 @@ export function App() {
           {
             name: "dashboard",
             list: "/dashboard",
-            meta: { label: "Dashboard" }
+            meta: { label: "Tổng quan" }
           },
           {
             name: "posts",

@@ -13,3 +13,4 @@ export * from "./event";
 export * from "./ai-tool-resource";
 export * from "./survey";
 export * from "./public-service";
+export * from "./dashboard";

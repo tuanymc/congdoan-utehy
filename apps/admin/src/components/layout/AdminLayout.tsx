@@ -37,7 +37,7 @@ interface NavItem {
 }
 
 const BASE_NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Tổng quan", icon: LayoutDashboard },
   { to: "/posts", label: "Bài viết", icon: Newspaper },
   { to: "/categories", label: "Chuyên mục", icon: FolderTree }
 ];

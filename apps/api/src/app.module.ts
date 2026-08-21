@@ -4,6 +4,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { PrismaModule } from "./prisma/prisma.module";
 import { HealthModule } from "./modules/health/health.module";
+import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
 import { ContentModule } from "./modules/content/content.module";
@@ -25,6 +26,7 @@ import { PublicServicesModule } from "./modules/public-services/public-services.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // giới hạn chung; auth.controller có thể siết thêm sau
     PrismaModule,
     HealthModule,
+    DashboardModule,
     AuthModule,
     UsersModule,
     ContentModule,
