@@ -174,6 +174,15 @@ const FALSY_TEXT = new Set(["không", "khong", "false", "0"]);
  * (khớp với cách export: field null cũng xuất ra ô trống) — khác quy ước "không gửi field = giữ
  * nguyên" của UnionMemberForm.tsx vì Excel không có khái niệm "không gửi", mọi ô đều có giá trị hiện
  * diện (kể cả rỗng). */
+// Overload theo từng ColumnType cụ thể để TS suy ra đúng kiểu hẹp tại nơi gọi (vd parseCell(x,
+// "boolean") phải là `boolean | null`, không phải union rộng `string | number | boolean | Date |
+// null`) — thiếu overload này khiến coreData.isPublic bị suy ra kiểu rộng, không gán được vào field
+// `boolean` của Prisma (lỗi TS2322 lúc build production, đã gặp thực tế).
+function parseCell(raw: unknown, type: "text"): string | null;
+function parseCell(raw: unknown, type: "date"): Date | null;
+function parseCell(raw: unknown, type: "number"): number | null;
+function parseCell(raw: unknown, type: "boolean"): boolean | null;
+function parseCell(raw: unknown, type: ColumnType): string | number | boolean | Date | null;
 function parseCell(raw: unknown, type: ColumnType): string | number | boolean | Date | null {
   if (type === "text") {
     const text = cellToText(raw);
