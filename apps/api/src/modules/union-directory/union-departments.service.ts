@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { UnionDepartmentDto } from "@congdoan/types";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
@@ -43,6 +43,15 @@ export class UnionDepartmentsService {
 
   async remove(id: string, actorUserId: string): Promise<void> {
     await this.findOne(id);
+    // UnionCommitteeMember.departmentId trỏ NoAction (không SetNull/Cascade — xem chú thích schema.prisma
+    // lý do bắt buộc, tránh lỗi P1012 nhiều đường cascade hội tụ) nên xoá công đoàn bộ phận còn Ban chấp
+    // hành gắn trực tiếp sẽ bị DB chặn bằng lỗi khoá ngoại thô — kiểm tra trước để báo lỗi rõ ràng hơn.
+    const committeeAssignmentCount = await this.prisma.unionCommitteeMember.count({ where: { departmentId: id } });
+    if (committeeAssignmentCount > 0) {
+      throw new BadRequestException(
+        `Không thể xoá — công đoàn bộ phận này vẫn còn ${committeeAssignmentCount} thành viên Ban chấp hành gắn trực tiếp. Hãy gỡ hoặc chuyển các thành viên đó sang bộ phận khác trước.`
+      );
+    }
     await this.prisma.unionDepartment.delete({ where: { id } });
     await this.auditLog.record({ actorUserId, action: "delete", entityType: "UnionDepartment", entityId: id });
   }
