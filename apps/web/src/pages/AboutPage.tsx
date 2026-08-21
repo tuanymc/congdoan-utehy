@@ -210,7 +210,78 @@ function TimelineItem({ post, isLast }: { post: PostListItemDto; isLast: boolean
   );
 }
 
+/** Nhóm "Giới thiệu chung" — bài mở đầu dạng tạp chí, các mục còn lại là mục lục đánh số (không lặp
+ * lưới thẻ giống Ban chuyên môn / nhiệm kỳ). */
+function IntroOverview({ posts }: { posts: PostListItemDto[] }) {
+  const [lead, ...chapters] = posts;
+  if (!lead) return null;
+
+  return (
+    <div className="mt-8 space-y-8">
+      <Link
+        to={`/tin-tuc/${lead.slug}`}
+        className="group relative block overflow-hidden rounded-3xl text-primary-foreground"
+      >
+        {lead.coverImageUrl ? (
+          <>
+            <img
+              src={lead.coverImageUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover transition-transform duration-700 group-hover:scale-105"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0f2a6b]/95 via-[#0f2a6b]/80 to-[#0f2a6b]/40" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary to-[#0f2a6b]" />
+        )}
+        <div className="relative flex min-h-72 flex-col justify-end px-6 py-8 sm:min-h-80 sm:px-10 sm:py-12 lg:max-w-2xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Tổng quan</p>
+          <h3 className="mt-3 text-2xl font-bold leading-tight tracking-tight sm:text-4xl">{lead.title}</h3>
+          {lead.excerpt ? (
+            <p className="mt-4 line-clamp-4 text-sm leading-relaxed text-primary-foreground/90 sm:text-base">
+              {lead.excerpt}
+            </p>
+          ) : null}
+          <span className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground">
+            Đọc toàn văn <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </div>
+      </Link>
+
+      {chapters.length > 0 ? (
+        <div className="grid gap-0 overflow-hidden rounded-3xl ring-1 ring-border md:grid-cols-3">
+          {chapters.map((post, index) => (
+            <Link
+              key={post.id}
+              to={`/tin-tuc/${post.slug}`}
+              className="group flex flex-col border-b bg-card p-6 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0 sm:p-8"
+            >
+              <span className="font-mono text-xs tracking-[0.2em] text-primary">0{index + 2}</span>
+              <h4 className="mt-4 text-lg font-semibold leading-snug tracking-tight group-hover:text-primary">
+                {post.title}
+              </h4>
+              {post.excerpt ? (
+                <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">{post.excerpt}</p>
+              ) : (
+                <span className="flex-1" />
+              )}
+              <span className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                Khám phá <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function GroupBody({ group }: { group: { id: string; title: string; posts: PostListItemDto[] } }) {
+  if (group.id === "gioi-thieu-chung") {
+    return <IntroOverview posts={group.posts} />;
+  }
+
   if (group.id === "cac-ban-chuyen-mon") {
     return (
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
