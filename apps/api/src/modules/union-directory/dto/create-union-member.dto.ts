@@ -59,4 +59,13 @@ export class CreateUnionMemberDto implements CreateUnionMemberRequest {
   @ValidateNested()
   @Type(() => UpsertUnionMemberProfileDto)
   profile?: UpsertUnionMemberProfileDto;
+
+  /// Email tài khoản đăng nhập (User) để liên kết cho công đoàn viên tự sửa thông tin ở
+  /// "/cong-doan-vien" — gửi "" để gỡ liên kết hiện có, bỏ qua (undefined) để không đụng tới. Không
+  /// dùng danh sách /users (ADMIN-only) vì UNION_CLERK cũng cần thao tác màn hình này — admin gõ thẳng
+  /// email, service tự tra cứu User tương ứng.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  linkedUserEmail?: string;
 }

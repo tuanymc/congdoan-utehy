@@ -224,6 +224,7 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
   const [departmentId, setDepartmentId] = useState<string>(NO_DEPARTMENT_VALUE);
   const [sortOrder, setSortOrder] = useState("0");
   const [isPublic, setIsPublic] = useState<"true" | "false">("true");
+  const [linkedUserEmail, setLinkedUserEmail] = useState("");
   const [profile, setProfile] = useState<Record<string, string>>(() => buildInitialProfileState(null));
 
   useEffect(() => {
@@ -238,6 +239,7 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
       setDepartmentId(member.department?.id ?? NO_DEPARTMENT_VALUE);
       setSortOrder(String(member.sortOrder));
       setIsPublic(member.isPublic ? "true" : "false");
+      setLinkedUserEmail(member.linkedUserEmail ?? "");
       setProfile(buildInitialProfileState(member.profile));
     }
   }, [mode, memberResult]);
@@ -263,7 +265,10 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
       departmentId: departmentId === NO_DEPARTMENT_VALUE ? undefined : departmentId,
       sortOrder: Number(sortOrder) || 0,
       isPublic: isPublic === "true",
-      profile: buildProfilePayload(profile)
+      profile: buildProfilePayload(profile),
+      // Luôn gửi (kể cả "") — "" nghĩa là gỡ liên kết tài khoản hiện có, xem
+      // UnionMembersService.resolveLinkedUserId. Gửi lại email không đổi cũng an toàn (no-op ở BE).
+      linkedUserEmail: linkedUserEmail.trim()
     };
 
     if (mode === "create") {
@@ -319,6 +324,21 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="linkedUserEmail">Email tài khoản đăng nhập liên kết (không bắt buộc)</Label>
+              <Input
+                id="linkedUserEmail"
+                type="email"
+                placeholder="Để trống nếu công đoàn viên chưa có tài khoản đăng nhập"
+                value={linkedUserEmail}
+                onChange={(event) => setLinkedUserEmail(event.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Nhập đúng email của một tài khoản đăng nhập đã tồn tại để công đoàn viên tự sửa thông tin và đổi
+                mật khẩu ở màn hình "/cong-doan-vien". Xoá trắng để gỡ liên kết hiện có.
+              </p>
             </div>
 
             <div className="grid gap-2">

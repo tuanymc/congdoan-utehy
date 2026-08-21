@@ -35,6 +35,9 @@ const STATS = [
 const CATEGORY_SLUG = "gioi-thieu";
 
 interface AboutGroup {
+  /** Dùng làm #id neo (anchor) — Header.tsx trỏ dropdown "Giới thiệu" thẳng tới các id này
+   * (vd /gioi-thieu#ban-chap-hanh-cong-doan), phải giữ khớp khi đổi title hoặc thêm nhóm mới. */
+  id: string;
   title: string;
   /** Slug bài viết theo đúng thứ tự hiển thị mong muốn (khớp thứ tự menu "Giới thiệu" web cũ). */
   slugs: string[];
@@ -42,10 +45,12 @@ interface AboutGroup {
 
 const GROUPS: AboutGroup[] = [
   {
+    id: "gioi-thieu-chung",
     title: "Giới thiệu chung",
     slugs: ["gioi-thieu-chung", "chuc-nang-nhiem-vu", "co-cau-to-chuc", "doi-ngu-can-bo"]
   },
   {
+    id: "ban-chap-hanh-cong-doan",
     title: "Ban Chấp hành Công đoàn",
     slugs: [
       "ban-chap-hanh",
@@ -60,6 +65,7 @@ const GROUPS: AboutGroup[] = [
     ]
   },
   {
+    id: "cac-ban-chuyen-mon",
     title: "Các ban chuyên môn",
     slugs: [
       "ban-chuyen-mon",
@@ -79,7 +85,7 @@ function formatDate(dateIso: string | null): string {
   return new Date(dateIso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function groupPosts(posts: PostListItemDto[]): { title: string; posts: PostListItemDto[] }[] {
+function groupPosts(posts: PostListItemDto[]): { id: string; title: string; posts: PostListItemDto[] }[] {
   const bySlug = new Map(posts.map((post) => [post.slug, post]));
   const used = new Set<string>();
 
@@ -88,14 +94,14 @@ function groupPosts(posts: PostListItemDto[]): { title: string; posts: PostListI
       .map((slug) => bySlug.get(slug))
       .filter((post): post is PostListItemDto => Boolean(post));
     groupPostsInOrder.forEach((post) => used.add(post.slug));
-    return { title: group.title, posts: groupPostsInOrder };
+    return { id: group.id, title: group.title, posts: groupPostsInOrder };
   }).filter((group) => group.posts.length > 0);
 
   // Bài viết mới thêm sau này trong category "Giới thiệu" nhưng chưa kịp xếp vào 1 trong 3 nhóm ở
   // trên (vd bài test, bài mới chưa phân loại) — vẫn hiển thị đầy đủ, không âm thầm ẩn dữ liệu thật.
   const remaining = posts.filter((post) => !used.has(post.slug));
   if (remaining.length > 0) {
-    grouped.push({ title: "Khác", posts: remaining });
+    grouped.push({ id: "khac", title: "Khác", posts: remaining });
   }
 
   return grouped;
@@ -129,6 +135,16 @@ export function AboutPage() {
   }, []);
 
   const groups = posts ? groupPosts(posts) : null;
+
+  // Cuộn tới đúng nhóm khi vào trang qua link neo từ menu dropdown "Giới thiệu" (Header.tsx), vd
+  // /gioi-thieu#ban-chap-hanh-cong-doan — phải đợi groups tải xong (DOM có id) mới cuộn được.
+  useEffect(() => {
+    if (!groups || !window.location.hash) return;
+    const id = window.location.hash.slice(1);
+    const target = document.getElementById(id);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần chạy lại khi groups đổi từ null sang có dữ liệu, không phụ thuộc window.location.hash (không đổi trong đời trang này).
+  }, [groups]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -177,9 +193,14 @@ export function AboutPage() {
           </Card>
         ) : (
           groups.map((group) => (
-            <Card key={group.title}>
+            <Card key={group.title} id={group.id} className="scroll-mt-20">
               <CardHeader>
                 <CardTitle>{group.title}</CardTitle>
+                {group.id === "ban-chap-hanh-cong-doan" ? (
+                  <Link to="/ban-chap-hanh" className="text-sm text-primary hover:underline">
+                    Xem danh sách Ban chấp hành đầy đủ theo từng nhiệm kỳ →
+                  </Link>
+                ) : null}
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
                 {group.posts.map((post) => (

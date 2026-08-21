@@ -12,6 +12,10 @@
  *  - "home-slides"        -> /admin/home-slides (không phân trang — danh sách banner nhỏ)
  *  - "union-departments"  -> /admin/union-departments (không phân trang — danh sách bộ phận nhỏ)
  *  - "union-members"      -> /admin/union-members (có phân trang, lọc theo departmentId)
+ *  - "union-terms"         -> /admin/union-terms (không phân trang — danh sách nhiệm kỳ nhỏ)
+ *  - "union-committee-members" -> /admin/union-committee-members (KHÔNG phân trang nhưng CÓ lọc query
+ *                            termId/departmentId — xem nhánh riêng trong getList bên dưới, khác mọi
+ *                            resource UNPAGINATED_RESOURCES còn lại vốn không cần lọc gì)
  *  - "contact-messages"   -> /admin/contact-messages (có phân trang, lọc theo isRead) — không có trang
  *                            "create" riêng (tin nhắn chỉ tạo qua form công khai apps/web), chỉ
  *                            list + update (đánh dấu đã đọc) + delete.
@@ -46,6 +50,8 @@ type ResourceName =
   | "home-slides"
   | "union-departments"
   | "union-members"
+  | "union-terms"
+  | "union-committee-members"
   | "contact-messages"
   | "menu-items"
   | "events"
@@ -62,6 +68,8 @@ const UNPAGINATED_RESOURCES: ResourceName[] = [
   "document-types",
   "home-slides",
   "union-departments",
+  "union-terms",
+  "union-committee-members",
   "menu-items",
   "ai-tools",
   "surveys",
@@ -141,6 +149,20 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/union-members",
     update: (id) => `/admin/union-members/${id}`,
     remove: (id) => `/admin/union-members/${id}`
+  },
+  "union-terms": {
+    list: "/admin/union-terms",
+    one: (id) => `/admin/union-terms/${id}`,
+    create: "/admin/union-terms",
+    update: (id) => `/admin/union-terms/${id}`,
+    remove: (id) => `/admin/union-terms/${id}`
+  },
+  "union-committee-members": {
+    list: "/admin/union-committee-members",
+    one: (id) => `/admin/union-committee-members/${id}`,
+    create: "/admin/union-committee-members",
+    update: (id) => `/admin/union-committee-members/${id}`,
+    remove: (id) => `/admin/union-committee-members/${id}`
   },
   "contact-messages": {
     list: "/admin/contact-messages",
@@ -233,9 +255,20 @@ export const dataProvider: DataProvider = {
   getList: async <TData extends BaseRecord = BaseRecord>({ resource, pagination, filters }: Parameters<DataProvider["getList"]>[0]) => {
     const paths = resolveResource(resource);
 
-    // Danh sách nhỏ, không hỗ trợ phân trang/lọc ở BE (xem UNPAGINATED_RESOURCES) -> trả về toàn bộ.
+    // Danh sách nhỏ, không hỗ trợ phân trang ở BE (xem UNPAGINATED_RESOURCES) -> trả về toàn bộ.
+    // "union-committee-members" là ngoại lệ DUY NHẤT trong nhóm này có lọc query (termId/departmentId,
+    // bắt buộc cần termId — xem QueryUnionCommitteeMembersDto) nên vẫn phải build query string.
     if (UNPAGINATED_RESOURCES.includes(resource as ResourceName)) {
-      const items = await apiFetch<unknown[]>(paths.list);
+      let listPath = paths.list;
+      if (resource === "union-committee-members") {
+        const params = new URLSearchParams();
+        const termId = extractFilterValue(filters, "termId");
+        if (termId) params.set("termId", termId);
+        const departmentId = extractFilterValue(filters, "departmentId");
+        if (departmentId) params.set("departmentId", departmentId);
+        listPath = `${listPath}?${params.toString()}`;
+      }
+      const items = await apiFetch<unknown[]>(listPath);
       return { data: items as TData[], total: items.length };
     }
 

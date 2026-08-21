@@ -47,6 +47,10 @@ model User {
   /// hỗ trợ khi xoá tài khoản cán bộ).
   assignedPublicServiceSupportRequests PublicServiceSupportRequest[]
 
+  /// Công đoàn viên liên kết với tài khoản này (nếu có) — xem UnionMember.userId. Optional 1-1: không
+  /// phải User nào cũng là công đoàn viên (vd tài khoản ADMIN/UNION_CLERK thuần quản trị).
+  linkedUnionMember UnionMember?
+
   @@map("users")
 }
 
@@ -393,6 +397,11 @@ model UnionDepartment {
 
   members UnionMember[]
 
+  /// Ban chấp hành công đoàn bộ phận theo từng nhiệm kỳ (chỉ có ở những bộ phận có tổ chức công đoàn
+  /// riêng) — xem UnionCommitteeMember.departmentId. Null ở đó = Ban chấp hành công đoàn TRƯỜNG (cấp
+  /// cao nhất), không thuộc bộ phận nào.
+  committeeMembers UnionCommitteeMember[]
+
   @@index([legacyCode])
   @@map("union_departments")
 }
@@ -432,6 +441,18 @@ model UnionMember {
   /// Hồ sơ nội bộ đầy đủ (~90 cột gốc NHANVIEN, CHỈ dành cho màn hình quản trị — xem UnionMemberProfile).
   /// Optional 1-1: không phải công đoàn viên nào cũng có/cần nhập hồ sơ chi tiết ngay.
   profile UnionMemberProfile?
+
+  /// Liên kết tới tài khoản đăng nhập (User) để công đoàn viên tự sửa thông tin/đổi mật khẩu ở màn hình
+  /// "/cong-doan-vien" (self-service portal). Optional 1-1: không phải công đoàn viên nào cũng có tài
+  /// khoản đăng nhập. Admin gán/gỡ liên kết này bằng cách nhập email tài khoản (KHÔNG dùng danh sách
+  /// /users vì endpoint đó chỉ ADMIN gọi được, trong khi UNION_CLERK cũng quản lý màn hình này — xem
+  /// UnionMemberForm.tsx). onDelete: SetNull — xoá tài khoản đăng nhập không xoá công đoàn viên.
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  /// Lịch sử tham gia Ban chấp hành công đoàn qua các nhiệm kỳ (xem UnionCommitteeMember) — 1 công
+  /// đoàn viên có thể xuất hiện ở nhiều nhiệm kỳ/nhiều bộ phận khác nhau.
+  committeeMemberships UnionCommitteeMember[]
 
   @@index([departmentId])
   @@index([legacyCode])
@@ -575,6 +596,75 @@ model UnionMemberProfile {
   updatedAt DateTime @updatedAt
 
   @@map("union_member_profiles")
+}
+
+// ----------------------------------------------------------------------------
+// Ban chấp hành công đoàn + Nhiệm kỳ — nguồn NHIEMKY, NHANVIEN_NHIEMKY, tblPhongBan_NV_NK ở web cũ
+// (đọc trực tiếp docs/script.sql). Web cũ lưu NHANVIEN_NHIEMKY như 1 bản COPY TOÀN BỘ ~90 cột
+// NHANVIEN cho MỖI lần 1 người vào 1 nhiệm kỳ (antipattern — trùng lặp dữ liệu, khó đồng bộ khi sửa
+// hồ sơ gốc). Bản mới KHÔNG lặp lại cách này: UnionCommitteeMember chỉ lưu (nhiệm kỳ, công đoàn viên,
+// bộ phận, chức vụ) — hồ sơ chi tiết luôn tham chiếu ngược về UnionMember/UnionMemberProfile hiện tại.
+//
+// tblPhongBan_NV_NK xác nhận Ban chấp hành cũ có 2 CẤP: Ban chấp hành công đoàn TRƯỜNG (không thuộc bộ
+// phận nào) và Ban chấp hành/tổ công đoàn BỘ PHẬN (gắn với 1 CONGDOANBOPHAN cụ thể) — UnionCommitteeMember
+// mô hình hoá bằng departmentId optional (null = cấp trường).
+// ----------------------------------------------------------------------------
+
+/// 1 nhiệm kỳ Ban chấp hành công đoàn (vd "Nhiệm kỳ 2023 - 2028") — nguồn NHIEMKY.
+model UnionTerm {
+  id   String @id @default(uuid())
+  name String
+
+  startYear Int?
+  endYear   Int?
+
+  description String?
+
+  /// Đánh dấu nhiệm kỳ đang đương nhiệm — trang công khai mặc định chỉ hiển thị nhiệm kỳ này, các
+  /// nhiệm kỳ khác xem như lịch sử. Không ràng buộc DB chỉ-1-true, service tự đảm bảo khi set.
+  isCurrent Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  committeeMembers UnionCommitteeMember[]
+
+  @@map("union_terms")
+}
+
+/// 1 lượt 1 công đoàn viên giữ 1 chức vụ Ban chấp hành trong 1 nhiệm kỳ (có thể ở cấp trường hoặc cấp
+/// bộ phận) — nguồn NHANVIEN_NHIEMKY + tblPhongBan_NV_NK, đã bỏ phần lặp lại hồ sơ (xem chú thích
+/// domain block phía trên).
+model UnionCommitteeMember {
+  id String @id @default(uuid())
+
+  termId String
+  term   UnionTerm @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  memberId String
+  member   UnionMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// Null = Ban chấp hành công đoàn TRƯỜNG (cấp cao nhất). Có giá trị = Ban chấp hành/tổ công đoàn của
+  /// 1 công đoàn bộ phận cụ thể — xem tblPhongBan_NV_NK ở web cũ.
+  departmentId String?
+  department   UnionDepartment? @relation(fields: [departmentId], references: [id])
+
+  /// Chức vụ trong Ban chấp hành (vd "Chủ tịch", "Phó Chủ tịch", "Uỷ viên Ban Thường vụ", "Uỷ viên
+  /// Ban chấp hành") — lưu text tự do, không xây bảng danh mục riêng (cùng lý do như
+  /// UnionMember.positionTitle).
+  positionTitle String
+
+  sortOrder Int     @default(0)
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([termId])
+  @@index([memberId])
+  @@index([departmentId])
+  @@map("union_committee_members")
 }
 
 // ============================================================================

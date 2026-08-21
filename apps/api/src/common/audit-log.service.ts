@@ -3,7 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 interface RecordChangeParams {
   actorUserId: string;
-  action: "create" | "update" | "delete" | "approve";
+  action: "create" | "update" | "delete" | "approve" | "import";
   entityType: string;
   entityId: string;
   changes?: Record<string, { before: unknown; after: unknown }>;

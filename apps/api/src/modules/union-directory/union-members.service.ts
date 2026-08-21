@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type {
+  MyUnionMemberDto,
   PaginatedResult,
   PaginationQuery,
   UnionMemberAdminDetailDto,
@@ -12,6 +13,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
 import { CreateUnionMemberDto } from "./dto/create-union-member.dto";
 import { UpdateUnionMemberDto } from "./dto/update-union-member.dto";
+import { UpdateMyUnionMemberDto } from "./dto/update-my-union-member.dto";
 
 const memberWithRelations = Prisma.validator<Prisma.UnionMemberDefaultArgs>()({
   include: { department: true }
@@ -19,7 +21,7 @@ const memberWithRelations = Prisma.validator<Prisma.UnionMemberDefaultArgs>()({
 type MemberWithRelations = Prisma.UnionMemberGetPayload<typeof memberWithRelations>;
 
 const memberWithProfile = Prisma.validator<Prisma.UnionMemberDefaultArgs>()({
-  include: { department: true, profile: true }
+  include: { department: true, profile: true, user: { select: { email: true } } }
 });
 type MemberWithProfile = Prisma.UnionMemberGetPayload<typeof memberWithProfile>;
 
@@ -34,6 +36,21 @@ function toDto(m: MemberWithRelations): UnionMemberListItemDto {
     email: m.email,
     isPublic: m.isPublic,
     sortOrder: m.sortOrder,
+    department: m.department ? { id: m.department.id, name: m.department.name, sortOrder: m.department.sortOrder } : null
+  };
+}
+
+/** Dùng cho self-service "/cong-doan-vien" — CHỈ field an toàn tự sửa, không có isPublic/sortOrder
+ * (admin-managed) và không bao giờ có profile nội bộ. */
+function toMyDto(m: MemberWithRelations): MyUnionMemberDto {
+  return {
+    id: m.id,
+    fullName: m.fullName,
+    photoUrl: m.photoUrl,
+    degreeLabel: m.degreeLabel,
+    positionTitle: m.positionTitle,
+    phone: m.phone,
+    email: m.email,
     department: m.department ? { id: m.department.id, name: m.department.name, sortOrder: m.department.sortOrder } : null
   };
 }
@@ -137,7 +154,7 @@ function toProfileDto(p: UnionMemberProfile): UnionMemberProfileDto {
 }
 
 function toAdminDetailDto(m: MemberWithProfile): UnionMemberAdminDetailDto {
-  return { ...toDto(m), profile: m.profile ? toProfileDto(m.profile) : null };
+  return { ...toDto(m), profile: m.profile ? toProfileDto(m.profile) : null, linkedUserEmail: m.user?.email ?? null };
 }
 
 /** Chuyển payload profile (string ISO date từ FE) sang object field-value thô cho Prisma nested write
@@ -240,7 +257,25 @@ export class UnionMembersService {
     return toAdminDetailDto(member);
   }
 
+  /** Tra cứu userId để gán/gỡ liên kết đăng nhập từ email admin nhập (xem CreateUnionMemberRequest.
+   * linkedUserEmail) — undefined = không đụng field, null = gỡ liên kết, string = userId cần gán. Ném
+   * lỗi nếu email không tồn tại hoặc đã liên kết với MỘT công đoàn viên KHÁC (userId @unique). */
+  private async resolveLinkedUserId(email: string | undefined, currentMemberId?: string): Promise<string | null | undefined> {
+    if (email === undefined) return undefined;
+    if (email.trim() === "") return null;
+    const user = await this.prisma.user.findUnique({ where: { email: email.trim() }, select: { id: true } });
+    if (!user) {
+      throw new BadRequestException(`Không tìm thấy tài khoản đăng nhập với email "${email}".`);
+    }
+    const existingLink = await this.prisma.unionMember.findUnique({ where: { userId: user.id }, select: { id: true } });
+    if (existingLink && existingLink.id !== currentMemberId) {
+      throw new BadRequestException(`Tài khoản "${email}" đã được liên kết với một công đoàn viên khác.`);
+    }
+    return user.id;
+  }
+
   async create(dto: CreateUnionMemberDto, actorUserId: string): Promise<UnionMemberAdminDetailDto> {
+    const linkedUserId = await this.resolveLinkedUserId(dto.linkedUserEmail);
     const member = await this.prisma.unionMember.create({
       data: {
         fullName: dto.fullName,
@@ -252,6 +287,7 @@ export class UnionMembersService {
         isPublic: dto.isPublic ?? true,
         sortOrder: dto.sortOrder ?? 0,
         departmentId: dto.departmentId,
+        ...(linkedUserId !== undefined ? { userId: linkedUserId } : {}),
         ...(dto.profile
           ? { profile: { create: toProfileCreateData(dto.profile) } }
           : {})
@@ -264,6 +300,7 @@ export class UnionMembersService {
 
   async update(id: string, dto: UpdateUnionMemberDto, actorUserId: string): Promise<UnionMemberAdminDetailDto> {
     await this.findOne(id);
+    const linkedUserId = await this.resolveLinkedUserId(dto.linkedUserEmail, id);
     const member = await this.prisma.unionMember.update({
       where: { id },
       data: {
@@ -276,6 +313,7 @@ export class UnionMembersService {
         isPublic: dto.isPublic,
         sortOrder: dto.sortOrder,
         departmentId: dto.departmentId,
+        ...(linkedUserId !== undefined ? { userId: linkedUserId } : {}),
         // dto.profile không có (undefined) => không đụng gì tới profile hiện có. Có gửi thì upsert:
         // tạo mới nếu chưa có, cập nhật (chỉ field nào gửi) nếu đã có.
         ...(dto.profile
@@ -299,5 +337,35 @@ export class UnionMembersService {
     await this.findOne(id);
     await this.prisma.unionMember.delete({ where: { id } });
     await this.auditLog.record({ actorUserId, action: "delete", entityType: "UnionMember", entityId: id });
+  }
+
+  /** Self-service — công đoàn viên tự xem thông tin của mình ở "/cong-doan-vien", tra theo userId liên
+   * kết (xem UnionMember.userId). KHÔNG bao giờ trả hồ sơ nội bộ (profile). */
+  async findMyUnionMember(userId: string): Promise<MyUnionMemberDto> {
+    const member = await this.prisma.unionMember.findUnique({ where: { userId }, ...memberWithRelations });
+    if (!member) {
+      throw new NotFoundException("Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ quản trị viên.");
+    }
+    return toMyDto(member);
+  }
+
+  /** Self-service cập nhật — CHỈ 4 field an toàn (xem UpdateMyUnionMemberDto), không đụng được tới
+   * profile/isPublic/sortOrder/department (admin-only). */
+  async updateMyUnionMember(userId: string, dto: UpdateMyUnionMemberDto): Promise<MyUnionMemberDto> {
+    const existing = await this.prisma.unionMember.findUnique({ where: { userId }, select: { id: true } });
+    if (!existing) {
+      throw new NotFoundException("Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ quản trị viên.");
+    }
+    const member = await this.prisma.unionMember.update({
+      where: { userId },
+      data: {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        email: dto.email,
+        photoUrl: dto.photoUrl
+      },
+      ...memberWithRelations
+    });
+    return toMyDto(member);
   }
 }

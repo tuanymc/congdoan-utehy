@@ -146,6 +146,9 @@ export interface UpsertUnionMemberProfileRequest extends Partial<Omit<UnionMembe
 /** Chi tiết công đoàn viên dành cho màn hình quản trị — có thêm hồ sơ nội bộ (null nếu chưa nhập). */
 export interface UnionMemberAdminDetailDto extends UnionMemberListItemDto {
   profile: UnionMemberProfileDto | null;
+  /** Email tài khoản đăng nhập (User) đang liên kết để công đoàn viên tự sửa thông tin ở
+   * "/cong-doan-vien" — null nếu chưa liên kết. Xem UnionMember.userId trong prisma/schema.prisma. */
+  linkedUserEmail: string | null;
 }
 
 export interface CreateUnionMemberRequest {
@@ -160,6 +163,48 @@ export interface CreateUnionMemberRequest {
   departmentId?: string;
   /** Có gửi kèm object này thì mới upsert hồ sơ nội bộ — bỏ qua nếu không muốn đụng tới hồ sơ. */
   profile?: UpsertUnionMemberProfileRequest;
+  /** Email tài khoản đăng nhập để liên kết (phải là email User đã tồn tại) — gửi chuỗi rỗng "" để gỡ
+   * liên kết hiện có, bỏ qua field này (undefined) để không đụng tới liên kết. */
+  linkedUserEmail?: string;
 }
 
 export interface UpdateUnionMemberRequest extends Partial<CreateUnionMemberRequest> {}
+
+/** Thông tin công đoàn viên tự xem/sửa ở "/cong-doan-vien" — CHỈ field an toàn tự sửa, không có toàn
+ * bộ hồ sơ nội bộ (xem UnionMemberProfileDto, chỉ admin mới đụng tới). */
+export interface MyUnionMemberDto {
+  id: string;
+  fullName: string;
+  photoUrl: string | null;
+  degreeLabel: string | null;
+  positionTitle: string | null;
+  phone: string | null;
+  email: string | null;
+  department: UnionDepartmentDto | null;
+}
+
+/** Payload tự cập nhật thông tin cá nhân — công đoàn viên CHỈ được sửa 4 field này, không đụng được
+ * tới degreeLabel/positionTitle/department/isPublic/sortOrder (do admin quản lý). */
+export interface UpdateMyUnionMemberRequest {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  photoUrl?: string;
+}
+
+/** 1 dòng bị lỗi khi import Excel — 1-indexed theo số dòng thật trong file (dòng 1 là header, nên dòng
+ * dữ liệu đầu tiên là dòng 2) để admin dễ đối chiếu lại trong Excel. */
+export interface UnionMemberImportRowError {
+  row: number;
+  message: string;
+}
+
+/** Kết quả import Excel danh bạ công đoàn viên — xem GET /admin/union-members/export.xlsx (tải mẫu
+ * đầy đủ) và POST /admin/union-members/import. Khớp Mã cán bộ (UnionMember.legacyCode): có khớp = cập
+ * nhật, không khớp (hoặc để trống) = tạo mới (theo lựa chọn của người dùng khi thiết kế tính năng này). */
+export interface UnionMemberImportResultDto {
+  totalRows: number;
+  created: number;
+  updated: number;
+  errors: UnionMemberImportRowError[];
+}

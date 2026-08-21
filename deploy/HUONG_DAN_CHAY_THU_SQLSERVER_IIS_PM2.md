@@ -1001,6 +1001,113 @@ file `prisma/migrate-legacy-content.ts` để biết cách cấu hình `LEGACY_D
 
 ---
 
+## Bước 6.14 — Migrate schema đợt 10 (Cổng đoàn viên tự cập nhật + Ban chấp hành/Nhiệm kỳ + Import/Export Excel)
+
+Đợt này gộp 3 tính năng:
+
+- **Cổng đoàn viên tự cập nhật thông tin + đổi mật khẩu** (`/cong-doan-vien`): thêm cột `userId`
+  (nullable, unique) + khoá ngoại vào bảng `union_members` để liên kết 1-1 với `users` — **KHÔNG đổi
+  gì ở bảng `users`** (quan hệ 1-1 chỉ cần cột FK ở phía `union_members`). Admin gán/gỡ liên kết bằng
+  cách nhập email tài khoản ở màn hình `/admin/union-members` (trường "Email tài khoản đăng nhập liên
+  kết") — không cần chọn từ danh sách `/users` (endpoint đó chỉ ADMIN gọi được). Đổi mật khẩu dùng lại
+  `POST /auth/change-password` đã có sẵn từ trước, không phải API mới.
+- **Ban chấp hành + Nhiệm kỳ** (thay/bổ sung màn hình tĩnh "Ban Chấp hành Công đoàn" cũ ở `/gioi-thieu`):
+  2 bảng MỚI `union_terms` (nhiệm kỳ) và `union_committee_members` (thành viên Ban chấp hành theo từng
+  nhiệm kỳ, có thể gắn 1 công đoàn bộ phận cụ thể hoặc để trống = cấp trường). Trang quản trị
+  `/admin/union-terms` + `/admin/union-committee-members`, trang công khai mới `/ban-chap-hanh` (có link
+  từ mục "Ban Chấp hành Công đoàn" ở `/gioi-thieu` trỏ sang). Quyền `unionterm:*`,
+  `unioncommitteemember:*` đã thêm vào seed cho ADMIN và UNION_CLERK (view/create/update, không có
+  delete).
+- **Import/Export Excel công đoàn viên**: KHÔNG đổi schema CSDL — chỉ thêm 2 endpoint
+  `GET /admin/union-members/export.xlsx` và `POST /admin/union-members/import` (đầy đủ ~90 trường hồ sơ
+  nội bộ, khớp dòng theo "Mã cán bộ" — khớp thì cập nhật, không khớp thì tạo mới) và 1 dependency mới
+  **`exceljs`** ở `apps/api` — `pnpm install --frozen-lockfile` ở dưới sẽ tự cài, không cần thao tác gì
+  thêm. Nút "Xuất Excel"/"Nhập Excel" nằm ngay trên `/admin/union-members`.
+
+```powershell
+cd C:\inetpub\congdoan-src
+pm2 stop all
+
+git pull
+pnpm install --frozen-lockfile
+pnpm prisma:generate
+
+npx prisma migrate diff `
+  --from-schema-datasource prisma/schema.prisma `
+  --to-schema-datamodel prisma/schema.prisma `
+  --script `
+  --output prisma/migrations/tmp_diff.sql
+
+# Kiểm tra tmp_diff.sql: phải CHỈ có ALTER TABLE union_members ADD userId (+ FK tới users, unique
+# index), CREATE TABLE union_terms, CREATE TABLE union_committee_members (kèm FK tới union_terms/
+# union_members/union_departments + index) — KHÔNG được có DROP/ALTER nào khác trên bảng có sẵn
+# (đặc biệt KHÔNG được đụng gì tới bảng users). Nếu có gì lạ, dừng lại, đừng deploy, gửi lại nội dung
+# để review.
+Get-Content prisma\migrations\tmp_diff.sql
+
+$name = "$(Get-Date -Format yyyyMMddHHmmss)_add_union_leadership_and_self_service"
+New-Item -ItemType Directory "prisma/migrations/$name" | Out-Null
+Move-Item "prisma/migrations/tmp_diff.sql" "prisma/migrations/$name/migration.sql"
+
+npx prisma migrate deploy --schema=prisma/schema.prisma
+pnpm prisma:seed
+pnpm build
+
+Copy-Item apps\web\dist\*   -Destination C:\inetpub\congdoan2026\web   -Recurse -Force
+Copy-Item apps\admin\dist\* -Destination C:\inetpub\congdoan2026\admin -Recurse -Force
+
+pm2 start deploy\ecosystem.config.js --env production
+pm2 status
+```
+
+**Nhớ commit thư mục migration vừa tạo**
+(`prisma/migrations/<timestamp>_add_union_leadership_and_self_service/`) vào Git rồi push.
+
+Tài khoản ADMIN/UNION_CLERK đang đăng nhập sẵn cần **đăng xuất rồi đăng nhập lại** (hoặc đợi tối đa 15
+phút để access token tự hết hạn/refresh) mới thấy menu "Nhiệm kỳ Ban chấp hành"/"Ban chấp hành" — quyền
+mới seed vào CSDL chưa có trong access token đang dùng dở.
+
+### Kiểm tra nhanh sau khi deploy
+
+**Cổng đoàn viên tự cập nhật:**
+1. Vào `/admin/union-members`, sửa 1 công đoàn viên, nhập email của 1 tài khoản đã tồn tại vào ô "Email
+   tài khoản đăng nhập liên kết", lưu lại.
+2. Đăng nhập bằng tài khoản đó ở `/dang-nhap`, vào `/cong-doan-vien` — phải thấy thẻ "Thông tin công
+   đoàn viên" hiện đúng dữ liệu vừa liên kết, sửa số điện thoại rồi lưu, tải lại trang phải thấy đúng
+   giá trị mới.
+3. Thử thẻ "Đổi mật khẩu" — nhập sai mật khẩu hiện tại phải báo lỗi, nhập đúng + mật khẩu mới hợp lệ
+   phải báo thành công.
+4. Đăng nhập bằng 1 tài khoản CHƯA liên kết công đoàn viên nào, vào `/cong-doan-vien` — phải thấy thông
+   báo hướng dẫn liên hệ Văn phòng Công đoàn thay vì lỗi trắng trang.
+
+**Ban chấp hành + Nhiệm kỳ:**
+5. `/admin/union-terms` — thêm 1 nhiệm kỳ mới, đặt "Đương nhiệm" = Có, lưu lại — mở lại danh sách phải
+   thấy CHỈ nhiệm kỳ này ghi "Đương nhiệm" (nhiệm kỳ khác tự bỏ đánh dấu).
+6. Bấm "Thành viên" ở nhiệm kỳ vừa tạo → `/admin/union-committee-members?termId=...` — bấm "Thêm thành
+   viên", gõ tìm 1 công đoàn viên, chọn chức vụ "Chủ tịch", cấp "Cấp trường", lưu lại.
+7. Thêm 1 thành viên khác ở cấp 1 công đoàn bộ phận cụ thể — lọc theo bộ phận đó phải chỉ thấy người
+   này.
+8. Mở `/ban-chap-hanh` (không đăng nhập) — phải thấy đúng 2 nhóm "Ban chấp hành Công đoàn Trường" và
+   tên bộ phận vừa chọn, đúng người/chức vụ vừa thêm. Đổi bộ lọc nhiệm kỳ/cấp trên trang phải cập nhật
+   đúng danh sách.
+9. Mở `/gioi-thieu`, cuộn tới mục "Ban Chấp hành Công đoàn" — phải thấy link "Xem danh sách Ban chấp
+   hành đầy đủ theo từng nhiệm kỳ" trỏ đúng sang `/ban-chap-hanh`.
+
+**Import/Export Excel:**
+10. `/admin/union-members` — bấm "Xuất Excel", mở file tải về bằng Excel/LibreOffice — phải thấy đủ cột
+    (Mã cán bộ, Họ và tên... tới hết ~90 trường hồ sơ nội bộ), dòng tiêu đề in đậm, đóng băng, có nút
+    lọc (auto-filter).
+11. Sửa vài ô của 1-2 dòng đã có "Mã cán bộ" (đổi số điện thoại, ngày sinh...), thêm 1 dòng MỚI ở cuối
+    (để trống "Mã cán bộ" và "ID hệ thống", chỉ điền "Họ và tên" + vài trường khác), lưu file, bấm "Nhập
+    Excel" chọn lại đúng file đó.
+12. Phải thấy hộp thoại kết quả báo đúng số dòng cập nhật/tạo mới (khớp với số dòng vừa sửa/thêm), danh
+    sách công đoàn viên tự làm mới ngay không cần tải lại trang — mở lại các bản ghi vừa sửa để đối
+    chiếu đúng dữ liệu mới.
+13. Thử nhập lại 1 file thiếu cột "Họ và tên" (đổi tên cột) — phải báo lỗi rõ ràng, không cho import mù
+    quáng.
+
+---
+
 ## Bước 7 — Từ đây trở đi: để CI/CD tự động hoá
 
 Sau khi xác nhận chạy thủ công thành công, cài **self-hosted GitHub Actions runner** ngay trên

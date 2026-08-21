@@ -34,6 +34,10 @@ import { UnionDepartmentList } from "./pages/union-departments/UnionDepartmentLi
 import { UnionDepartmentForm } from "./pages/union-departments/UnionDepartmentForm";
 import { UnionMemberList } from "./pages/union-members/UnionMemberList";
 import { UnionMemberForm } from "./pages/union-members/UnionMemberForm";
+import { UnionTermList } from "./pages/union-terms/UnionTermList";
+import { UnionTermForm } from "./pages/union-terms/UnionTermForm";
+import { UnionCommitteeMemberList } from "./pages/union-committee-members/UnionCommitteeMemberList";
+import { UnionCommitteeMemberForm } from "./pages/union-committee-members/UnionCommitteeMemberForm";
 import { ContactMessageList } from "./pages/contact-messages/ContactMessageList";
 import { MenuItemList } from "./pages/menu-items/MenuItemList";
 import { MenuItemForm } from "./pages/menu-items/MenuItemForm";
@@ -130,6 +134,20 @@ export function App() {
             create: "/union-members/create",
             edit: "/union-members/edit/:id",
             meta: { label: "Công đoàn viên" }
+          },
+          {
+            name: "union-terms",
+            list: "/union-terms",
+            create: "/union-terms/create",
+            edit: "/union-terms/edit/:id",
+            meta: { label: "Nhiệm kỳ Ban chấp hành" }
+          },
+          {
+            name: "union-committee-members",
+            list: "/union-committee-members",
+            create: "/union-committee-members/create",
+            edit: "/union-committee-members/edit/:id",
+            meta: { label: "Ban chấp hành" }
           },
           {
             name: "contact-messages",
@@ -299,6 +317,32 @@ export function App() {
               <Route index element={<UnionMemberList />} />
               <Route path="create" element={<UnionMemberForm mode="create" />} />
               <Route path="edit/:id" element={<UnionMemberForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/union-terms"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<UnionTermList />} />
+              <Route path="create" element={<UnionTermForm mode="create" />} />
+              <Route path="edit/:id" element={<UnionTermForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/union-committee-members"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<UnionCommitteeMemberList />} />
+              <Route path="create" element={<UnionCommitteeMemberForm mode="create" />} />
+              <Route path="edit/:id" element={<UnionCommitteeMemberForm mode="edit" />} />
             </Route>
 
             <Route

@@ -9,6 +9,7 @@ import { UsersModule } from "./modules/users/users.module";
 import { ContentModule } from "./modules/content/content.module";
 import { OfficialDocumentsModule } from "./modules/official-documents/official-documents.module";
 import { UnionDirectoryModule } from "./modules/union-directory/union-directory.module";
+import { UnionLeadershipModule } from "./modules/union-leadership/union-leadership.module";
 import { HomeSlideModule } from "./modules/home-slide/home-slide.module";
 import { ContactModule } from "./modules/contact/contact.module";
 import { MenuItemModule } from "./modules/menu-item/menu-item.module";
@@ -29,6 +30,7 @@ import { PublicServicesModule } from "./modules/public-services/public-services.
     ContentModule,
     OfficialDocumentsModule,
     UnionDirectoryModule,
+    UnionLeadershipModule,
     HomeSlideModule,
     ContactModule,
     MenuItemModule,
