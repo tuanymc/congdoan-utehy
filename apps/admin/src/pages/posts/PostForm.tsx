@@ -9,6 +9,9 @@ import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { PageLoading } from "../../components/common/PageLoading";
+import { RichTextEditor } from "../../components/common/RichTextEditor";
+import { ImageUploadField } from "../../components/common/ImageUploadField";
+import { pushToast } from "../../components/common/toast-store";
 import { slugify } from "../../lib/slugify";
 
 interface PostFormProps {
@@ -20,6 +23,12 @@ const STATUS_ITEMS: Array<{ value: PostStatus; label: string }> = [
   { value: "PUBLISHED", label: "Đã đăng" },
   { value: "ARCHIVED", label: "Lưu trữ" }
 ];
+
+/** true nếu HTML từ TipTap không còn chữ/ảnh có nghĩa (chỉ còn thẻ rỗng). */
+function isEmptyHtml(html: string): boolean {
+  const text = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim();
+  return text.length === 0 && !/<img\b/i.test(html);
+}
 
 /** Dùng chung cho tạo mới và chỉnh sửa bài viết — điều khiển bởi prop `mode`. */
 export function PostForm({ mode }: PostFormProps) {
@@ -62,6 +71,11 @@ export function PostForm({ mode }: PostFormProps) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isEmptyHtml(content)) {
+      pushToast({ variant: "error", message: "Vui lòng nhập nội dung bài viết." });
+      return;
+    }
 
     const payload: CreatePostRequest = {
       title,
@@ -120,14 +134,7 @@ export function PostForm({ mode }: PostFormProps) {
 
             <div className="grid gap-2">
               <Label htmlFor="content">Nội dung</Label>
-              {/* TODO: Phase sau thay bằng TipTap rich text editor theo bản thiết kế. */}
-              <Textarea
-                id="content"
-                required
-                rows={10}
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
-              />
+              <RichTextEditor id="content" value={content} onChange={setContent} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -164,16 +171,13 @@ export function PostForm({ mode }: PostFormProps) {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="coverImageUrl">Ảnh bìa (URL)</Label>
-              <Input
-                id="coverImageUrl"
-                type="url"
-                placeholder="https://..."
-                value={coverImageUrl}
-                onChange={(event) => setCoverImageUrl(event.target.value)}
-              />
-            </div>
+            <ImageUploadField
+              id="coverImageUrl"
+              label="Ảnh bìa"
+              value={coverImageUrl}
+              onChange={setCoverImageUrl}
+              placeholder="/upload/images/..."
+            />
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => navigate("/posts")}>

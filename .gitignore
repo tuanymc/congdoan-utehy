@@ -13,6 +13,10 @@ coverage/
 !.vscode/extensions.json
 prisma/migrations/dev.db
 
+# Upload ảnh local (POST /admin/uploads/images) — không commit file người dùng tải lên.
+upload/
+document-files/
+
 # Hệ thống cũ (ASP.NET Web Forms) chỉ giữ để tham chiếu/ETL, KHÔNG deploy trong hệ thống mới —
 # không đưa vào Git để repo nhẹ, clone/push nhanh. Vẫn nằm nguyên trên đĩa, chỉ không theo dõi.
 web_cu/

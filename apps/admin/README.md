@@ -55,9 +55,10 @@ src/
   `authProvider.check()` gọi `GET /auth/me` — nếu accessToken đã mất, `api-client.ts` tự nhận 401 và
   gọi `/auth/refresh` một lần để khôi phục phiên. **Production nên chuyển sang httpOnly cookie** do
   backend set, tránh rủi ro XSS đọc được token.
-- **Nội dung bài viết**: dùng `<textarea>` thuần (xem TODO trong `PostForm.tsx`) — Phase sau thay
-  bằng TipTap rich text editor theo bản thiết kế.
-- **Ảnh bìa**: chỉ nhập URL ảnh có sẵn, chưa có chức năng upload file thật.
+- **Nội dung bài viết**: TipTap rich text editor (`components/common/RichTextEditor.tsx`) — in đậm/
+  nghiêng, tiêu đề, danh sách, liên kết, căn lề, chèn ảnh (upload qua `POST /admin/uploads/images`).
+- **Ảnh bìa**: nhập URL hoặc tải file lên (`ImageUploadField`) — file lưu vào `UPLOAD_IMAGES_DIR`
+  (thư mục con `admin-uploads/`), URL trả về `/upload/images/...` để IIS phục vụ tĩnh.
 - **Chuyên mục**: `GET /categories` là endpoint public không phân trang nên `CategoryList` hiển thị
   toàn bộ danh sách một lần (sắp xếp theo `sortOrder`), không có ô tìm kiếm/phân trang như `PostList`.
 - **Vai trò (roles) trong form Người dùng**: dùng checkbox HTML thuần (không thêm component
@@ -71,10 +72,6 @@ src/
 
 ## Việc còn thiếu / Phase 2+ (chưa làm ở bước này)
 
-- [ ] Rich text editor thật cho nội dung bài viết (TipTap theo bản thiết kế).
-- [ ] Upload ảnh thật (hiện chỉ nhập URL).
-- [ ] Trang quản lý Đoàn viên (Members) — chưa có endpoint từ `apps/api`.
-- [ ] Trang quản lý Công văn/Văn bản — chưa có endpoint từ `apps/api`.
 - [ ] Nhật ký thao tác (Audit log) — `apps/api` đã có `AuditLogDto` trong `@congdoan/types` nhưng
       chưa có endpoint đọc, nên trang quản trị chưa hiển thị.
 - [ ] Đổi mật khẩu cho chính người dùng đang đăng nhập (`POST /auth/change-password` đã có ở API

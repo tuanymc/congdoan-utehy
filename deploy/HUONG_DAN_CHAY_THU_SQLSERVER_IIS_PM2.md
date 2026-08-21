@@ -96,6 +96,10 @@ API_PORT=3000
 # Bước 5), nên request từ trình duyệt tới API luôn same-origin, KHÔNG bị CORS chặn. Dòng này chỉ
 # thật sự cần khi chạy "pnpm dev" cục bộ (web/admin dev server ở port riêng, khác origin với API).
 CORS_ORIGINS="http://localhost:5173,http://localhost:5174"
+# Ảnh bài viết / ảnh bìa (POST /admin/uploads/images) — phải trùng physical path IIS phục vụ /upload/images
+UPLOAD_IMAGES_DIR="C:\inetpub\congdoan2026\web\upload\images"
+# File đính kèm công văn
+DOCUMENT_FILES_DIR="C:\inetpub\congdoan2026\document-files"
 ```
 
 Sinh chuỗi ngẫu nhiên nhanh cho 2 dòng `JWT_*_SECRET` bằng PowerShell:
