@@ -647,8 +647,14 @@ model UnionCommitteeMember {
 
   /// Null = Ban chấp hành công đoàn TRƯỜNG (cấp cao nhất). Có giá trị = Ban chấp hành/tổ công đoàn của
   /// 1 công đoàn bộ phận cụ thể — xem tblPhongBan_NV_NK ở web cũ.
+  /// onUpdate: NoAction (thay vì mặc định Cascade) — bắt buộc phải đặt tường minh vì SQL Server không
+  /// cho phép 2 đường cascade UPDATE cùng hội tụ về 1 bảng: UnionDepartment đã cascade update tới
+  /// UnionMember (qua UnionMember.departmentId) rồi từ đó cascade tiếp tới UnionCommitteeMember (qua
+  /// memberId), nếu departmentId ở đây cũng cascade update thì thành 2 đường cùng đích -> lỗi P1012 lúc
+  /// migrate (đã gặp thực tế). An toàn vì id của UnionDepartment là uuid cố định, không có nghiệp vụ
+  /// nào update PK này nên onUpdate: NoAction không đổi hành vi thực tế, chỉ đổi hành vi lý thuyết.
   departmentId String?
-  department   UnionDepartment? @relation(fields: [departmentId], references: [id])
+  department   UnionDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   /// Chức vụ trong Ban chấp hành (vd "Chủ tịch", "Phó Chủ tịch", "Uỷ viên Ban Thường vụ", "Uỷ viên
   /// Ban chấp hành") — lưu text tự do, không xây bảng danh mục riêng (cùng lý do như
