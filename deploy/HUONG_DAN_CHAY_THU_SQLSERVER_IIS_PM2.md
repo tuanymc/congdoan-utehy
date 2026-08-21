@@ -1006,11 +1006,13 @@ file `prisma/migrate-legacy-content.ts` để biết cách cấu hình `LEGACY_D
 Đợt này gộp 3 tính năng:
 
 - **Cổng đoàn viên tự cập nhật thông tin + đổi mật khẩu** (`/cong-doan-vien`): thêm cột `userId`
-  (nullable, unique) + khoá ngoại vào bảng `union_members` để liên kết 1-1 với `users` — **KHÔNG đổi
-  gì ở bảng `users`** (quan hệ 1-1 chỉ cần cột FK ở phía `union_members`). Admin gán/gỡ liên kết bằng
-  cách nhập email tài khoản ở màn hình `/admin/union-members` (trường "Email tài khoản đăng nhập liên
-  kết") — không cần chọn từ danh sách `/users` (endpoint đó chỉ ADMIN gọi được). Đổi mật khẩu dùng lại
-  `POST /auth/change-password` đã có sẵn từ trước, không phải API mới.
+  (nullable) + khoá ngoại vào bảng `union_members` để liên kết với `users` — **KHÔNG đổi gì ở bảng
+  `users`**. **KHÔNG đặt UNIQUE** trên `userId`: SQL Server chỉ cho 1 giá trị NULL trong UNIQUE
+  constraint thường, trong khi hầu hết công đoàn viên chưa gắn tài khoản — đã fail thật trên production
+  (lỗi 1505, duplicate key `<NULL>`). Service tự đảm bảo 1 tài khoản không gắn 2 hồ sơ. Admin gán/gỡ
+  liên kết bằng cách nhập email tài khoản ở màn hình `/admin/union-members` (trường "Email tài khoản
+  đăng nhập liên kết") — không cần chọn từ danh sách `/users` (endpoint đó chỉ ADMIN gọi được). Đổi mật
+  khẩu dùng lại `POST /auth/change-password` đã có sẵn từ trước, không phải API mới.
 - **Ban chấp hành + Nhiệm kỳ** (thay/bổ sung màn hình tĩnh "Ban Chấp hành Công đoàn" cũ ở `/gioi-thieu`):
   2 bảng MỚI `union_terms` (nhiệm kỳ) và `union_committee_members` (thành viên Ban chấp hành theo từng
   nhiệm kỳ, có thể gắn 1 công đoàn bộ phận cụ thể hoặc để trống = cấp trường). Trang quản trị
@@ -1038,11 +1040,12 @@ npx prisma migrate diff `
   --script `
   --output prisma/migrations/tmp_diff.sql
 
-# Kiểm tra tmp_diff.sql: phải CHỈ có ALTER TABLE union_members ADD userId (+ FK tới users, unique
-# index), CREATE TABLE union_terms, CREATE TABLE union_committee_members (kèm FK tới union_terms/
-# union_members/union_departments + index) — KHÔNG được có DROP/ALTER nào khác trên bảng có sẵn
-# (đặc biệt KHÔNG được đụng gì tới bảng users). Nếu có gì lạ, dừng lại, đừng deploy, gửi lại nội dung
-# để review.
+# Kiểm tra tmp_diff.sql: phải CHỈ có ALTER TABLE union_members ADD userId (+ FK tới users + index
+# THƯỜNG, KHÔNG phải UNIQUE constraint), CREATE TABLE union_terms, CREATE TABLE union_committee_members
+# (kèm FK tới union_terms/union_members/union_departments + index).
+# BỎ HẾT mọi DROP/ALTER trên site_settings (Prisma hay sinh lại DEFAULT tiếng Việt bị lỗi encoding —
+# không được đụng bảng đó). Đặc biệt KHÔNG được đụng gì tới bảng users. Nếu có UNIQUE trên userId
+# hoặc ALTER site_settings, XOÁ những đoạn đó khỏi file trước khi deploy.
 Get-Content prisma\migrations\tmp_diff.sql
 
 $name = "$(Get-Date -Format yyyyMMddHHmmss)_add_union_leadership_and_self_service"
@@ -1139,3 +1142,14 @@ thứ 2 trở đi bạn không cần lặp lại các lệnh Copy-Item thủ cô
   phải gỡ trước khi thử lại: `pnpm exec prisma migrate resolve --rolled-back <tên-migration>
   --schema=prisma/schema.prisma` (lấy `<tên-migration>` từ tên thư mục trong `prisma/migrations/`,
   ví dụ `20260819085744_init`), rồi chạy lại `pnpm prisma:deploy`.
+- **`P3018` / SQL 1505 `duplicate key ... (<NULL>)` trên `union_members_userId_key`**: UNIQUE constraint
+  trên cột nullable — SQL Server không cho nhiều NULL. Đừng chạy `ALTER TABLE ... ADD CONSTRAINT` trong
+  PowerShell (`[userId]` bị PowerShell hiểu là type). Làm đúng thứ tự: (1) `npx prisma migrate resolve
+  --rolled-back <tên-migration> --schema=prisma/schema.prisma` nếu Prisma đang đánh dấu failed; (2) chạy
+  `npx prisma db execute --file deploy/scripts/cleanup-union-leadership-migration.sql
+  --schema=prisma/schema.prisma` để gỡ cột/bảng dở nếu còn sót; (3) **xoá** thư mục migration fail
+  `prisma\migrations\<tên>_add_union_leadership_and_self_service`; (4) `git pull` schema đã bỏ `@unique`
+  trên `userId`; (5) tạo lại migration theo Bước 6.14 — file SQL **không** được có UNIQUE trên `userId`
+  và **không** được ALTER `site_settings`.
+- **`P3018` / SQL 207 `Invalid column name 'userId'`**: lần migrate trước đã rollback/dở cột `userId`.
+  Cùng thứ tự gỡ failed + cleanup SQL ở mục trên, rồi tạo migration mới (không reuse file SQL đã fail).

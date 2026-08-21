@@ -47,9 +47,12 @@ model User {
   /// hỗ trợ khi xoá tài khoản cán bộ).
   assignedPublicServiceSupportRequests PublicServiceSupportRequest[]
 
-  /// Công đoàn viên liên kết với tài khoản này (nếu có) — xem UnionMember.userId. Optional 1-1: không
-  /// phải User nào cũng là công đoàn viên (vd tài khoản ADMIN/UNION_CLERK thuần quản trị).
-  linkedUnionMember UnionMember?
+  /// Công đoàn viên liên kết với tài khoản này (nếu có) — xem UnionMember.userId. Nghiệp vụ là 1-1
+  /// (một tài khoản tối đa một hồ sơ), nhưng KHÔNG khai 1-1/`@unique` trên userId: SQL Server chỉ cho
+  /// 1 NULL trong UNIQUE constraint thường, trong khi hầu hết công đoàn viên chưa gắn tài khoản
+  /// (userId = NULL). Service tự đảm bảo không trùng — xem UnionMembersService.resolveLinkedUserId().
+  /// Không phải User nào cũng là công đoàn viên (vd tài khoản ADMIN/UNION_CLERK thuần quản trị).
+  linkedUnionMembers UnionMember[]
 
   @@map("users")
 }
@@ -443,11 +446,15 @@ model UnionMember {
   profile UnionMemberProfile?
 
   /// Liên kết tới tài khoản đăng nhập (User) để công đoàn viên tự sửa thông tin/đổi mật khẩu ở màn hình
-  /// "/cong-doan-vien" (self-service portal). Optional 1-1: không phải công đoàn viên nào cũng có tài
-  /// khoản đăng nhập. Admin gán/gỡ liên kết này bằng cách nhập email tài khoản (KHÔNG dùng danh sách
-  /// /users vì endpoint đó chỉ ADMIN gọi được, trong khi UNION_CLERK cũng quản lý màn hình này — xem
-  /// UnionMemberForm.tsx). onDelete: SetNull — xoá tài khoản đăng nhập không xoá công đoàn viên.
-  userId String? @unique
+  /// "/cong-doan-vien" (self-service portal). Không phải công đoàn viên nào cũng có tài khoản đăng nhập.
+  /// Admin gán/gỡ liên kết này bằng cách nhập email tài khoản (KHÔNG dùng danh sách /users vì endpoint
+  /// đó chỉ ADMIN gọi được, trong khi UNION_CLERK cũng quản lý màn hình này — xem UnionMemberForm.tsx).
+  /// onDelete: SetNull — xoá tài khoản đăng nhập không xoá công đoàn viên.
+  /// KHÔNG @unique: SQL Server chỉ cho 1 NULL trong UNIQUE constraint thường (đã fail thật trên
+  /// production với lỗi 1505 duplicate key `<NULL>` khi migrate). Service tự đảm bảo 1 userId không
+  /// gắn 2 hồ sơ — xem UnionMembersService.resolveLinkedUserId(). Tra cứu dùng findFirst, không
+  /// findUnique.
+  userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   /// Lịch sử tham gia Ban chấp hành công đoàn qua các nhiệm kỳ (xem UnionCommitteeMember) — 1 công
@@ -456,6 +463,7 @@ model UnionMember {
 
   @@index([departmentId])
   @@index([legacyCode])
+  @@index([userId])
   @@map("union_members")
 }
 

@@ -259,7 +259,8 @@ export class UnionMembersService {
 
   /** Tra cứu userId để gán/gỡ liên kết đăng nhập từ email admin nhập (xem CreateUnionMemberRequest.
    * linkedUserEmail) — undefined = không đụng field, null = gỡ liên kết, string = userId cần gán. Ném
-   * lỗi nếu email không tồn tại hoặc đã liên kết với MỘT công đoàn viên KHÁC (userId @unique). */
+   * lỗi nếu email không tồn tại hoặc đã liên kết với MỘT công đoàn viên KHÁC. Không dựa UNIQUE ở CSDL
+   * (SQL Server không cho nhiều NULL trên UNIQUE — xem UnionMember.userId). */
   private async resolveLinkedUserId(email: string | undefined, currentMemberId?: string): Promise<string | null | undefined> {
     if (email === undefined) return undefined;
     if (email.trim() === "") return null;
@@ -267,7 +268,7 @@ export class UnionMembersService {
     if (!user) {
       throw new BadRequestException(`Không tìm thấy tài khoản đăng nhập với email "${email}".`);
     }
-    const existingLink = await this.prisma.unionMember.findUnique({ where: { userId: user.id }, select: { id: true } });
+    const existingLink = await this.prisma.unionMember.findFirst({ where: { userId: user.id }, select: { id: true } });
     if (existingLink && existingLink.id !== currentMemberId) {
       throw new BadRequestException(`Tài khoản "${email}" đã được liên kết với một công đoàn viên khác.`);
     }
@@ -342,7 +343,7 @@ export class UnionMembersService {
   /** Self-service — công đoàn viên tự xem thông tin của mình ở "/cong-doan-vien", tra theo userId liên
    * kết (xem UnionMember.userId). KHÔNG bao giờ trả hồ sơ nội bộ (profile). */
   async findMyUnionMember(userId: string): Promise<MyUnionMemberDto> {
-    const member = await this.prisma.unionMember.findUnique({ where: { userId }, ...memberWithRelations });
+    const member = await this.prisma.unionMember.findFirst({ where: { userId }, ...memberWithRelations });
     if (!member) {
       throw new NotFoundException("Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ quản trị viên.");
     }
@@ -352,12 +353,12 @@ export class UnionMembersService {
   /** Self-service cập nhật — CHỈ 4 field an toàn (xem UpdateMyUnionMemberDto), không đụng được tới
    * profile/isPublic/sortOrder/department (admin-only). */
   async updateMyUnionMember(userId: string, dto: UpdateMyUnionMemberDto): Promise<MyUnionMemberDto> {
-    const existing = await this.prisma.unionMember.findUnique({ where: { userId }, select: { id: true } });
+    const existing = await this.prisma.unionMember.findFirst({ where: { userId }, select: { id: true } });
     if (!existing) {
       throw new NotFoundException("Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ quản trị viên.");
     }
     const member = await this.prisma.unionMember.update({
-      where: { userId },
+      where: { id: existing.id },
       data: {
         fullName: dto.fullName,
         phone: dto.phone,
