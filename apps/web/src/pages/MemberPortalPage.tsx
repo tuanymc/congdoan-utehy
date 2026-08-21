@@ -1,13 +1,28 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import type { ChangePasswordRequest, MyUnionMemberDto, UpdateMyUnionMemberRequest } from "@congdoan/types";
+import { Link } from "react-router-dom";
+import type { AuthUser, ChangePasswordRequest, MyUnionMemberDto, UpdateMyUnionMemberRequest } from "@congdoan/types";
+import {
+  ArrowRight,
+  Building2,
+  CalendarCheck,
+  ClipboardList,
+  FileText,
+  GraduationCap,
+  HandHeart,
+  Lock,
+  Mail,
+  Phone,
+  Sparkles,
+  UserRound
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Wallet, FileText, Bell, LogOut } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Quản trị viên",
@@ -16,21 +31,36 @@ const ROLE_LABELS: Record<string, string> = {
   MEMBER: "Đoàn viên"
 };
 
-const UPCOMING_FEATURES = [
+const QUICK_UTILITIES = [
   {
-    icon: Wallet,
-    title: "Ví đoàn phí điện tử",
-    description: "Theo dõi lịch sử đóng đoàn phí, số dư và nhắc hạn đóng."
+    icon: CalendarCheck,
+    title: "Đăng ký hoạt động",
+    description: "Tham gia phong trào, hoạt động do Công đoàn tổ chức.",
+    to: "/tien-ich-so-cong-doan/dang-ky-hoat-dong"
+  },
+  {
+    icon: ClipboardList,
+    title: "Khảo sát ý kiến",
+    description: "Góp ý về chủ trương và hoạt động của Công đoàn trường.",
+    to: "/tien-ich-so-cong-doan/khao-sat"
   },
   {
     icon: FileText,
-    title: "Biểu mẫu điện tử",
-    description: "Nộp đơn, kê khai và tra cứu trạng thái xử lý trực tuyến."
+    title: "Kho biểu mẫu",
+    description: "Xem và tải biểu mẫu, đơn từ dùng chung.",
+    to: "/tien-ich-so-cong-doan/bieu-mau"
   },
   {
-    icon: Bell,
-    title: "Thông báo cá nhân hoá",
-    description: "Nhận thông báo hoạt động, quyền lợi theo đơn vị công tác."
+    icon: HandHeart,
+    title: "Dịch vụ công",
+    description: "Tra cứu thủ tục và gửi yêu cầu Công đoàn hỗ trợ.",
+    to: "/tien-ich-so-cong-doan/dich-vu-cong"
+  },
+  {
+    icon: Sparkles,
+    title: "Công cụ AI",
+    description: "Kho công cụ AI phục vụ giảng dạy và nghiên cứu.",
+    to: "/tien-ich-so-cong-doan/cong-cu-ai"
   }
 ] as const;
 
@@ -43,13 +73,39 @@ function getInitials(fullName: string): string {
   return last.slice(0, 1).toUpperCase() || "?";
 }
 
-/** Thẻ "Thông tin công đoàn viên" — tự sửa fullName/phone/email của bản ghi UnionMember liên kết với
- * tài khoản đang đăng nhập (xem MeUnionMemberController). Nếu tài khoản chưa được admin liên kết với
- * hồ sơ công đoàn viên nào (404), hiển thị thông báo hướng dẫn thay vì crash. */
-function UnionMemberInfoCard() {
-  const [member, setMember] = useState<MyUnionMemberDto | null>(null);
-  const [notLinked, setNotLinked] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+function FieldMessage({ error, success }: { error: string | null; success: string | null }) {
+  if (error) {
+    return (
+      <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        {error}
+      </p>
+    );
+  }
+  if (success) {
+    return (
+      <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        {success}
+      </p>
+    );
+  }
+  return null;
+}
+
+/** Hồ sơ công đoàn viên liên kết với tài khoản — tự sửa họ tên/SĐT/email; bộ phận, chức vụ, trình độ
+ * chỉ xem (admin quản lý). 404 = chưa liên kết, hiện hướng dẫn thay vì lỗi trắng. */
+function ProfilePanel({
+  member,
+  notLinked,
+  isLoading,
+  loadError,
+  onUpdated
+}: {
+  member: MyUnionMemberDto | null;
+  notLinked: boolean;
+  isLoading: boolean;
+  loadError: string | null;
+  onUpdated: (member: MyUnionMemberDto) => void;
+}) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -58,31 +114,11 @@ function UnionMemberInfoCard() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    apiFetch<MyUnionMemberDto>("/me/union-member")
-      .then((data) => {
-        if (cancelled) return;
-        setMember(data);
-        setFullName(data.fullName);
-        setPhone(data.phone ?? "");
-        setEmail(data.email ?? "");
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.statusCode === 404) {
-          setNotLinked(true);
-        } else {
-          setError(err instanceof Error ? err.message : "Không thể tải thông tin công đoàn viên.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!member) return;
+    setFullName(member.fullName);
+    setPhone(member.phone ?? "");
+    setEmail(member.email ?? "");
+  }, [member]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -92,8 +128,8 @@ function UnionMemberInfoCard() {
     try {
       const payload: UpdateMyUnionMemberRequest = { fullName, phone, email };
       const updated = await apiFetch<MyUnionMemberDto>("/me/union-member", { method: "PATCH", body: payload });
-      setMember(updated);
-      setSuccessMessage("Đã lưu thông tin công đoàn viên.");
+      onUpdated(updated);
+      setSuccessMessage("Đã lưu thông tin liên hệ.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể lưu thông tin. Vui lòng thử lại.");
     } finally {
@@ -103,39 +139,81 @@ function UnionMemberInfoCard() {
 
   if (isLoading) {
     return (
-      <Card className="mt-6">
-        <CardContent className="py-6 text-sm text-muted-foreground">Đang tải thông tin công đoàn viên...</CardContent>
+      <Card>
+        <CardContent className="space-y-3 py-6">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-2/3" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <FieldMessage error={loadError} success={null} />
+        </CardContent>
       </Card>
     );
   }
 
   if (notLinked) {
     return (
-      <Card className="mt-6">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Thông tin công đoàn viên</CardTitle>
+          <CardTitle className="text-lg">Chưa liên kết hồ sơ công đoàn viên</CardTitle>
+          <CardDescription>
+            Tài khoản đăng nhập chưa được gắn với hồ sơ trong danh bạ Công đoàn. Liên hệ Văn phòng Công đoàn
+            trường để được hỗ trợ.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ Văn phòng Công
-            đoàn trường để được hỗ trợ liên kết tài khoản.
-          </p>
+          <Button asChild>
+            <Link to="/lien-he">Liên hệ Văn phòng Công đoàn</Link>
+          </Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Thông tin công đoàn viên</CardTitle>
+        <CardTitle className="text-lg">Hồ sơ công đoàn viên</CardTitle>
         <CardDescription>
-          {member?.department?.name ? `Công đoàn bộ phận: ${member.department.name}` : "Cập nhật thông tin liên hệ cá nhân của bạn."}
+          Bạn có thể cập nhật họ tên và thông tin liên hệ. Chức vụ, trình độ và công đoàn bộ phận do Văn phòng
+          Công đoàn quản lý.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+        <dl className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border bg-muted/40 px-3 py-3">
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Building2 className="size-3.5" /> Công đoàn bộ phận
+            </dt>
+            <dd className="mt-1 text-sm font-medium">{member?.department?.name ?? "Chưa phân bộ phận"}</dd>
+          </div>
+          <div className="rounded-lg border bg-muted/40 px-3 py-3">
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <UserRound className="size-3.5" /> Chức vụ
+            </dt>
+            <dd className="mt-1 text-sm font-medium">{member?.positionTitle ?? "—"}</dd>
+          </div>
+          <div className="rounded-lg border bg-muted/40 px-3 py-3">
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <GraduationCap className="size-3.5" /> Trình độ
+            </dt>
+            <dd className="mt-1 text-sm font-medium">{member?.degreeLabel ?? "—"}</dd>
+          </div>
+        </dl>
+
+        <Separator />
+
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={(event) => void handleSubmit(event)}>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2">
             <label htmlFor="member-fullName" className="text-sm font-medium">
               Họ và tên
             </label>
@@ -158,9 +236,10 @@ function UnionMemberInfoCard() {
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               className={inputClassName}
+              placeholder="Số di động liên hệ"
             />
           </div>
-          <div className="space-y-1.5 sm:col-span-2">
+          <div className="space-y-1.5">
             <label htmlFor="member-email" className="text-sm font-medium">
               Email liên hệ
             </label>
@@ -170,19 +249,17 @@ function UnionMemberInfoCard() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className={inputClassName}
+              placeholder="email@utehy.edu.vn"
             />
           </div>
 
-          {error ? (
-            <p role="alert" className="text-sm text-destructive sm:col-span-2">
-              {error}
-            </p>
-          ) : null}
-          {successMessage ? <p className="text-sm text-emerald-600 sm:col-span-2">{successMessage}</p> : null}
+          <div className="sm:col-span-2">
+            <FieldMessage error={error} success={successMessage} />
+          </div>
 
           <div className="sm:col-span-2">
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Đang lưu..." : "Lưu thông tin"}
+              {isSaving ? "Đang lưu..." : "Lưu thông tin liên hệ"}
             </Button>
           </div>
         </form>
@@ -191,8 +268,8 @@ function UnionMemberInfoCard() {
   );
 }
 
-/** Thẻ "Đổi mật khẩu" — gọi lại POST /auth/change-password đã có sẵn (xem AuthController). */
-function ChangePasswordCard() {
+/** Đổi mật khẩu — gọi lại POST /auth/change-password đã có sẵn (xem AuthController). */
+function SecurityPanel() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -230,10 +307,10 @@ function ChangePasswordCard() {
   }
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader>
         <CardTitle className="text-lg">Đổi mật khẩu</CardTitle>
-        <CardDescription>Đặt lại mật khẩu đăng nhập cổng đoàn viên.</CardDescription>
+        <CardDescription>Mật khẩu mới tối thiểu 8 ký tự. Sau khi đổi, lần đăng nhập tiếp theo dùng mật khẩu mới.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid max-w-md gap-4" onSubmit={(event) => void handleSubmit(event)}>
@@ -280,12 +357,7 @@ function ChangePasswordCard() {
             />
           </div>
 
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
-          {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
+          <FieldMessage error={error} success={successMessage} />
 
           <div>
             <Button type="submit" disabled={isSaving}>
@@ -298,91 +370,180 @@ function ChangePasswordCard() {
   );
 }
 
+function WelcomeBanner({ user, member }: { user: AuthUser; member: MyUnionMemberDto | null }) {
+  const displayName = member?.fullName || user.fullName;
+  const photoUrl = member?.photoUrl;
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardContent className="flex flex-col gap-5 py-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-4">
+          <Avatar className="size-16 shrink-0 sm:size-20">
+            {photoUrl ? <AvatarImage src={photoUrl} alt={displayName} /> : null}
+            <AvatarFallback className="bg-primary text-lg text-primary-foreground sm:text-xl">
+              {getInitials(displayName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">Xin chào,</p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{displayName}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {user.roles.map((role) => (
+                <Badge key={role} variant="secondary">
+                  {ROLE_LABELS[role] ?? role}
+                </Badge>
+              ))}
+            </div>
+            {member && (member.department?.name || member.positionTitle || member.phone || member.email) ? (
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {member.department?.name ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Building2 className="size-3.5" />
+                    {member.department.name}
+                  </span>
+                ) : null}
+                {member.positionTitle ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <UserRound className="size-3.5" />
+                    {member.positionTitle}
+                  </span>
+                ) : null}
+                {member.phone ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Phone className="size-3.5" />
+                    {member.phone}
+                  </span>
+                ) : null}
+                {member.email ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Mail className="size-3.5" />
+                    {member.email}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Cổng đoàn viên — khu vực sau đăng nhập: hồ sơ cá nhân, đổi mật khẩu, lối tắt sang tiện ích số
+ * đang hoạt động (không còn placeholder "sắp ra mắt"). */
 export function MemberPortalPage() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [tab, setTab] = useState<"profile" | "security">("profile");
+  const [member, setMember] = useState<MyUnionMemberDto | null>(null);
+  const [notLinked, setNotLinked] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    apiFetch<MyUnionMemberDto>("/me/union-member")
+      .then((data) => {
+        if (cancelled) return;
+        setMember(data);
+        setNotLinked(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.statusCode === 404) {
+          setNotLinked(true);
+        } else {
+          setLoadError(err instanceof Error ? err.message : "Không thể tải thông tin công đoàn viên.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!user) {
-    // ProtectedRoute đảm bảo không lọt vào đây khi chưa đăng nhập, nhưng giữ guard để tránh crash.
     return null;
   }
 
-  async function handleLogout() {
-    await logout();
-    navigate("/", { replace: true });
-  }
-
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <h1 className="text-3xl font-bold">Cổng đoàn viên</h1>
-      <p className="mt-2 text-muted-foreground">
-        Khu vực dành riêng cho đoàn viên Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên.
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <p className="text-sm font-medium text-primary">Cổng đoàn viên</p>
+      <p className="mt-1 max-w-2xl text-muted-foreground">
+        Quản lý thông tin cá nhân và sử dụng các tiện ích số của Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng
+        Yên.
       </p>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <Avatar className="size-14">
-              <AvatarFallback className="bg-primary text-lg text-primary-foreground">
-                {getInitials(user.fullName)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="text-xl">{user.fullName}</CardTitle>
-              <CardDescription>{user.email}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Vai trò:</span>
-            {user.roles.map((role) => (
-              <Badge key={role} variant="secondary">
-                {ROLE_LABELS[role] ?? role}
-              </Badge>
-            ))}
-          </div>
-          <Button
-            variant="outline"
-            className="mt-6"
-            onClick={() => void handleLogout()}
-          >
-            <LogOut />
-            Đăng xuất
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="mt-6">
+        {isLoading ? <Skeleton className="h-40 w-full rounded-xl" /> : <WelcomeBanner user={user} member={member} />}
+      </div>
 
-      <UnionMemberInfoCard />
-      <ChangePasswordCard />
-
-      <div className="mt-10">
-        <h2 className="text-xl font-bold">Tiện ích số Công đoàn</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Khung sẵn cho các tiện ích số sẽ được bổ sung ở Phase 4 — hiện chưa có API nên các mục
-          dưới đây chỉ mang tính giới thiệu, chưa thao tác được.
-        </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {UPCOMING_FEATURES.map((feature) => (
-            <Card key={feature.title} className="opacity-90">
-              <CardHeader>
-                <div className="flex items-center gap-3">
+      <section className="mt-10">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+          <div>
+            <h2 className="text-xl font-semibold">Tiện ích dành cho đoàn viên</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Các dịch vụ đang mở, dùng ngay không cần đăng ký thêm.</p>
+          </div>
+          <Link to="/tien-ich-so-cong-doan" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+            Xem tất cả tiện ích số <ArrowRight className="size-4" />
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {QUICK_UTILITIES.map((utility) => (
+            <Link key={utility.to} to={utility.to} className="group">
+              <Card className="h-full transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col gap-2 py-5">
                   <span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <feature.icon className="size-5" />
+                    <utility.icon className="size-5" />
                   </span>
-                  <CardTitle className="text-base">{feature.title}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">{feature.description}</p>
-                <Badge variant="outline" className="w-fit">
-                  Sắp ra mắt — Phase 4
-                </Badge>
-              </CardContent>
-            </Card>
+                  <p className="font-medium group-hover:text-primary">{utility.title}</p>
+                  <p className="text-sm text-muted-foreground">{utility.description}</p>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
-      </div>
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-4 flex gap-1 rounded-lg border bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => setTab("profile")}
+            className={`inline-flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors sm:flex-none sm:px-4 ${
+              tab === "profile" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <UserRound className="size-4" />
+            Hồ sơ
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("security")}
+            className={`inline-flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors sm:flex-none sm:px-4 ${
+              tab === "security" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Lock className="size-4" />
+            Bảo mật
+          </button>
+        </div>
+
+        {tab === "profile" ? (
+          <ProfilePanel
+            member={member}
+            notLinked={notLinked}
+            isLoading={isLoading}
+            loadError={loadError}
+            onUpdated={setMember}
+          />
+        ) : (
+          <SecurityPanel />
+        )}
+      </section>
     </div>
   );
 }
