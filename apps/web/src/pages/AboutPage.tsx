@@ -14,24 +14,27 @@ import {
 import type { PaginatedResult, PostListItemDto } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const FUNCTIONS = [
   {
     icon: Shield,
+    title: "Đại diện và chăm lo quyền lợi",
     text: "Đại diện, chăm lo và bảo vệ quyền, lợi ích hợp pháp, chính đáng của cán bộ, giảng viên, người lao động."
   },
   {
     icon: Scale,
+    title: "Tham gia quản lý nhà trường",
     text: "Tham gia quản lý nhà trường, giám sát thực hiện chế độ, chính sách đối với người lao động."
   },
   {
     icon: Flag,
+    title: "Tổ chức phong trào thi đua",
     text: "Tổ chức phong trào thi đua yêu nước, các hoạt động văn hoá, văn nghệ, thể dục thể thao."
   },
   {
     icon: Megaphone,
+    title: "Tuyên truyền, vận động",
     text: "Tuyên truyền, vận động đoàn viên chấp hành chủ trương, đường lối của Đảng, chính sách, pháp luật của Nhà nước."
   }
 ] as const;
@@ -111,11 +114,6 @@ const GROUP_ICONS: Record<string, typeof Landmark> = {
   khac: Users
 };
 
-function formatDate(dateIso: string | null): string {
-  if (!dateIso) return "";
-  return new Date(dateIso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
 function groupPosts(posts: PostListItemDto[]): { id: string; title: string; posts: PostListItemDto[] }[] {
   const bySlug = new Map(posts.map((post) => [post.slug, post]));
   const used = new Set<string>();
@@ -138,40 +136,126 @@ function groupPosts(posts: PostListItemDto[]): { id: string; title: string; post
   return grouped;
 }
 
-function ArticleTile({ post, featured = false }: { post: PostListItemDto; featured?: boolean }) {
+function SectionEyebrow({ index, label }: { index: string; label: string }) {
+  return (
+    <p className="flex items-center gap-3 text-sm font-medium text-primary">
+      <span className="font-mono text-xs tracking-widest text-primary/70">{index}</span>
+      <span className="h-px w-8 bg-primary/40" />
+      {label}
+    </p>
+  );
+}
+
+/** Bài giới thiệu dài (ảnh chỉ hiện khi có cover thật — không vẽ ô trống). */
+function EditorialCard({ post, featured = false }: { post: PostListItemDto; featured?: boolean }) {
   return (
     <Link
       to={`/tin-tuc/${post.slug}`}
-      className={`group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md ${
-        featured ? "sm:col-span-2" : ""
+      className={`group relative flex flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border/80 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:ring-primary/30 ${
+        featured ? "sm:col-span-2 sm:flex-row" : ""
       }`}
     >
-      <div className={featured ? "grid sm:grid-cols-2" : ""}>
-        <div className={`overflow-hidden bg-muted ${featured ? "aspect-[16/10] sm:aspect-auto sm:min-h-56" : "aspect-[16/10]"}`}>
-          {post.coverImageUrl ? (
-            <img
-              src={post.coverImageUrl}
-              alt=""
-              className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/10 to-[#0f2a6b]/10">
-              <Landmark className="size-10 text-primary/40" />
-            </div>
-          )}
+      {post.coverImageUrl ? (
+        <div className={`overflow-hidden bg-muted ${featured ? "aspect-[16/10] sm:aspect-auto sm:w-[46%] sm:min-h-64" : "aspect-[16/10]"}`}>
+          <img
+            src={post.coverImageUrl}
+            alt=""
+            className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
+            loading="lazy"
+          />
         </div>
-        <div className="flex flex-col justify-center p-4 sm:p-5">
-          <p className="font-semibold leading-snug group-hover:text-primary">{post.title}</p>
-          {post.excerpt ? (
-            <p className={`mt-2 text-sm text-muted-foreground ${featured ? "line-clamp-3" : "line-clamp-2"}`}>
-              {post.excerpt}
-            </p>
-          ) : null}
-          <p className="mt-3 text-xs text-muted-foreground">{formatDate(post.publishedAt ?? post.createdAt)}</p>
-        </div>
+      ) : null}
+      <div className={`flex flex-1 flex-col justify-center p-5 sm:p-6 ${!post.coverImageUrl && featured ? "sm:px-10 sm:py-10" : ""}`}>
+        <p className="text-lg font-semibold leading-snug tracking-tight group-hover:text-primary">{post.title}</p>
+        {post.excerpt ? (
+          <p className={`mt-2 text-sm leading-relaxed text-muted-foreground ${featured ? "line-clamp-4" : "line-clamp-2"}`}>
+            {post.excerpt}
+          </p>
+        ) : null}
+        <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
+          Đọc tiếp <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+        </span>
       </div>
     </Link>
+  );
+}
+
+/** Danh mục ban chuyên môn — ô compact, không dùng card ảnh. */
+function DirectoryLink({ post }: { post: PostListItemDto }) {
+  return (
+    <Link
+      to={`/tin-tuc/${post.slug}`}
+      className="group flex items-center justify-between gap-3 rounded-2xl bg-card px-4 py-4 ring-1 ring-border/80 transition-all hover:bg-primary hover:text-primary-foreground hover:ring-primary"
+    >
+      <span className="font-medium leading-snug">{post.title}</span>
+      <ArrowRight className="size-4 shrink-0 opacity-40 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+    </Link>
+  );
+}
+
+/** Lịch sử nhiệm kỳ Ban chấp hành — timeline, đọc như niên biểu chứ không phải lưới tin. */
+function TimelineItem({ post, isLast }: { post: PostListItemDto; isLast: boolean }) {
+  return (
+    <li className="relative pl-8">
+      {!isLast ? <span className="absolute top-3 left-[7px] h-[calc(100%+0.75rem)] w-px bg-border" /> : null}
+      <span className="absolute top-2.5 left-0 size-4 rounded-full border-2 border-primary bg-background" />
+      <Link to={`/tin-tuc/${post.slug}`} className="group block rounded-xl py-1 pr-2 transition-colors hover:text-primary">
+        <p className="font-medium leading-snug">{post.title}</p>
+        {post.excerpt ? <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.excerpt}</p> : null}
+        <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+          Xem chi tiết <ArrowRight className="size-3" />
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function GroupBody({ group }: { group: { id: string; title: string; posts: PostListItemDto[] } }) {
+  if (group.id === "cac-ban-chuyen-mon") {
+    return (
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        {group.posts.map((post) => (
+          <DirectoryLink key={post.id} post={post} />
+        ))}
+      </div>
+    );
+  }
+
+  if (group.id === "ban-chap-hanh-cong-doan") {
+    const overview = group.posts.filter((post) => !/nhiem-ky/i.test(post.slug));
+    const terms = group.posts.filter((post) => /nhiem-ky/i.test(post.slug));
+    return (
+      <div className="mt-8 space-y-8">
+        {overview.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {overview.map((post, index) => (
+              <EditorialCard key={post.id} post={post} featured={index === 0 && overview.length === 1} />
+            ))}
+          </div>
+        ) : null}
+        {terms.length > 0 ? (
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Qua các nhiệm kỳ</p>
+            <ol className="mt-4 space-y-5">
+              {terms.map((post, index) => (
+                <TimelineItem key={post.id} post={post} isLast={index === terms.length - 1} />
+              ))}
+            </ol>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  const [featured, ...rest] = group.posts;
+  if (!featured) return null;
+  return (
+    <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <EditorialCard post={featured} featured />
+      {rest.map((post) => (
+        <EditorialCard key={post.id} post={post} />
+      ))}
+    </div>
   );
 }
 
@@ -237,130 +321,109 @@ export function AboutPage() {
       </section>
 
       {groups && groups.length > 0 ? (
-        <nav className="border-b bg-background">
-          <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-3">
-            <a
-              href="#chuc-nang-nhiem-vu-cong-doan"
-              className="shrink-0 rounded-full border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              Chức năng, nhiệm vụ
-            </a>
-            {groups.map((group) => (
+        <nav className="border-b bg-background/90 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2">
+            {[
+              { href: "#chuc-nang-nhiem-vu-cong-doan", label: "Chức năng, nhiệm vụ" },
+              ...groups.map((group) => ({ href: `#${group.id}`, label: group.title }))
+            ].map((item) => (
               <a
-                key={group.id}
-                href={`#${group.id}`}
-                className="shrink-0 rounded-full border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                key={item.href}
+                href={item.href}
+                className="shrink-0 rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
               >
-                {group.title}
+                {item.label}
               </a>
             ))}
           </div>
         </nav>
       ) : null}
 
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
-        <section id="chuc-nang-nhiem-vu-cong-doan" className="scroll-mt-24">
-          <div className="max-w-2xl">
-            <p className="text-sm font-medium text-primary">Sứ mệnh</p>
-            <h2 className="mt-1 text-2xl font-bold sm:text-3xl">Chức năng, nhiệm vụ</h2>
-            <p className="mt-2 text-muted-foreground">
-              Công đoàn Trường thực hiện bốn nhóm nhiệm vụ cốt lõi theo Luật Công đoàn và Điều lệ Công đoàn
-              Việt Nam.
-            </p>
-          </div>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <section id="chuc-nang-nhiem-vu-cong-doan" className="scroll-mt-24 bg-muted/40">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+          <SectionEyebrow index="01" label="Sứ mệnh" />
+          <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight sm:text-4xl">Chức năng, nhiệm vụ</h2>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            Bốn nhóm nhiệm vụ cốt lõi theo Luật Công đoàn và Điều lệ Công đoàn Việt Nam.
+          </p>
+          <div className="mt-10 grid gap-px overflow-hidden rounded-2xl bg-border ring-1 ring-border sm:grid-cols-2">
             {FUNCTIONS.map((item, index) => (
-              <Card key={item.text} className="border-l-4 border-l-primary">
-                <CardContent className="flex gap-4 py-5">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <item.icon className="size-5" />
-                  </span>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">0{index + 1}</p>
-                    <p className="mt-1 text-sm leading-relaxed">{item.text}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={item.title} className="relative bg-card p-6 sm:p-8">
+                <span className="pointer-events-none absolute top-4 right-5 font-mono text-5xl font-bold text-primary/[0.07] sm:text-6xl">
+                  0{index + 1}
+                </span>
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                  <item.icon className="size-5" />
+                </span>
+                <h3 className="mt-5 text-lg font-semibold tracking-tight">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <div className="mt-16 flex flex-col gap-16">
-          {error ? (
-            <p className="text-sm text-destructive">{error}</p>
-          ) : groups === null ? (
-            <>
-              <Skeleton className="h-64 w-full rounded-xl" />
-              <Skeleton className="h-64 w-full rounded-xl" />
-            </>
-          ) : groups.length === 0 ? (
-            <Card>
-              <CardContent className="py-8">
-                <p className="text-sm text-muted-foreground">
-                  Nội dung chi tiết (lịch sử hình thành, cơ cấu tổ chức, Ban Chấp hành...) sẽ được Công đoàn
-                  trường cập nhật tại đây.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            groups.map((group) => {
-              const Icon = GROUP_ICONS[group.id] ?? Landmark;
-              const [featured, ...rest] = group.posts;
-              return (
-                <section key={group.id} id={group.id} className="scroll-mt-24">
-                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-                    <div className="flex items-start gap-3">
-                      <span className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      {error ? (
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      ) : groups === null ? (
+        <div className="mx-auto max-w-6xl space-y-6 px-4 py-16">
+          <Skeleton className="h-72 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
+        </div>
+      ) : groups.length === 0 ? (
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <p className="text-sm text-muted-foreground">
+            Nội dung chi tiết (lịch sử hình thành, cơ cấu tổ chức, Ban Chấp hành...) sẽ được Công đoàn trường cập
+            nhật tại đây.
+          </p>
+        </div>
+      ) : (
+        groups.map((group, groupIndex) => {
+          const Icon = GROUP_ICONS[group.id] ?? Landmark;
+          const indexLabel = String(groupIndex + 2).padStart(2, "0");
+          const muted = groupIndex % 2 === 0;
+          return (
+            <section
+              key={group.id}
+              id={group.id}
+              className={`scroll-mt-24 ${muted ? "bg-background" : "bg-muted/40"}`}
+            >
+              <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <SectionEyebrow index={indexLabel} label={group.title} />
+                    <div className="mt-3 flex items-center gap-3">
+                      <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Icon className="size-5" />
                       </span>
-                      <div>
-                        <h2 className="text-2xl font-bold">{group.title}</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">{group.posts.length} nội dung</p>
-                      </div>
+                      <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{group.title}</h2>
                     </div>
                   </div>
-
                   {group.id === "ban-chap-hanh-cong-doan" ? (
-                    <Link to="/ban-chap-hanh" className="mt-6 block">
-                      <Card className="border-primary/30 bg-primary/5 transition-shadow hover:shadow-md">
-                        <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="font-semibold">Danh sách Ban chấp hành theo nhiệm kỳ</p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              Xem thành viên Ban chấp hành Công đoàn Trường và các công đoàn bộ phận, lọc theo
-                              từng nhiệm kỳ.
-                            </p>
-                          </div>
-                          <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                            Xem danh sách đầy đủ <ArrowRight className="size-4" />
-                          </span>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                    <Button asChild>
+                      <Link to="/ban-chap-hanh">
+                        Danh sách Ban chấp hành hiện nay <ArrowRight />
+                      </Link>
+                    </Button>
                   ) : null}
+                </div>
+                <GroupBody group={group} />
+              </div>
+            </section>
+          );
+        })
+      )}
 
-                  {featured ? (
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                      <ArticleTile post={featured} featured />
-                      {rest.map((post) => (
-                        <ArticleTile key={post.id} post={post} />
-                      ))}
-                    </div>
-                  ) : null}
-                </section>
-              );
-            })
-          )}
-        </div>
-
-        <div className="mt-16 rounded-2xl bg-gradient-to-br from-primary to-[#0f2a6b] px-6 py-10 text-primary-foreground sm:px-10">
-          <p className="text-sm font-semibold uppercase tracking-wide text-secondary">Kết nối</p>
-          <h2 className="mt-2 max-w-xl text-2xl font-bold">Đồng hành cùng đoàn viên Công đoàn UTEHY</h2>
-          <p className="mt-2 max-w-xl text-primary-foreground/85">
-            Tra cứu danh bạ công đoàn viên, gửi liên hệ tới Văn phòng Công đoàn, hoặc đăng nhập cổng đoàn viên
-            để sử dụng tiện ích số.
+      <section className="bg-gradient-to-br from-primary to-[#0f2a6b] text-primary-foreground">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Kết nối</p>
+          <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight">Đồng hành cùng đoàn viên Công đoàn UTEHY</h2>
+          <p className="mt-3 max-w-xl text-primary-foreground/85">
+            Tra cứu danh bạ công đoàn viên hoặc gửi liên hệ tới Văn phòng Công đoàn trường.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg" variant="secondary">
               <Link to="/danh-ba-cong-doan-vien">Danh bạ công đoàn viên</Link>
             </Button>
@@ -374,7 +437,7 @@ export function AboutPage() {
             </Button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
