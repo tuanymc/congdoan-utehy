@@ -1,49 +1,54 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import nodemailer from "nodemailer";
-import type { Transporter } from "nodemailer";
+import { sendSmtpMail } from "./smtp-send";
 
 /**
- * Gửi email thông báo (tạo tài khoản công đoàn viên...). Không cấu hình SMTP_HOST thì mọi lần gửi
- * trả về false — caller tự hiện mật khẩu trên màn hình quản trị để admin gửi thủ công.
+ * Gửi email thông báo (tạo tài khoản công đoàn viên...). Cùng SMTP Gmail với web cũ
+ * (QLEmail.aspx.cs: smtp.gmail.com:587 + STARTTLS). Thiếu SMTP_USER/SMTP_PASSWORD thì không gửi —
+ * caller hiện mật khẩu trên màn hình quản trị để admin gửi thủ công.
  */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly transporter: Transporter | null;
+  private readonly host: string;
+  private readonly port: number;
+  private readonly secure: boolean;
+  private readonly user: string;
+  private readonly password: string;
   private readonly fromAddress: string;
 
   constructor(private readonly config: ConfigService) {
-    const host = this.config.get<string>("SMTP_HOST")?.trim();
-    const port = Number(this.config.get<string>("SMTP_PORT") ?? 587);
-    const user = this.config.get<string>("SMTP_USER")?.trim();
-    const pass = this.config.get<string>("SMTP_PASSWORD") ?? "";
-    const secure = this.config.get<string>("SMTP_SECURE") === "true" || port === 465;
+    this.host = this.config.get<string>("SMTP_HOST")?.trim() || "smtp.gmail.com";
+    this.port = Number(this.config.get<string>("SMTP_PORT") ?? 587);
+    this.secure = this.config.get<string>("SMTP_SECURE") === "true" || this.port === 465;
+    this.user = this.config.get<string>("SMTP_USER")?.trim() || "";
+    this.password = this.config.get<string>("SMTP_PASSWORD") ?? "";
     this.fromAddress =
-      this.config.get<string>("SMTP_FROM")?.trim() || user || "noreply@utehy.edu.vn";
+      this.config.get<string>("SMTP_FROM")?.trim() || this.user || "congdoanutehy@gmail.com";
 
-    if (!host) {
-      this.transporter = null;
-      this.logger.warn("SMTP_HOST chưa cấu hình — hệ thống sẽ không gửi được email mật khẩu.");
-      return;
+    if (!this.isConfigured()) {
+      this.logger.warn("SMTP_USER/SMTP_PASSWORD chưa cấu hình — hệ thống sẽ không gửi được email mật khẩu.");
     }
-
-    this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: user ? { user, pass } : undefined
-    });
   }
 
   isConfigured(): boolean {
-    return this.transporter !== null;
+    return Boolean(this.user && this.password);
   }
 
   async sendMail(to: string, subject: string, text: string): Promise<boolean> {
-    if (!this.transporter) return false;
+    if (!this.isConfigured()) return false;
     try {
-      await this.transporter.sendMail({ from: this.fromAddress, to, subject, text });
+      await sendSmtpMail({
+        host: this.host,
+        port: this.port,
+        secure: this.secure,
+        user: this.user,
+        password: this.password,
+        from: this.fromAddress,
+        to,
+        subject,
+        text
+      });
       return true;
     } catch (error) {
       this.logger.warn(
