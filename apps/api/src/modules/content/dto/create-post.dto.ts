@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEnum, IsOptional, IsString, IsUrl, IsUUID } from "class-validator";
+import { IsEnum, IsOptional, IsString, IsUUID, Matches } from "class-validator";
 import type { CreatePostRequest, PostStatus } from "@congdoan/types";
 
 const POST_STATUSES: PostStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
@@ -27,9 +27,13 @@ export class CreatePostDto implements CreatePostRequest {
   @IsUUID()
   categoryId!: string;
 
-  @ApiPropertyOptional()
+  /** URL tuyệt đối (https://...) hoặc đường dẫn root-relative từ upload (/upload/images/...). */
+  @ApiPropertyOptional({ example: "/upload/images/admin-uploads/xxx.jpg" })
   @IsOptional()
-  @IsUrl({ require_tld: false })
+  @IsString()
+  @Matches(/^(https?:\/\/|\/)/i, {
+    message: "coverImageUrl phải là URL (https://...) hoặc đường dẫn bắt đầu bằng / (vd /upload/images/...)"
+  })
   coverImageUrl?: string;
 
   @ApiPropertyOptional({ enum: POST_STATUSES })
