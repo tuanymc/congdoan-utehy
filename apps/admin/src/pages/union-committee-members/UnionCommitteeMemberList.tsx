@@ -48,7 +48,10 @@ export function UnionCommitteeMemberList() {
 
   const [deleteTarget, setDeleteTarget] = useState<UnionCommitteeMemberDto | null>(null);
   const members = membersResult?.data ?? [];
-  const isLoading = termsLoading || membersLoading;
+  // Refine/react-query v4: query `enabled: false` vẫn có isLoading=true khi chưa có data. Không gắn
+  // membersLoading vào skeleton khi chưa chọn nhiệm kỳ — nếu không, trang kẹt 3 thanh skeleton mãi
+  // khi chưa có nhiệm kỳ nào (dropdown trống, termId không bao giờ được set).
+  const isLoading = termsLoading || (Boolean(termId) && membersLoading);
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -122,10 +125,20 @@ export function UnionCommitteeMemberList() {
                 </TableRow>
               ))}
 
-            {!isLoading && members.length === 0 && (
+            {!isLoading && terms.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  Chưa có thành viên nào ở nhiệm kỳ/cấp đã chọn.
+                  Chưa có nhiệm kỳ nào. Hãy tạo nhiệm kỳ trước tại mục "Nhiệm kỳ Ban chấp hành", rồi quay lại đây để thêm thành viên.
+                </TableCell>
+              </TableRow>
+            )}
+
+            {!isLoading && terms.length > 0 && members.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  {termId
+                    ? "Chưa có thành viên nào ở nhiệm kỳ/cấp đã chọn."
+                    : "Chọn một nhiệm kỳ ở danh sách phía trên để xem thành viên Ban chấp hành."}
                 </TableCell>
               </TableRow>
             )}

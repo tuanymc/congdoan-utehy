@@ -14,6 +14,10 @@
  *     ~90 cột gốc — CHỈ dùng cho màn hình quản trị nội bộ, không lộ ra trang/endpoint công khai nào,
  *     xem chú thích đầu domain block UNIONDIRECTORY trong prisma/schema.prisma).
  *   - tblSlide -> HomeSlide (banner trang chủ), lọc Active=1 giống modules/uc_Slide.ascx.cs.
+ *   - NHIEMKY -> UnionTerm, NHANVIEN_NHIEMKY + tblPhongBan_NV_NK -> UnionCommitteeMember (Ban chấp
+ *     hành theo nhiệm kỳ). KHÔNG copy lại ~90 cột hồ sơ (antipattern web cũ) — chỉ (nhiệm kỳ, công
+ *     đoàn viên đã nhập từ NHANVIEN, cấp trường/bộ phận, chức vụ). Map cột đối chiếu trực tiếp
+ *     docs/script.sql + sp_tblCongDoanNhiemKy_* / sp_tblCongDoanVienLanhDao_*, KHÔNG đoán.
  *
  * KHÔNG bao gồm (xem giải thích trong chat / báo cáo khảo sát mã nguồn web cũ):
  *   - tblNguoiDung (tài khoản, 4 dòng)  — quá ít, không đáng viết ETL riêng; đăng nhập thật của web
@@ -36,9 +40,10 @@
  *        LEGACY_MIGRATE_DRY_RUN=true pnpm migrate:legacy
  *   3. Chạy thật:
  *        pnpm migrate:legacy
- * Toàn bộ 8 model (Category/Post/DocumentType/OfficialDocument/DocumentAttachment/UnionDepartment/
- * UnionMember/HomeSlide) đều tra cứu bản ghi đã nhập qua cột legacyCode (KHÔNG qua slug) trước khi
- * upsert, nên chạy lại script nhiều lần là
+ * Category/Post/DocumentType/OfficialDocument/DocumentAttachment/UnionDepartment/UnionMember/HomeSlide
+ * tra cứu bản ghi đã nhập qua cột legacyCode trước khi upsert. UnionTerm khớp theo tên (NHIEMKY.TENNK),
+ * UnionCommitteeMember khớp theo (termId, memberId, departmentId, positionTitle) — 2 model này không
+ * có legacyCode (tránh thêm cột UNIQUE-nullable trên SQL Server). Chạy lại script nhiều lần là
  * AN TOÀN (idempotent) — không tạo trùng, không đổi slug/URL đã công khai của bản ghi đã có. Trước
  * đây Category/Post tra theo slug, gây trùng dữ liệu thật trên production khi chạy ETL lần 2 (slug
  * của chính bản ghi cũ bị hiểu nhầm là "đã bị chiếm", tự thêm hậu tố "-2" rồi tạo mới) — đã sửa bằng
@@ -647,7 +652,7 @@ async function migrateAttachments(pool: sql.ConnectionPool, documentMap: Map<str
 }
 
 async function migrateUnionDepartments(pool: sql.ConnectionPool): Promise<Map<string, string>> {
-  console.log("\n[6/8] Đang lấy danh sách công đoàn bộ phận (CONGDOANBOPHAN) từ web cũ...");
+  console.log("\n[6/9] Đang lấy danh sách công đoàn bộ phận (CONGDOANBOPHAN) từ web cũ...");
   const result = await pool.request().query("SELECT MACDBP, TENCDBP FROM CONGDOANBOPHAN");
   const rows = result.recordset as Array<{ MACDBP: string; TENCDBP: string | null }>;
   console.log(`  -> Tìm thấy ${rows.length} công đoàn bộ phận ở web cũ.`);
@@ -702,6 +707,34 @@ function toIntOrNull(raw: unknown): number | null {
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
+/** So khớp tên bộ phận (tblPhongBan.TenPhongBan vs UnionDepartment.name) — bỏ hoa/thường và gom
+ * khoảng trắng, không fuzzy thêm vì dễ gán nhầm khoa/phòng khác. */
+function normalizeLabel(raw: string): string {
+  return raw.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/** NHIEMKY không có cột năm riêng (chỉ MANK/TENNK/GHICHU/Active — xem docs/script.sql) — suy năm từ
+ * TENNK khi có dạng "2018-2023" / "2018 – 2023". Không parse được thì để null, admin sửa tay. */
+function parseTermYears(name: string): { startYear: number | null; endYear: number | null } {
+  const range = name.match(/(\d{4})\s*[-–—]\s*(\d{4})/);
+  if (range) return { startYear: Number(range[1]), endYear: Number(range[2]) };
+  const one = name.match(/\b((?:19|20)\d{2})\b/);
+  if (one) return { startYear: Number(one[1]), endYear: null };
+  return { startYear: null, endYear: null };
+}
+
+/** Thứ tự hiển thị Ban chấp hành: Chủ tịch trước, rồi Phó, Ủy viên BTV, Ủy viên, tổ trưởng/phó. */
+function committeeSortOrder(positionTitle: string): number {
+  const t = positionTitle.toLowerCase();
+  if (t.includes("chủ tịch") && !t.includes("phó")) return 0;
+  if (t.includes("phó chủ tịch")) return 10;
+  if (t.includes("thường vụ")) return 20;
+  if (t.includes("ủy viên") || t.includes("uỷ viên")) return 30;
+  if (t.includes("tổ trưởng")) return 40;
+  if (t.includes("tổ phó")) return 50;
+  return 100;
+}
+
 /** Danh bạ công đoàn viên — nguồn NHANVIEN. UnionMember giữ 6 field thật sự hiển thị công khai ở
  * modules/GioiThieuCongDoanVien.aspx(.cs) (xem chú thích domain block UNIONDIRECTORY trong
  * prisma/schema.prisma). UnionMemberProfile giữ TOÀN BỘ phần còn lại của NHANVIEN (~90 cột gốc) —
@@ -712,7 +745,7 @@ function toIntOrNull(raw: unknown): number | null {
  * được từ code-behind vì GioiThieuCongDoanVien.aspx.cs không hiển thị field này) — admin nên rà lại
  * sau khi import lần đầu, đặc biệt các dòng dữ liệu không theo mẫu tên phổ biến. */
 async function migrateUnionMembers(pool: sql.ConnectionPool, departmentMap: Map<string, string>) {
-  console.log("\n[7/8] Đang lấy danh sách công đoàn viên (NHANVIEN) từ web cũ...");
+  console.log("\n[7/9] Đang lấy danh sách công đoàn viên (NHANVIEN) từ web cũ...");
 
   const [membersResult, degreesResult, positionsResult] = await Promise.all([
     pool.request().query(`
@@ -991,8 +1024,263 @@ async function migrateUnionMembers(pool: sql.ConnectionPool, departmentMap: Map<
   );
 }
 
+/** Nhiệm kỳ + Ban chấp hành — nguồn NHIEMKY, NHANVIEN_NHIEMKY, tblPhongBan_NV_NK (docs/script.sql).
+ * UnionCommitteeMember KHÔNG lặp hồ sơ: MANV khớp UnionMember.legacyCode đã nhập từ NHANVIEN.
+ *
+ * Cấp (departmentId):
+ *   1. Có dòng tblPhongBan_NV_NK (Active=1 hoặc null) -> map TenPhongBan sang UnionDepartment.name;
+ *      không khớp tên thì fallback CONGDOANBOPHAN.MACDBP (cùng map với UnionDepartment.legacyCode).
+ *      Không khớp gì -> cấp trường (null) — đúng mô hình "không thuộc bộ phận nào".
+ *   2. Không có tblPhongBan_NV_NK -> dùng CONGDOANBOPHAN (sp_tblCongDoanVienLanhDao_GetByAll INNER JOIN
+ *      CONGDOANBOPHAN), không có mã đó thì cấp trường.
+ *
+ * Chức vụ: ưu tiên CHUCVUCONGDOAN (chức vụ công đoàn, text tự do); không có thì tra CHUCVU qua bảng
+ * CHUCVU.TENCV (cùng cách LayChucVu() của danh bạ); vẫn không có thì "Thành viên Ban chấp hành".
+ *
+ * isCurrent: trong các NHIEMKY.Active=1, chọn 1 nhiệm kỳ có endYear/startYear lớn nhất (rồi MANK).
+ * Không có Active=1 thì chọn nhiệm kỳ mới nhất theo năm. Service/admin vẫn sửa được sau. */
+async function migrateUnionLeadership(pool: sql.ConnectionPool, departmentMap: Map<string, string>) {
+  console.log("\n[8/9] Đang lấy nhiệm kỳ + Ban chấp hành (NHIEMKY / NHANVIEN_NHIEMKY / tblPhongBan_NV_NK) từ web cũ...");
+
+  const [termsResult, leadersResult, positionsResult] = await Promise.all([
+    pool.request().query("SELECT MANK, TENNK, GHICHU, Active FROM NHIEMKY"),
+    pool.request().query(`
+      SELECT
+        nk.MANVNHIEMKYCD, nk.MANV, nk.HOTEN, nk.NHIEMKYCD, nk.CONGDOANBOPHAN,
+        nk.CHUCVU, nk.CHUCVUCONGDOAN, nk.STATUS,
+        pb.Id AS AssignmentId, pb.MaPhongBan, pb.MANK AS AssignmentMank, pb.Active AS AssignmentActive,
+        p.TenPhongBan
+      FROM NHANVIEN_NHIEMKY nk
+      LEFT JOIN tblPhongBan_NV_NK pb
+        ON pb.MANVNHIEMKYCD = nk.MANVNHIEMKYCD AND (pb.Active = 1 OR pb.Active IS NULL)
+      LEFT JOIN tblPhongBan p ON p.MaPhongBan = pb.MaPhongBan
+    `),
+    pool.request().query("SELECT MACV, TENCV FROM CHUCVU")
+  ]);
+
+  const termRows = termsResult.recordset as Array<{
+    MANK: string;
+    TENNK: string | null;
+    GHICHU: string | null;
+    Active: number | null;
+  }>;
+  console.log(`  -> Tìm thấy ${termRows.length} nhiệm kỳ (NHIEMKY) ở web cũ.`);
+
+  const parsedTerms = termRows
+    .map((row) => {
+      const mank = str(row.MANK);
+      const name = str(row.TENNK) || `Nhiệm kỳ ${mank}`;
+      const years = parseTermYears(name);
+      return {
+        mank,
+        name,
+        description: str(row.GHICHU) || null,
+        isActive: row.Active === 1,
+        startYear: years.startYear,
+        endYear: years.endYear
+      };
+    })
+    .filter((t) => t.mank);
+
+  const currentCandidates = parsedTerms.filter((t) => t.isActive);
+  const pickFrom = currentCandidates.length > 0 ? currentCandidates : parsedTerms;
+  const currentMank = [...pickFrom].sort((a, b) => {
+    const end = (b.endYear ?? 0) - (a.endYear ?? 0);
+    if (end !== 0) return end;
+    const start = (b.startYear ?? 0) - (a.startYear ?? 0);
+    if (start !== 0) return start;
+    return b.mank.localeCompare(a.mank);
+  })[0]?.mank;
+
+  const termIdByMank = new Map<string, string>();
+  let termSort = 0;
+  const termsInOrder = [...parsedTerms].sort(
+    (a, b) => (a.startYear ?? 9999) - (b.startYear ?? 9999) || a.mank.localeCompare(b.mank)
+  );
+  for (const term of termsInOrder) {
+    const isCurrent = term.mank === currentMank;
+    if (DRY_RUN) {
+      console.log(`  [dry-run] UnionTerm "${term.name}" (isCurrent=${isCurrent})`);
+      termIdByMank.set(term.mank, `dry-run-term-${term.mank}`);
+      termSort += 1;
+      continue;
+    }
+    const existing = await prisma.unionTerm.findFirst({ where: { name: term.name } });
+    const saved = existing
+      ? await prisma.unionTerm.update({
+          where: { id: existing.id },
+          data: {
+            description: term.description,
+            startYear: term.startYear,
+            endYear: term.endYear,
+            isCurrent,
+            sortOrder: termSort
+          }
+        })
+      : await prisma.unionTerm.create({
+          data: {
+            name: term.name,
+            description: term.description,
+            startYear: term.startYear,
+            endYear: term.endYear,
+            isCurrent,
+            sortOrder: termSort
+          }
+        });
+    termIdByMank.set(term.mank, saved.id);
+    termSort += 1;
+  }
+  console.log(`  -> Đã nhập ${termIdByMank.size} nhiệm kỳ.` + (currentMank ? ` Đương nhiệm: ${currentMank}.` : ""));
+
+  const positionTitleByCode = new Map<string, string>(
+    (positionsResult.recordset as Array<{ MACV: string; TENCV: string | null }>)
+      .map((p): [string, string] => [str(p.MACV), str(p.TENCV)])
+      .filter(([, label]) => label)
+  );
+
+  const memberIdByLegacyCode = new Map<string, string>();
+  const existingMembers = await prisma.unionMember.findMany({
+    where: { legacyCode: { not: null } },
+    select: { id: true, legacyCode: true }
+  });
+  for (const member of existingMembers) {
+    if (member.legacyCode) memberIdByLegacyCode.set(member.legacyCode, member.id);
+  }
+
+  const departmentByName = new Map<string, string>();
+  const existingDepartments = await prisma.unionDepartment.findMany({ select: { id: true, name: true } });
+  for (const dept of existingDepartments) {
+    departmentByName.set(normalizeLabel(dept.name), dept.id);
+  }
+
+  type LeaderRow = {
+    MANVNHIEMKYCD: string;
+    MANV: string | null;
+    HOTEN: string | null;
+    NHIEMKYCD: string | null;
+    CONGDOANBOPHAN: string | null;
+    CHUCVU: string | null;
+    CHUCVUCONGDOAN: string | null;
+    STATUS: number | null;
+    AssignmentId: number | null;
+    MaPhongBan: number | null;
+    AssignmentMank: string | null;
+    AssignmentActive: number | null;
+    TenPhongBan: string | null;
+  };
+
+  const leaderRows = leadersResult.recordset as LeaderRow[];
+  const grouped = new Map<string, LeaderRow[]>();
+  for (const row of leaderRows) {
+    const key = str(row.MANVNHIEMKYCD);
+    if (!key) continue;
+    const list = grouped.get(key);
+    if (list) list.push(row);
+    else grouped.set(key, [row]);
+  }
+  console.log(`  -> Tìm thấy ${grouped.size} lượt công đoàn viên trong nhiệm kỳ (NHANVIEN_NHIEMKY).`);
+
+  function resolvePositionTitle(row: LeaderRow): string {
+    const unionPos = str(row.CHUCVUCONGDOAN);
+    if (unionPos) return unionPos;
+    const cv = str(row.CHUCVU);
+    if (cv && positionTitleByCode.has(cv)) return positionTitleByCode.get(cv) ?? cv;
+    if (cv) return cv;
+    return "Thành viên Ban chấp hành";
+  }
+
+  function resolveDepartmentId(row: LeaderRow, assignmentName: string | null): string | null {
+    if (assignmentName) {
+      const byName = departmentByName.get(normalizeLabel(assignmentName));
+      if (byName) return byName;
+    }
+    const macdbp = str(row.CONGDOANBOPHAN);
+    if (macdbp && departmentMap.has(macdbp)) return departmentMap.get(macdbp) ?? null;
+    return null;
+  }
+
+  let imported = 0;
+  let skippedInactive = 0;
+  let skippedNoTerm = 0;
+  let skippedNoMember = 0;
+
+  for (const rows of grouped.values()) {
+    const row = rows[0];
+    if (!row) continue;
+    if (row.STATUS === 0) {
+      skippedInactive += 1;
+      continue;
+    }
+
+    const mank = str(row.NHIEMKYCD) || str(row.AssignmentMank);
+    const termId = mank ? termIdByMank.get(mank) : undefined;
+    if (!termId) {
+      skippedNoTerm += 1;
+      continue;
+    }
+
+    const manv = str(row.MANV);
+    const memberId = manv ? memberIdByLegacyCode.get(manv) : undefined;
+    if (!memberId) {
+      skippedNoMember += 1;
+      if (DRY_RUN) {
+        console.log(`  [dry-run] BỎ QUA "${str(row.HOTEN) || manv}" — chưa có UnionMember.legacyCode=${manv || "?"}`);
+      }
+      continue;
+    }
+
+    const positionTitle = resolvePositionTitle(row);
+    const assignments = rows.filter((r) => r.AssignmentId != null);
+    const departmentIds = new Set<string | null>();
+    if (assignments.length > 0) {
+      for (const assignment of assignments) {
+        departmentIds.add(resolveDepartmentId(row, str(assignment.TenPhongBan) || null));
+      }
+    } else {
+      departmentIds.add(resolveDepartmentId(row, null));
+    }
+
+    const sortOrder = committeeSortOrder(positionTitle);
+
+    for (const departmentId of departmentIds) {
+      if (DRY_RUN) {
+        console.log(
+          `  [dry-run] UnionCommitteeMember "${str(row.HOTEN) || manv}" / ${positionTitle} / ${departmentId ? "bộ phận" : "cấp trường"}`
+        );
+        imported += 1;
+        continue;
+      }
+
+      const existing = await prisma.unionCommitteeMember.findFirst({
+        where: {
+          termId,
+          memberId,
+          positionTitle,
+          departmentId: departmentId === null ? { equals: null } : departmentId
+        }
+      });
+      if (existing) {
+        await prisma.unionCommitteeMember.update({
+          where: { id: existing.id },
+          data: { sortOrder }
+        });
+      } else {
+        await prisma.unionCommitteeMember.create({
+          data: { termId, memberId, departmentId, positionTitle, sortOrder }
+        });
+      }
+      imported += 1;
+    }
+  }
+
+  console.log(
+    `  -> Đã nhập ${imported} thành viên Ban chấp hành. Bỏ qua ${skippedInactive} (STATUS=0), ` +
+      `${skippedNoTerm} (không khớp nhiệm kỳ), ${skippedNoMember} (chưa có UnionMember theo MANV — chạy ETL công đoàn viên trước).`
+  );
+}
+
 async function migrateHomeSlides(pool: sql.ConnectionPool) {
-  console.log("\n[8/8] Đang lấy danh sách banner trang chủ (tblSlide) từ web cũ...");
+  console.log("\n[9/9] Đang lấy danh sách banner trang chủ (tblSlide) từ web cũ...");
   // Lọc Active=1 giống hệt web cũ (xem modules/uc_Slide.ascx.cs: tblSlideService.tblSlide_GetByTop("",
   // "Active=1", "")) — banner không Active=1 không hiển thị công khai nên không cần nhập.
   const result = await pool.request().query("SELECT Id, Name, Image, Active FROM tblSlide WHERE Active = 1");
@@ -1049,6 +1337,7 @@ async function main() {
 
     const departmentMap = await migrateUnionDepartments(pool);
     await migrateUnionMembers(pool, departmentMap);
+    await migrateUnionLeadership(pool, departmentMap);
     await migrateHomeSlides(pool);
 
     console.log("\n=== HOÀN TẤT ===");
