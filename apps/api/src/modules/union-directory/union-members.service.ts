@@ -316,11 +316,31 @@ export class UnionMembersService {
     return user.id;
   }
 
+  /** Chuẩn hoá mã cán bộ từ form: undefined = không đụng, null = xoá, string = gán. Chặn trùng vì mã
+   * dùng để đăng nhập và import Excel — login service cũng từ chối khi 1 mã khớp nhiều hồ sơ. */
+  private async resolveLegacyCode(code: string | undefined, currentMemberId?: string): Promise<string | null | undefined> {
+    if (code === undefined) return undefined;
+    const trimmed = code.trim();
+    if (trimmed === "") return null;
+    const existing = await this.prisma.unionMember.findFirst({
+      where: { legacyCode: trimmed },
+      select: { id: true, fullName: true }
+    });
+    if (existing && existing.id !== currentMemberId) {
+      throw new BadRequestException(
+        `Mã cán bộ "${trimmed}" đã được dùng cho công đoàn viên "${existing.fullName}".`
+      );
+    }
+    return trimmed;
+  }
+
   async create(dto: CreateUnionMemberDto, actorUserId: string): Promise<UnionMemberAdminDetailDto> {
     const linkedUserId = await this.resolveLinkedUserId(dto.linkedUserEmail);
+    const legacyCode = await this.resolveLegacyCode(dto.legacyCode);
     const member = await this.prisma.unionMember.create({
       data: {
         fullName: dto.fullName,
+        ...(legacyCode !== undefined ? { legacyCode } : {}),
         photoUrl: dto.photoUrl,
         degreeLabel: dto.degreeLabel,
         positionTitle: dto.positionTitle,
@@ -343,10 +363,12 @@ export class UnionMembersService {
   async update(id: string, dto: UpdateUnionMemberDto, actorUserId: string): Promise<UnionMemberAdminDetailDto> {
     await this.findOne(id);
     const linkedUserId = await this.resolveLinkedUserId(dto.linkedUserEmail, id);
+    const legacyCode = await this.resolveLegacyCode(dto.legacyCode, id);
     const member = await this.prisma.unionMember.update({
       where: { id },
       data: {
         fullName: dto.fullName,
+        ...(legacyCode !== undefined ? { legacyCode } : {}),
         photoUrl: dto.photoUrl,
         degreeLabel: dto.degreeLabel,
         positionTitle: dto.positionTitle,

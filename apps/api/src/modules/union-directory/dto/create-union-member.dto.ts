@@ -9,6 +9,13 @@ export class CreateUnionMemberDto implements CreateUnionMemberRequest {
   @IsString()
   fullName!: string;
 
+  /// Mã cán bộ (NHANVIEN.MANV / UnionMember.legacyCode) — hiện và cho sửa trên form admin. Gửi "" để
+  /// xoá mã hiện có. Không UNIQUE ở CSDL (SQL Server + nhiều NULL), service tự chặn trùng khi có giá trị.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  legacyCode?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

@@ -200,6 +200,8 @@ export interface CreateUnionMemberLoginsResultDto {
 
 export interface CreateUnionMemberRequest {
   fullName: string;
+  /** Mã cán bộ (NHANVIEN.MANV) — dùng đăng nhập và đối chiếu Excel. Gửi "" để xoá mã hiện có. */
+  legacyCode?: string;
   photoUrl?: string;
   degreeLabel?: string;
   positionTitle?: string;

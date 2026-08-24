@@ -217,6 +217,7 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
   const { mutate: updateMember, isLoading: isUpdating } = useUpdate();
 
   const [fullName, setFullName] = useState("");
+  const [legacyCode, setLegacyCode] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [degreeLabel, setDegreeLabel] = useState("");
   const [positionTitle, setPositionTitle] = useState("");
@@ -233,6 +234,7 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
     if (mode === "edit" && memberResult?.data) {
       const member = memberResult.data;
       setFullName(member.fullName);
+      setLegacyCode(member.legacyCode ?? "");
       setPhotoUrl(member.photoUrl ?? "");
       setDegreeLabel(member.degreeLabel ?? "");
       setPositionTitle(member.positionTitle ?? "");
@@ -259,6 +261,7 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
 
     const payload: CreateUnionMemberRequest = {
       fullName,
+      legacyCode: legacyCode.trim(),
       photoUrl: photoUrl.trim() || undefined,
       degreeLabel: degreeLabel.trim() || undefined,
       positionTitle: positionTitle.trim() || undefined,
@@ -291,9 +294,23 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
       <Card className="max-w-3xl">
         <CardContent className="pt-6">
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-            <div className="grid gap-2">
-              <Label htmlFor="fullName">Họ tên</Label>
-              <Input id="fullName" required value={fullName} onChange={(event) => setFullName(event.target.value)} />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="fullName">Họ tên</Label>
+                <Input id="fullName" required value={fullName} onChange={(event) => setFullName(event.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="legacyCode">Mã cán bộ</Label>
+                <Input
+                  id="legacyCode"
+                  placeholder="VD: NV001"
+                  value={legacyCode}
+                  onChange={(event) => setLegacyCode(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Dùng để đăng nhập cổng đoàn viên và đối chiếu khi nhập Excel. Để trống nếu chưa có mã.
+                </p>
+              </div>
             </div>
 
             <div className="grid gap-2">
