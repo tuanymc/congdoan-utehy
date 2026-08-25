@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { findAttachmentPhysicalPath, resolveAttachmentPhysicalPath } from "../../common/utils/attachment-path";
 import { randomUUID } from "node:crypto";
 import type {
   DocumentDirection,
@@ -42,25 +43,6 @@ function sanitizeFileNameForDisk(name: string): string {
   return cleaned.slice(-150) || "file";
 }
 
-/**
- * DocumentAttachment.path giữ nguyên định dạng tương đối từ web cũ, ví dụ "DocumentFiles/admin/xxx.pdf"
- * (xem chú thích field `path` trong schema.prisma). Thư mục vật lý gộp từ 3 bản deploy web cũ trên
- * server mới lại đặt tên "document-files" — KHÔNG phải "DocumentFiles" (xem deploy guide Bước 6.5 mục
- * 3: `$dest = "...\document-files"`, robocopy COPY NỘI DUNG của DocumentFiles vào thẳng $dest, không
- * giữ tên thư mục gốc) — nên phải bỏ tiền tố "DocumentFiles/" khỏi path trước khi nối với
- * DOCUMENT_FILES_DIR mới ra đúng vị trí file thật trên đĩa.
- */
-function resolveAttachmentPhysicalPath(baseDir: string, relPath: string): string {
-  const stripped = relPath.replace(/^DocumentFiles[\\/]/i, "");
-  const resolvedBase = resolve(baseDir);
-  const resolvedPath = resolve(join(resolvedBase, stripped));
-  // Chặn path traversal (vd relPath chứa "..") — giá trị hiện tại chỉ đến từ ETL đáng tin cậy, nhưng
-  // kiểm tra lại cho an toàn nếu sau này cho phép nhập path thủ công qua admin.
-  if (!resolvedPath.startsWith(resolvedBase)) {
-    throw new NotFoundException("Đường dẫn file đính kèm không hợp lệ.");
-  }
-  return resolvedPath;
-}
 
 const documentWithRelations = Prisma.validator<Prisma.OfficialDocumentDefaultArgs>()({
   include: { documentType: true, attachments: true }
@@ -159,6 +141,16 @@ export class OfficialDocumentsService {
   /// Mặc định "<cwd>/document-files" chỉ để chạy dev cục bộ không lỗi — trên server PHẢI đặt
   /// DOCUMENT_FILES_DIR trong .env trỏ đúng "C:\inetpub\congdoan2026\document-files".
   private readonly documentFilesDir = process.env.DOCUMENT_FILES_DIR ?? join(process.cwd(), "document-files");
+  /// Trên production PHẢI đặt UPLOAD_IMAGES_DIR trỏ đúng "C:\inetpub\congdoan2026\web\upload\images"
+  /// (cùng physical path IIS phục vụ /upload/images). Dev mặc định "./upload/images" cạnh cwd API.
+  private readonly uploadImagesDir = process.env.UPLOAD_IMAGES_DIR ?? join(process.cwd(), "upload", "images");
+  /// Thư mục gốc site công khai (chứa upload/) — file biểu mẫu chuyển từ bài viết tin tức thường nằm
+  /// "/upload/..." chứ không nằm trong document-files. Suy từ UPLOAD_IMAGES_DIR (../..).
+  private readonly publicWebDir = process.env.PUBLIC_WEB_DIR ?? join(this.uploadImagesDir, "..", "..");
+
+  private extraAttachmentBases(): string[] {
+    return [this.publicWebDir];
+  }
 
   constructor(
     private readonly prisma: PrismaService,
@@ -345,8 +337,12 @@ export class OfficialDocumentsService {
     });
     if (!attachment) throw new NotFoundException("Không tìm thấy file đính kèm.");
 
-    const physicalPath = resolveAttachmentPhysicalPath(this.documentFilesDir, attachment.path);
-    if (!existsSync(physicalPath)) {
+    const physicalPath = findAttachmentPhysicalPath(
+      this.documentFilesDir,
+      attachment.path,
+      this.extraAttachmentBases()
+    );
+    if (!physicalPath) {
       throw new NotFoundException(
         "File đính kèm không tồn tại trên server — có thể chưa copy đủ thư mục DocumentFiles từ web cũ (xem deploy guide Bước 6.5 mục 3)."
       );

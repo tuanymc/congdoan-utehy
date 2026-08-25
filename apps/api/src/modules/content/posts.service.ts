@@ -48,7 +48,9 @@ export class PostsService {
     const pageSize = query.pageSize ?? 10;
     const where: Prisma.PostWhereInput = {
       status: "PUBLISHED",
-      ...(query.categorySlug ? { category: { slug: query.categorySlug } } : {}),
+      ...(query.categorySlug
+        ? { category: { slug: query.categorySlug } }
+        : { category: { slug: { not: "van-ban" } } }),
       ...(query.search ? { title: { contains: query.search } } : {})
     };
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import type { CategoryDto, PaginatedResult, PostListItemDto } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { PostCard } from "@/components/PostCard";
 import { cn } from "@/components/ui/utils";
 
 const PAGE_SIZE = 9;
+/** Chuyên mục này đã chuyển sang Kho biểu mẫu — không còn lọc trên trang tin tức. */
+const FORMS_MOVED_SLUG = "van-ban";
 
 export function NewsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -68,6 +70,12 @@ export function NewsListPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const newsCategories = categories.filter((category) => category.slug !== FORMS_MOVED_SLUG);
+
+  if (categorySlug === FORMS_MOVED_SLUG) {
+    return <Navigate to="/tien-ich-so-cong-doan/bieu-mau" replace />;
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold">Tin tức Công đoàn</h1>
@@ -76,7 +84,7 @@ export function NewsListPage() {
         Hưng Yên.
       </p>
 
-      {categories.length > 0 ? (
+      {newsCategories.length > 0 ? (
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             type="button"
@@ -90,7 +98,7 @@ export function NewsListPage() {
           >
             Tất cả
           </button>
-          {categories.map((category) => (
+          {newsCategories.map((category) => (
             <button
               key={category.id}
               type="button"

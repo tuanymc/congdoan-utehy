@@ -4,6 +4,7 @@ import type { Response } from "express";
 import { ApiTags } from "@nestjs/swagger";
 import type { PaginatedResult, PublicOfficialDocumentDetailDto, PublicOfficialDocumentListItemDto } from "@congdoan/types";
 import { resolveViewableMimeType } from "../../common/utils/mime-type";
+import { contentDispositionHeader } from "../../common/utils/attachment-path";
 import { OfficialDocumentsService } from "./official-documents.service";
 import { QueryPublicOfficialDocumentsDto } from "./dto/query-public-official-documents.dto";
 
@@ -45,7 +46,7 @@ export class PublicOfficialDocumentsController {
     const { fileName, physicalPath } = await this.officialDocumentsService.getPublicAttachmentForDownload(id, attachmentId);
     res.set({
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`
+      "Content-Disposition": contentDispositionHeader(fileName, "attachment")
     });
     return new StreamableFile(createReadStream(physicalPath));
   }
@@ -64,7 +65,7 @@ export class PublicOfficialDocumentsController {
     const { fileName, physicalPath } = await this.officialDocumentsService.getPublicAttachmentForDownload(id, attachmentId);
     res.set({
       "Content-Type": resolveViewableMimeType(fileName),
-      "Content-Disposition": `inline; filename="${encodeURIComponent(fileName)}"`
+      "Content-Disposition": contentDispositionHeader(fileName, "inline")
     });
     return new StreamableFile(createReadStream(physicalPath));
   }

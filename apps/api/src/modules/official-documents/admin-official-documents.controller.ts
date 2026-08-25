@@ -23,6 +23,7 @@ import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { RequirePermissions } from "../../common/decorators/roles.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { OfficialDocumentsService, type UploadedAttachmentFile } from "./official-documents.service";
+import { contentDispositionHeader } from "../../common/utils/attachment-path";
 import { CreateOfficialDocumentDto } from "./dto/create-official-document.dto";
 import { UpdateOfficialDocumentDto } from "./dto/update-official-document.dto";
 import { QueryOfficialDocumentsDto } from "./dto/query-official-documents.dto";
@@ -85,7 +86,7 @@ export class AdminOfficialDocumentsController {
     const { fileName, physicalPath } = await this.officialDocumentsService.getAttachmentForDownload(id, attachmentId);
     res.set({
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`
+      "Content-Disposition": contentDispositionHeader(fileName, "attachment")
     });
     return new StreamableFile(createReadStream(physicalPath));
   }
