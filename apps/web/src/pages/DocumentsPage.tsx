@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { FileText } from "lucide-react";
-import type { DocumentDirection, PaginatedResult, PublicOfficialDocumentListItemDto } from "@congdoan/types";
+import { FileText, Search, X } from "lucide-react";
+import type { DocumentDirection, DocumentTypeDto, PaginatedResult, PublicOfficialDocumentListItemDto } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,24 +17,57 @@ const DIRECTION_LABEL: Record<DocumentDirection, string> = {
   INCOMING: "Công văn đến"
 };
 
+const FIELD_CLASS =
+  "w-full rounded-md border bg-input-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50";
+
 function formatDate(value: string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-/** Trang "Văn bản" công khai — thay phần công khai của hệ công văn web cũ. Chỉ hiển thị công văn
- * isPublic=true (xem PublicOfficialDocumentsController ở apps/api), lọc theo hướng công văn. */
+/** Trang "Văn bản" công khai — tra cứu theo từ khóa, loại, hướng, khoảng ngày ban hành. */
 export function DocumentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const direction = (searchParams.get("direction") ?? "") as DocumentDirection | "";
-  // Đến từ mục menu "Thông báo" (Header.tsx -> /van-ban?documentTypeId=...) — lọc theo loại công văn
-  // cụ thể, khác với `direction` (lọc theo chiều đi/đến). Không có picker riêng vì trang này chỉ cần
-  // phục vụ đúng đường dẫn từ menu, không phải bộ lọc tự chọn loại công văn đầy đủ.
   const documentTypeId = searchParams.get("documentTypeId") ?? "";
+  const issuedFrom = searchParams.get("issuedFrom") ?? "";
+  const issuedTo = searchParams.get("issuedTo") ?? "";
+  const search = searchParams.get("search") ?? "";
 
+  const [searchInput, setSearchInput] = useState(search);
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeDto[]>([]);
   const [result, setResult] = useState<PaginatedResult<PublicOfficialDocumentListItemDto> | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
+
+  useEffect(() => {
+    apiFetch<DocumentTypeDto[]>("/official-documents/types")
+      .then((data) => setDocumentTypes(data ?? []))
+      .catch(() => {
+        // Không chặn trang khi lỗi tải loại văn bản — ẩn dropdown loại.
+      });
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams);
+      if (searchInput.trim()) {
+        params.set("search", searchInput.trim());
+      } else {
+        params.delete("search");
+      }
+      if ((params.get("search") ?? "") !== search) {
+        params.delete("page");
+        setSearchParams(params, { replace: true });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce theo searchInput, đối chiếu search hiện tại trên URL.
+  }, [searchInput]);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +77,9 @@ export function DocumentsPage() {
     const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
     if (direction) query.set("direction", direction);
     if (documentTypeId) query.set("documentTypeId", documentTypeId);
+    if (issuedFrom) query.set("issuedFrom", issuedFrom);
+    if (issuedTo) query.set("issuedTo", issuedTo);
+    if (search) query.set("search", search);
 
     apiFetch<PaginatedResult<PublicOfficialDocumentListItemDto>>(`/official-documents?${query.toString()}`)
       .then((data) => {
@@ -56,21 +92,13 @@ export function DocumentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, direction, documentTypeId]);
+  }, [page, direction, documentTypeId, issuedFrom, issuedTo, search]);
 
-  function clearDocumentTypeFilter() {
+  function patchParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams);
-    params.delete("documentTypeId");
-    params.delete("page");
-    setSearchParams(params);
-  }
-
-  function selectDirection(next: DocumentDirection | "") {
-    const params = new URLSearchParams(searchParams);
-    if (next) {
-      params.set("direction", next);
-    } else {
-      params.delete("direction");
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
     }
     params.delete("page");
     setSearchParams(params);
@@ -83,6 +111,12 @@ export function DocumentsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function clearFilters() {
+    setSearchInput("");
+    setSearchParams(new URLSearchParams());
+  }
+
+  const hasFilters = Boolean(search || direction || documentTypeId || issuedFrom || issuedTo);
   const directionOptions: Array<{ value: DocumentDirection | ""; label: string }> = [
     { value: "", label: "Tất cả" },
     { value: "OUTGOING", label: DIRECTION_LABEL.OUTGOING },
@@ -93,38 +127,94 @@ export function DocumentsPage() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold">Văn bản</h1>
       <p className="mt-2 text-muted-foreground">
-        Công văn, thông báo do Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên ban hành và công khai.
+        Tra cứu công văn, thông báo do Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên ban hành và công khai.
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {directionOptions.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => selectDirection(option.value)}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-              direction === option.value
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-background text-foreground hover:bg-accent"
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <Card className="mt-6">
+        <CardContent className="flex flex-col gap-4 pt-6">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Nhập số hiệu, trích yếu, nội dung hoặc cơ quan ban hành..."
+              className={cn(FIELD_CLASS, "pl-9")}
+              aria-label="Từ khóa tra cứu văn bản"
+            />
+          </div>
 
-      {documentTypeId ? (
-        <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-          <span>
-            Đang lọc theo loại văn bản
-            {result && result.items.length > 0 ? `: ${result.items[0]?.documentType.name}` : ""}.
-          </span>
-          <button type="button" onClick={clearDocumentTypeFilter} className="text-primary hover:underline">
-            Xóa lọc
-          </button>
-        </div>
-      ) : null}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-foreground">Loại văn bản</span>
+              <select
+                className={FIELD_CLASS}
+                value={documentTypeId}
+                onChange={(event) => patchParams({ documentTypeId: event.target.value || null })}
+              >
+                <option value="">Tất cả loại</option>
+                {documentTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-foreground">Từ ngày</span>
+              <input
+                type="date"
+                className={FIELD_CLASS}
+                value={issuedFrom}
+                max={issuedTo || undefined}
+                onChange={(event) => patchParams({ issuedFrom: event.target.value || null })}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-foreground">Đến ngày</span>
+              <input
+                type="date"
+                className={FIELD_CLASS}
+                value={issuedTo}
+                min={issuedFrom || undefined}
+                onChange={(event) => patchParams({ issuedTo: event.target.value || null })}
+              />
+            </label>
+            <div className="grid gap-1.5 text-sm">
+              <span className="font-medium text-foreground">Hướng văn bản</span>
+              <div className="flex flex-wrap gap-2">
+                {directionOptions.map((option) => (
+                  <button
+                    key={option.value || "all"}
+                    type="button"
+                    onClick={() => patchParams({ direction: option.value || null })}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                      direction === option.value
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:bg-accent"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {hasFilters ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+              <p className="text-sm text-muted-foreground">
+                {result ? `Tìm thấy ${result.total} văn bản.` : "Đang tra cứu..."}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                <X className="size-4" />
+                Xóa bộ lọc
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <div className="mt-8">
         {error ? (
@@ -136,9 +226,14 @@ export function DocumentsPage() {
             ))}
           </div>
         ) : result.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Chưa có văn bản nào được công khai.</p>
+          <p className="text-sm text-muted-foreground">
+            {hasFilters ? "Không tìm thấy văn bản phù hợp với điều kiện tra cứu." : "Chưa có văn bản nào được công khai."}
+          </p>
         ) : (
           <>
+            {!hasFilters && result.total > 0 ? (
+              <p className="mb-3 text-sm text-muted-foreground">{result.total} văn bản công khai.</p>
+            ) : null}
             <div className="flex flex-col gap-3">
               {result.items.map((doc) => (
                 <Link key={doc.id} to={`/van-ban/${doc.id}`}>
@@ -155,7 +250,7 @@ export function DocumentsPage() {
                             <span className="text-xs text-muted-foreground">Số: {doc.documentNumber}</span>
                           ) : null}
                         </div>
-                        <p className="mt-1.5 truncate font-medium hover:text-primary">{doc.title}</p>
+                        <p className="mt-1.5 font-medium hover:text-primary">{doc.title}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {doc.issuingOfficeName ? `${doc.issuingOfficeName} — ` : ""}
                           Ngày ban hành: {formatDate(doc.issuedAt)}

@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, Res, StreamableFile } from "@nestjs/comm
 import { createReadStream } from "node:fs";
 import type { Response } from "express";
 import { ApiTags } from "@nestjs/swagger";
-import type { PaginatedResult, PublicOfficialDocumentDetailDto, PublicOfficialDocumentListItemDto } from "@congdoan/types";
+import type { DocumentTypeDto, PaginatedResult, PublicOfficialDocumentDetailDto, PublicOfficialDocumentListItemDto } from "@congdoan/types";
 import { resolveViewableMimeType } from "../../common/utils/mime-type";
 import { contentDispositionHeader } from "../../common/utils/attachment-path";
 import { OfficialDocumentsService } from "./official-documents.service";
@@ -30,6 +30,12 @@ export class PublicOfficialDocumentsController {
   @Get("forms")
   listForms(@Query() query: QueryPublicOfficialDocumentsDto): Promise<PaginatedResult<PublicOfficialDocumentListItemDto>> {
     return this.officialDocumentsService.listPublicForms(query);
+  }
+
+  // Đặt TRƯỚC ":id" giống /forms — danh sách loại văn bản công khai cho bộ lọc tra cứu.
+  @Get("types")
+  listTypes(): Promise<DocumentTypeDto[]> {
+    return this.officialDocumentsService.listPublicDocumentTypes();
   }
 
   @Get(":id")

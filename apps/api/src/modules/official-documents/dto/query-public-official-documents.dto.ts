@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEnum, IsOptional, IsUUID } from "class-validator";
+import { IsEnum, IsOptional, IsUUID, Matches } from "class-validator";
 import type { DocumentDirection } from "@congdoan/types";
 import { PaginationQueryDto } from "../../../common/dto/pagination-query.dto";
 
@@ -17,4 +17,16 @@ export class QueryPublicOfficialDocumentsDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(DOCUMENT_DIRECTIONS)
   direction?: DocumentDirection;
+
+  /** Ngày ban hành từ (YYYY-MM-DD), inclusive. */
+  @ApiPropertyOptional({ example: "2024-01-01" })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "issuedFrom phải có dạng YYYY-MM-DD." })
+  issuedFrom?: string;
+
+  /** Ngày ban hành đến (YYYY-MM-DD), inclusive. */
+  @ApiPropertyOptional({ example: "2024-12-31" })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "issuedTo phải có dạng YYYY-MM-DD." })
+  issuedTo?: string;
 }

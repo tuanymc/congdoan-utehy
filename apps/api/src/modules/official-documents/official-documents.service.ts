@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import type {
   DocumentDirection,
   DocumentStatus,
+  DocumentTypeDto,
   OfficialDocumentDetailDto,
   OfficialDocumentListItemDto,
   PaginatedResult,
@@ -101,6 +102,14 @@ function toPublicDetail(d: DocumentWithRelations): PublicOfficialDocumentDetailD
       uploadedAt: a.uploadedAt ? a.uploadedAt.toISOString() : null
     }))
   };
+}
+
+function issuedAtRange(issuedFrom?: string, issuedTo?: string): Prisma.DateTimeFilter | undefined {
+  if (!issuedFrom && !issuedTo) return undefined;
+  const filter: Prisma.DateTimeFilter = {};
+  if (issuedFrom) filter.gte = new Date(`${issuedFrom}T00:00:00.000`);
+  if (issuedTo) filter.lte = new Date(`${issuedTo}T23:59:59.999`);
+  return filter;
 }
 
 function toDetail(d: DocumentWithRelations): OfficialDocumentDetailDto {
@@ -199,16 +208,32 @@ export class OfficialDocumentsService {
 
   /** Công khai — CHỈ trả công văn isPublic=true (khớp ShowWeb=1 web cũ), dùng cho trang "Văn bản". */
   async listPublic(
-    query: PaginationQuery & { documentTypeId?: string; direction?: DocumentDirection }
+    query: PaginationQuery & {
+      documentTypeId?: string;
+      direction?: DocumentDirection;
+      issuedFrom?: string;
+      issuedTo?: string;
+    }
   ): Promise<PaginatedResult<PublicOfficialDocumentListItemDto>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
+    const search = query.search?.trim();
+    const issuedAtFilter = issuedAtRange(query.issuedFrom, query.issuedTo);
     const where: Prisma.OfficialDocumentWhereInput = {
       isPublic: true,
       ...(query.documentTypeId ? { documentTypeId: query.documentTypeId } : {}),
       ...(query.direction ? { direction: query.direction } : {}),
-      ...(query.search
-        ? { OR: [{ title: { contains: query.search } }, { documentNumber: { contains: query.search } }] }
+      ...(issuedAtFilter ? { issuedAt: issuedAtFilter } : {}),
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search } },
+              { documentNumber: { contains: search } },
+              { summary: { contains: search } },
+              { content: { contains: search } },
+              { issuingOfficeName: { contains: search } }
+            ]
+          }
         : {})
     };
 
@@ -224,6 +249,20 @@ export class OfficialDocumentsService {
     ]);
 
     return { items: documents.map(toPublicListItem), total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+  }
+
+  /** Loại công văn đang có ít nhất 1 văn bản công khai — phục vụ bộ lọc tra cứu trang /van-ban. */
+  async listPublicDocumentTypes(): Promise<DocumentTypeDto[]> {
+    const types = await this.prisma.documentType.findMany({
+      where: { documents: { some: { isPublic: true } } },
+      orderBy: { name: "asc" }
+    });
+    return types.map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      parentId: t.parentId
+    }));
   }
 
   /** Công khai — danh sách "Kho biểu mẫu" (Tiện ích số, Phase 4a): mọi công văn isPublic=true thuộc
