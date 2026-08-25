@@ -11,6 +11,11 @@ describe("findAttachmentPhysicalPath", () => {
     writeFileSync(join(base, "admin", "Kế hoạch hoạt động.pdf"), "ok");
     writeFileSync(join(base, "admin", "Quyết định 123.docx"), "ok");
     writeFileSync(join(base, "admin", encodeURIComponent("Thông báo nội bộ.pdf")), "ok");
+    mkdirSync(join(base, "thuyiop"), { recursive: true });
+    writeFileSync(
+      join(base, "thuyiop", "Thông_báo_rà_soát,_thống_kê_trẻ_mồ_côi-19-8-2026--7-47-453.pdf"),
+      "ok"
+    );
   });
 
   afterAll(() => {
@@ -36,6 +41,26 @@ describe("findAttachmentPhysicalPath", () => {
   it("tìm file khi đĩa lưu tên URL-encode còn CSDL giữ chữ Việt", () => {
     const found = findAttachmentPhysicalPath(base, "DocumentFiles/admin/Thông báo nội bộ.pdf");
     expect(found).toBe(join(base, "admin", encodeURIComponent("Thông báo nội bộ.pdf")));
+  });
+
+  it("tìm file tiếng Việt khi đĩa có gạch dưới + hậu tố giờ upload web cũ", () => {
+    const found = findAttachmentPhysicalPath(
+      base,
+      "DocumentFiles/thuyiop/Thông báo rà soát, thống kê trẻ mồ côi.pdf"
+    );
+    expect(found).toBe(
+      join(base, "thuyiop", "Thông_báo_rà_soát,_thống_kê_trẻ_mồ_côi-19-8-2026--7-47-453.pdf")
+    );
+  });
+
+  it("tìm file khi path CSDL đã có đủ hậu tố giờ nhưng khác dạng dấu", () => {
+    const found = findAttachmentPhysicalPath(
+      base,
+      "DocumentFiles/thuyiop/Thong_bao_ra_soat,_thong_ke_tre_mo_coi-19-8-2026--7-47-453.pdf"
+    );
+    expect(found).toBe(
+      join(base, "thuyiop", "Thông_báo_rà_soát,_thống_kê_trẻ_mồ_côi-19-8-2026--7-47-453.pdf")
+    );
   });
 });
 

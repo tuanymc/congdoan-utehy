@@ -35,7 +35,24 @@ function findInBase(baseDir: string, strippedOriginal: string): string | null {
     if (existsSync(resolvedPath)) return resolvedPath;
   }
 
-  return matchByDirectoryListing(resolvedBase, strippedOriginal);
+  return matchByDirectoryListing(resolvedBase, strippedOriginal)
+    ?? matchFileInUserFolders(resolvedBase, strippedOriginal);
+}
+
+/** Path CSDL đôi khi chỉ còn tên file (thiếu thư mục username) — tìm đúng 1 file khớp trong các thư mục con cấp 1. */
+function matchFileInUserFolders(resolvedBase: string, strippedRelPath: string): string | null {
+  const parts = strippedRelPath.replace(/\\/g, "/").split("/").filter(Boolean);
+  if (parts.length !== 1) return null;
+  const hits: string[] = [];
+  for (const folder of listDir(resolvedBase)) {
+    const dir = join(resolvedBase, folder);
+    const match = pickDirEntry(dir, parts[0], true);
+    if (!match) continue;
+    const next = join(dir, match);
+    if (!isInsideBase(resolvedBase, resolve(next))) continue;
+    hits.push(next);
+  }
+  return hits.length === 1 ? hits[0] : null;
 }
 
 function stripLeadingSlash(relPath: string): string {
@@ -102,25 +119,72 @@ function namesMatch(a: string, b: string): boolean {
   for (const key of nameKeys(a)) {
     if (kb.has(key)) return true;
   }
-  return false;
+  return foldFileStem(a) === foldFileStem(b) && foldFileStem(a) !== "";
 }
 
-/** Đi từng cấp thư mục, chọn entry khớp Unicode/URL-encode — không đoán file khác đuôi/tên. */
+/** Hậu tố web cũ gắn lúc Upload(): "-19-8-2026--7-47-453" trước phần mở rộng. */
+const LEGACY_UPLOAD_TIMESTAMP = /-\d{1,2}-\d{1,2}-\d{4}--\d{1,2}-\d{1,2}-\d+$/;
+
+/** Bỏ dấu tiếng Việt, gộp khoảng trắng/gạch dưới/phẩy, bỏ hậu tố ngày giờ — để khớp tên CSDL với tên trên đĩa. */
+export function foldFileStem(name: string): string {
+  const stem = basename(decodeUriLoose(name)).replace(/\.[^.]+$/, "");
+  return stem
+    .replace(LEGACY_UPLOAD_TIMESTAMP, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function extensionOf(name: string): string {
+  const match = /\.[^.]+$/.exec(basename(decodeUriLoose(name)));
+  return match ? match[0].toLowerCase() : "";
+}
+
+function listDir(dir: string): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
+}
+
+function pickDirEntry(dir: string, wanted: string, allowFuzzyFile: boolean): string | null {
+  const entries = listDir(dir);
+  const decodedWanted = decodeUriLoose(wanted);
+  const exact = entries.find((entry) => namesMatch(entry, wanted) || namesMatch(entry, decodedWanted));
+  if (exact) return exact;
+  if (!allowFuzzyFile) return null;
+
+  const wantedExt = extensionOf(wanted);
+  const wantedFold = foldFileStem(wanted);
+  if (!wantedFold) return null;
+
+  const fuzzy = entries.filter((entry) => {
+    if (wantedExt && extensionOf(entry) !== wantedExt) return false;
+    const diskFold = foldFileStem(entry);
+    return diskFold === wantedFold || diskFold.startsWith(`${wantedFold}_`) || wantedFold.startsWith(`${diskFold}_`);
+  });
+  if (fuzzy.length === 1) return fuzzy[0];
+  if (fuzzy.length > 1) {
+    const longest = fuzzy.sort((a, b) => b.length - a.length)[0];
+    return longest ?? null;
+  }
+  return null;
+}
+
+/** Đi từng cấp thư mục; cấp cuối (tên file) được khớp nới lỏng vì web cũ đổi khoảng trắng → "_" và thêm hậu tố giờ. */
 function matchByDirectoryListing(resolvedBase: string, strippedRelPath: string): string | null {
   const parts = strippedRelPath.replace(/\\/g, "/").split("/").filter(Boolean);
   if (parts.length === 0) return null;
 
   let current = resolvedBase;
-  for (const part of parts) {
+  for (let index = 0; index < parts.length; index += 1) {
     if (!existsSync(current)) return null;
-    let entries: string[];
-    try {
-      entries = readdirSync(current);
-    } catch {
-      return null;
-    }
-    const decodedPart = decodeUriLoose(part);
-    const match = entries.find((entry) => namesMatch(entry, part) || namesMatch(entry, decodedPart));
+    const isFilePart = index === parts.length - 1;
+    const match = pickDirEntry(current, parts[index], isFilePart);
     if (!match) return null;
     const next = join(current, match);
     if (!isInsideBase(resolvedBase, resolve(next))) return null;
