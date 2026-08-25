@@ -51,6 +51,7 @@ export class CreateUnionMemberDto implements CreateUnionMemberRequest {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   sortOrder?: number;
 

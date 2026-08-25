@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDelete, useList, useTable } from "@refinedev/core";
+import { useDelete, useList, useTable, useUpdate } from "@refinedev/core";
 import type { CrudFilter } from "@refinedev/core";
 import type { UnionDepartmentDto, UnionMemberImportResultDto, UnionMemberAdminListItemDto } from "@congdoan/types";
 import { Button } from "../../components/ui/button";
@@ -22,6 +22,7 @@ import { CreateUnionMemberLoginDialog } from "./CreateUnionMemberLoginDialog";
 export function UnionMemberList() {
   const navigate = useNavigate();
   const { mutate: deleteMember, isLoading: isDeleting } = useDelete();
+  const { mutateAsync: updateMember } = useUpdate();
   const { data: deptsResult } = useList<UnionDepartmentDto>({ resource: "union-departments" });
 
   const [searchInput, setSearchInput] = useState("");
@@ -31,6 +32,7 @@ export function UnionMemberList() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [loginTarget, setLoginTarget] = useState<UnionMemberAdminListItemDto | null>(null);
+  const [savingSortOrderId, setSavingSortOrderId] = useState<string | null>(null);
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -75,6 +77,27 @@ export function UnionMemberList() {
   function handleConfirmDelete() {
     if (!deleteTarget) return;
     deleteMember({ resource: "union-members", id: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
+  }
+
+  /** PATCH chỉ sortOrder — Prisma bỏ qua field undefined nên không đụng họ tên/hồ sơ. Lưu khi rời ô
+   * hoặc Enter; danh sách tự sắp lại theo số nhỏ hơn hiện trước. */
+  async function saveSortOrder(id: string, sortOrder: number) {
+    setSavingSortOrderId(id);
+    try {
+      await updateMember({
+        resource: "union-members",
+        id,
+        values: { sortOrder },
+        successNotification: false,
+        errorNotification: (error) => ({
+          type: "error",
+          message: "Không lưu được thứ tự hiển thị",
+          description: error?.message ?? "Vui lòng thử lại sau."
+        })
+      });
+    } finally {
+      setSavingSortOrderId(null);
+    }
   }
 
   async function handleExport() {
@@ -164,7 +187,8 @@ export function UnionMemberList() {
         Xuất Excel để tải toàn bộ hồ sơ (kể cả các trường nội bộ) ra file mẫu, chỉnh sửa rồi nhập lại — dòng có
         "Mã cán bộ" khớp sẵn có sẽ được cập nhật, dòng mới hoặc không khớp sẽ tự tạo công đoàn viên mới. Tạo
         tài khoản dùng mã cán bộ + email trên hồ sơ; mật khẩu mặc định <code>utehy123</code> hoặc mật khẩu
-        ngẫu nhiên gửi về email.
+        ngẫu nhiên gửi về email. Cột “Thứ tự hiển thị” sửa trực tiếp trên danh sách (Enter hoặc click ra
+        ngoài để lưu); số nhỏ hơn hiện trước.
       </p>
 
       <div className="flex flex-col gap-3 lg:flex-row">
@@ -201,6 +225,7 @@ export function UnionMemberList() {
                   onChange={(event) => toggleSelectAllOnPage(event.target.checked)}
                 />
               </TableHead>
+              <TableHead className="w-28">Thứ tự hiển thị</TableHead>
               <TableHead>Họ tên</TableHead>
               <TableHead>Mã cán bộ</TableHead>
               <TableHead>Email</TableHead>
@@ -213,7 +238,7 @@ export function UnionMemberList() {
             {isLoading &&
               Array.from({ length: 8 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -221,7 +246,7 @@ export function UnionMemberList() {
 
             {!isLoading && members.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                   Không có công đoàn viên nào phù hợp.
                 </TableCell>
               </TableRow>
@@ -236,6 +261,14 @@ export function UnionMemberList() {
                       aria-label={`Chọn ${member.fullName}`}
                       checked={selectedIds.includes(member.id)}
                       onChange={(event) => toggleSelect(member.id, event.target.checked)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <InlineSortOrderInput
+                      fullName={member.fullName}
+                      sortOrder={member.sortOrder}
+                      disabled={savingSortOrderId === member.id}
+                      onSave={(next) => saveSortOrder(member.id, next)}
                     />
                   </TableCell>
                   <TableCell className="font-medium">{member.fullName}</TableCell>
@@ -339,5 +372,64 @@ export function UnionMemberList() {
         }}
       />
     </div>
+  );
+}
+
+function InlineSortOrderInput({
+  fullName,
+  sortOrder,
+  disabled,
+  onSave
+}: {
+  fullName: string;
+  sortOrder: number;
+  disabled: boolean;
+  onSave: (next: number) => Promise<void>;
+}) {
+  const [text, setText] = useState(String(sortOrder));
+  const savingRef = useRef(false);
+
+  useEffect(() => {
+    setText(String(sortOrder));
+  }, [sortOrder]);
+
+  async function commit() {
+    if (savingRef.current) return;
+    const parsed = Number(text.trim());
+    if (!Number.isInteger(parsed)) {
+      pushToast({ variant: "error", message: "Thứ tự hiển thị phải là số nguyên." });
+      setText(String(sortOrder));
+      return;
+    }
+    if (parsed === sortOrder) return;
+    savingRef.current = true;
+    try {
+      await onSave(parsed);
+    } catch {
+      setText(String(sortOrder));
+    } finally {
+      savingRef.current = false;
+    }
+  }
+
+  return (
+    <Input
+      type="number"
+      inputMode="numeric"
+      step={1}
+      disabled={disabled}
+      value={text}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          (event.currentTarget as HTMLInputElement).blur();
+        }
+      }}
+      aria-label={`Thứ tự hiển thị của ${fullName}`}
+      title="Số nhỏ hơn hiện trước. Nhấn Enter hoặc click ra ngoài để lưu."
+      className="h-8 w-[4.75rem] px-2 text-center tabular-nums"
+    />
   );
 }
