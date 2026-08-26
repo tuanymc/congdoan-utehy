@@ -11,6 +11,7 @@ import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { SYSTEM_ROLES } from "../packages/types/src/common";
 import type { PublicServiceProcedureCategory } from "../packages/types/src/public-service";
+import { seedUnionSatisfactionSurvey } from "./seed-survey-content";
 
 const prisma = new PrismaClient();
 
@@ -615,6 +616,9 @@ async function main() {
       }
     });
   }
+
+  console.log("Seeding khảo sát ý kiến đoàn viên (nội dung chính thức, thay bản test)...");
+  await seedUnionSatisfactionSurvey(prisma);
 
   console.log("Done. Tài khoản admin mặc định:", adminEmail, "(đổi mật khẩu ngay sau lần đăng nhập đầu tiên)");
 }
