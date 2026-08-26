@@ -16,6 +16,8 @@ import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { PageLoading } from "../../components/common/PageLoading";
+import { RichTextEditor } from "../../components/common/RichTextEditor";
+import { ImageUploadField } from "../../components/common/ImageUploadField";
 import { apiFetch, apiFetchBlob, apiFetchUpload } from "../../lib/api-client";
 import { pushToast } from "../../components/common/toast-store";
 import { DIRECTION_OPTIONS, FORMS_DOCUMENT_TYPE_NAME, STATUS_OPTIONS, type OfficialDocumentPurpose } from "./constants";
@@ -76,6 +78,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const [receivedAt, setReceivedAt] = useState("");
   const [summary, setSummary] = useState("");
   const [content, setContent] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -97,6 +100,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
       setReceivedAt(toDateInputValue(doc.receivedAt));
       setSummary(doc.summary ?? "");
       setContent(doc.content ?? "");
+      setCoverImageUrl(doc.coverImageUrl ?? "");
     }
   }, [mode, docResult]);
 
@@ -127,6 +131,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
       status,
       priority: priority.trim() || undefined,
       isPublic,
+      coverImageUrl: coverImageUrl.trim() || undefined,
       documentTypeId: isForms && formsType ? formsType.id : documentTypeId,
       issuingOfficeName: issuingOfficeName.trim() || undefined,
       issuedAt: issuedAt || undefined,
@@ -391,9 +396,28 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
               <Textarea id="summary" rows={2} value={summary} onChange={(event) => setSummary(event.target.value)} />
             </div>
 
+            {isForms ? (
+              <ImageUploadField
+                id="coverImageUrl"
+                label="Ảnh đại diện"
+                value={coverImageUrl}
+                onChange={setCoverImageUrl}
+                placeholder="/upload/images/..."
+              />
+            ) : null}
+
             <div className="grid gap-2">
               <Label htmlFor="content">Nội dung</Label>
-              <Textarea id="content" rows={8} value={content} onChange={(event) => setContent(event.target.value)} />
+              {isForms ? (
+                <RichTextEditor
+                  id="content"
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Soạn nội dung biểu mẫu..."
+                />
+              ) : (
+                <Textarea id="content" rows={8} value={content} onChange={(event) => setContent(event.target.value)} />
+              )}
             </div>
 
             <div className="flex justify-end gap-2">

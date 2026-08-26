@@ -110,9 +110,17 @@ export function DigitalFormsPage() {
                 <Link key={form.id} to={`/van-ban/${form.id}`}>
                   <Card className="h-full transition-shadow hover:shadow-md">
                     <CardContent className="flex h-full flex-col gap-3 py-5">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <FileText className="size-5" />
-                      </span>
+                      {form.coverImageUrl ? (
+                        <img
+                          src={form.coverImageUrl}
+                          alt=""
+                          className="aspect-video w-full rounded-md object-cover"
+                        />
+                      ) : (
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <FileText className="size-5" />
+                        </span>
+                      )}
                       <div className="flex-1">
                         <p className="font-medium hover:text-primary">{form.title}</p>
                         <p className="mt-1 text-xs text-muted-foreground">Cập nhật: {formatDate(form.issuedAt)}</p>

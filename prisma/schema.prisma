@@ -283,6 +283,8 @@ model OfficialDocument {
   /// JWT) — xem public-official-documents.controller.ts; endpoint /admin/official-documents (yêu cầu
   /// permission document:*) vẫn trả về toàn bộ không phân biệt cờ này.
   isPublic       Boolean  @default(false)
+  /// Ảnh đại diện (Kho biểu mẫu / bài viết) — cùng quy ước Post.coverImageUrl: URL https hoặc /upload/...
+  coverImageUrl  String?
 
   issuedAt         DateTime?
   sentAt           DateTime?

@@ -158,6 +158,7 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
         <Table>
           <TableHeader>
             <TableRow>
+              {isForms ? <TableHead className="w-16">Ảnh</TableHead> : null}
               <TableHead>Tiêu đề</TableHead>
               {isForms ? null : <TableHead>Số hiệu</TableHead>}
               {isForms ? null : <TableHead>Loại</TableHead>}
@@ -172,7 +173,7 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
             {isLoading &&
               Array.from({ length: 8 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
-                  <TableCell colSpan={isForms ? 4 : 7}>
+                  <TableCell colSpan={isForms ? 5 : 7}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -180,7 +181,7 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
 
             {!isLoading && documents.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isForms ? 4 : 7} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={isForms ? 5 : 7} className="py-8 text-center text-muted-foreground">
                   {isForms ? "Chưa có biểu mẫu nào." : "Không có công văn nào phù hợp."}
                 </TableCell>
               </TableRow>
@@ -189,6 +190,15 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
             {!isLoading &&
               documents.map((doc) => (
                 <TableRow key={doc.id}>
+                  {isForms ? (
+                    <TableCell>
+                      {doc.coverImageUrl ? (
+                        <img src={doc.coverImageUrl} alt="" className="h-10 w-14 rounded object-cover" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  ) : null}
                   <TableCell className="max-w-xs truncate font-medium">{doc.title}</TableCell>
                   {isForms ? null : (
                     <TableCell className="text-muted-foreground">{doc.documentNumber ?? "—"}</TableCell>

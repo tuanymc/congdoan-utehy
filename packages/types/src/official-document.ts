@@ -47,6 +47,7 @@ export interface OfficialDocumentListItemDto {
   documentType: DocumentTypeDto;
   issuingOfficeName: string | null;
   isPublic: boolean;
+  coverImageUrl: string | null;
   issuedAt: string | null;
   createdAt: string;
 }
@@ -86,6 +87,7 @@ export interface PublicOfficialDocumentListItemDto {
   direction: DocumentDirection;
   documentType: DocumentTypeDto;
   issuingOfficeName: string | null;
+  coverImageUrl: string | null;
   issuedAt: string | null;
 }
 
@@ -104,6 +106,8 @@ export interface CreateOfficialDocumentRequest {
   status?: DocumentStatus;
   priority?: string;
   isPublic?: boolean;
+  /** URL https://... hoặc đường dẫn /upload/images/... — ảnh đại diện Kho biểu mẫu. */
+  coverImageUrl?: string;
   documentTypeId: string;
   issuingOfficeName?: string;
   /** ISO date string. */

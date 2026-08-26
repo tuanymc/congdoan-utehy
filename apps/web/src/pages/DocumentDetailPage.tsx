@@ -137,15 +137,32 @@ export function DocumentDetailPage() {
             Ngày ban hành: {formatDate(doc.issuedAt)}
           </p>
 
+          {doc.coverImageUrl ? (
+            <img
+              src={doc.coverImageUrl}
+              alt={doc.title}
+              className="mt-6 aspect-video w-full rounded-xl object-cover"
+            />
+          ) : null}
+
           {doc.summary ? (
             <p className="mt-4 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">{doc.summary}</p>
           ) : null}
 
           {doc.content ? (
             <div
-              className="prose prose-sm mt-6 max-w-none text-foreground"
-              // Nội dung công văn do người có quyền "document:*" nhập/ETL từ web cũ, không nhận input trực
-              // tiếp từ khách truy cập trang này — an toàn để render HTML trực tiếp (giống NewsDetailPage).
+              className={[
+                "mt-6 max-w-none text-base leading-relaxed text-foreground",
+                "[&_p]:my-4",
+                "[&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold",
+                "[&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-bold",
+                "[&_a]:text-primary [&_a]:underline",
+                "[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6",
+                "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6",
+                "[&_img]:my-4 [&_img]:rounded-lg",
+                "[&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground"
+              ].join(" ")}
+              // Nội dung do người có quyền document:* nhập/ETL — render HTML giống NewsDetailPage.
               dangerouslySetInnerHTML={{ __html: doc.content }}
             />
           ) : null}

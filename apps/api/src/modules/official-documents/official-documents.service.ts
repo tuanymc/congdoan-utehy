@@ -65,6 +65,7 @@ function toListItem(d: DocumentWithRelations): OfficialDocumentListItemDto {
     },
     issuingOfficeName: d.issuingOfficeName,
     isPublic: d.isPublic,
+    coverImageUrl: d.coverImageUrl,
     issuedAt: d.issuedAt ? d.issuedAt.toISOString() : null,
     createdAt: d.createdAt.toISOString()
   };
@@ -85,6 +86,7 @@ function toPublicListItem(d: DocumentWithRelations): PublicOfficialDocumentListI
       parentId: d.documentType.parentId
     },
     issuingOfficeName: d.issuingOfficeName,
+    coverImageUrl: d.coverImageUrl,
     issuedAt: d.issuedAt ? d.issuedAt.toISOString() : null
   };
 }
@@ -322,6 +324,7 @@ export class OfficialDocumentsService {
         status: dto.status ?? "SAVE_DRAFT",
         priority: dto.priority,
         isPublic: dto.isPublic ?? false,
+        coverImageUrl: dto.coverImageUrl,
         documentTypeId: dto.documentTypeId,
         issuingOfficeName: dto.issuingOfficeName,
         issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : undefined,
@@ -348,6 +351,7 @@ export class OfficialDocumentsService {
         status: dto.status,
         priority: dto.priority,
         isPublic: dto.isPublic,
+        coverImageUrl: dto.coverImageUrl === undefined ? undefined : dto.coverImageUrl || null,
         documentTypeId: dto.documentTypeId,
         issuingOfficeName: dto.issuingOfficeName,
         issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : undefined,

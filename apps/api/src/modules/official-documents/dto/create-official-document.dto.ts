@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString, IsUUID, Matches } from "class-validator";
 import type { CreateOfficialDocumentRequest, DocumentDirection, DocumentStatus } from "@congdoan/types";
 
 const DOCUMENT_DIRECTIONS: DocumentDirection[] = ["DRAFT", "OUTGOING", "INCOMING"];
@@ -52,6 +52,14 @@ export class CreateOfficialDocumentDto implements CreateOfficialDocumentRequest 
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+
+  @ApiPropertyOptional({ example: "/upload/images/admin-uploads/xxx.jpg" })
+  @IsOptional()
+  @IsString()
+  @Matches(/^(https?:\/\/|\/)/i, {
+    message: "coverImageUrl phải là URL (https://...) hoặc đường dẫn bắt đầu bằng / (vd /upload/images/...)"
+  })
+  coverImageUrl?: string;
 
   @ApiProperty()
   @IsUUID()
