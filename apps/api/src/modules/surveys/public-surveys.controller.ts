@@ -27,7 +27,7 @@ export class PublicSurveysController {
   }
 
   @Post(":id/responses")
-  @HttpCode(HttpStatus.CREATED)
+  @HttpCode(HttpStatus.NO_CONTENT)
   submitResponse(@Param("id") id: string, @Body() dto: SubmitSurveyResponseDto): Promise<void> {
     return this.surveysService.submitResponse(id, dto);
   }

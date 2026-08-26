@@ -96,6 +96,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     });
   }
 
+  // POST tạo bản ghi (vd gửi khảo sát) hay trả 201 + body rỗng — NestJS void không serialize JSON.
+  // Trước đây nhánh dưới ném Error thường, SurveyDetailPage hiện "Không thể gửi câu trả lời lúc này"
+  // dù server đã lưu thành công.
+  if (payload === null && response.status === 201) {
+    return undefined as T;
+  }
+
   // response.ok=true nhưng body rỗng/không parse được JSON hợp lệ là bất thường — API luôn trả JSON
   // thật cho response 200 (204 đã xử lý riêng ở trên), không bao giờ chủ đích trả body rỗng. Từng gây
   // lỗi thật: các trang gọi .then((data) => data.items/.length) không ngờ nhận "null" nên crash trắng

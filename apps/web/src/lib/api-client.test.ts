@@ -56,10 +56,10 @@ describe("apiFetch", () => {
     expect(result).toEqual({ hello: "world" });
   });
 
-  it("trả về undefined khi response 204 No Content", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+  it("trả về undefined khi response 201 Created không có body (gửi khảo sát)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 201 }));
 
-    const result = await apiFetch("/auth/logout", { method: "POST", body: { refreshToken: "x" } });
+    const result = await apiFetch("/surveys/abc/responses", { method: "POST", body: { answers: [] } });
 
     expect(result).toBeUndefined();
   });

@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { PublicSurveyDetailDto, SubmitSurveyAnswerRequest } from "@congdoan/types";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,7 +30,7 @@ export function SurveyDetailPage() {
         if (!cancelled) setSurvey(data);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(err instanceof ApiError ? err.message : "Không tìm thấy khảo sát này.");
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Không tìm thấy khảo sát này.");
       });
 
     return () => {
@@ -60,7 +60,9 @@ export function SurveyDetailPage() {
       await apiFetch(`/surveys/${id}/responses`, { method: "POST", body: { answers: payloadAnswers } });
       setSubmitted(true);
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Không thể gửi câu trả lời lúc này, vui lòng thử lại sau.");
+      setSubmitError(
+        err instanceof Error ? err.message : "Không thể gửi câu trả lời lúc này, vui lòng thử lại sau."
+      );
     } finally {
       setIsSubmitting(false);
     }
