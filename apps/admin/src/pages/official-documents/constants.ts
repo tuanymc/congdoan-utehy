@@ -33,3 +33,8 @@ export const STATUS_OPTIONS: Array<{ value: DocumentStatus; label: string }> = [
   { value: "PROCESSING", label: STATUS_LABEL.PROCESSING },
   { value: "SEND_AGAIN", label: STATUS_LABEL.SEND_AGAIN }
 ];
+
+/** DocumentType.name khớp seed.ts — GET /official-documents/forms và trang /tien-ich-so-cong-doan/bieu-mau. */
+export const FORMS_DOCUMENT_TYPE_NAME = "Biểu mẫu Công đoàn";
+
+export type OfficialDocumentPurpose = "documents" | "forms";

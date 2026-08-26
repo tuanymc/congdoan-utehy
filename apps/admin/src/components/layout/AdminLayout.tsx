@@ -5,6 +5,7 @@ import {
   BarChart3,
   BellRing,
   CalendarDays,
+  ClipboardList,
   FileText,
   FolderTree,
   HandHeart,
@@ -68,11 +69,12 @@ const DOCUMENT_NAV_ITEMS: NavItem[] = [
 ];
 
 const DIGITAL_NAV_ITEMS: NavItem[] = [
+  { to: "/digital-forms", label: "Kho biểu mẫu", icon: ClipboardList },
   { to: "/events", label: "Đăng ký hoạt động", icon: CalendarDays },
   { to: "/ai-tools", label: "Kho công cụ AI", icon: Sparkles },
   { to: "/surveys", label: "Khảo sát ý kiến", icon: BarChart3 },
   { to: "/public-service-procedures", label: "Thủ tục dịch vụ công", icon: FileText },
-  { to: "/public-service-links", label: "Kho biểu mẫu, đường dẫn", icon: Link2 },
+  { to: "/public-service-links", label: "Đường dẫn dịch vụ công", icon: Link2 },
   { to: "/public-service-support-requests", label: "Công đoàn hỗ trợ tôi", icon: HandHeart },
   { to: "/public-service-notices", label: "Cảnh báo và nhắc việc", icon: BellRing }
 ];

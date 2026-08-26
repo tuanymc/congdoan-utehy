@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { PageLoading } from "../../components/common/PageLoading";
 import { apiFetch, apiFetchBlob, apiFetchUpload } from "../../lib/api-client";
 import { pushToast } from "../../components/common/toast-store";
-import { DIRECTION_OPTIONS, STATUS_OPTIONS } from "./constants";
+import { DIRECTION_OPTIONS, FORMS_DOCUMENT_TYPE_NAME, STATUS_OPTIONS, type OfficialDocumentPurpose } from "./constants";
 
 /** vd "2.4 MB" — chỉ dùng để hiển thị cho người chọn file xem trước khi tải lên. */
 function formatFileSize(bytes: number): string {
@@ -29,6 +29,7 @@ function formatFileSize(bytes: number): string {
 
 interface OfficialDocumentFormProps {
   mode: "create" | "edit";
+  purpose?: OfficialDocumentPurpose;
 }
 
 /** Chuyển ISO datetime -> "YYYY-MM-DD" cho <input type="date">; input type=date đọc/ghi ngược lại được ngay. */
@@ -43,7 +44,9 @@ function formatDateTime(iso: string | null): string {
 }
 
 /** Dùng chung cho tạo mới và chỉnh sửa công văn — điều khiển bởi prop `mode`. */
-export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
+export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDocumentFormProps) {
+  const isForms = purpose === "forms";
+  const listBase = isForms ? "/digital-forms" : "/official-documents";
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -98,6 +101,16 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
   }, [mode, docResult]);
 
   const documentTypes = typesResult?.data ?? [];
+  const formsType = documentTypes.find((type) => type.name === FORMS_DOCUMENT_TYPE_NAME);
+
+  useEffect(() => {
+    if (mode !== "create" || !isForms) return;
+    setIsPublic(true);
+    setStatus("PUBLISHED");
+    setDirection("OUTGOING");
+    if (formsType) setDocumentTypeId(formsType.id);
+  }, [mode, isForms, formsType?.id]);
+
   const isSaving = isCreating || isUpdating;
   const isLoadingInitial = mode === "edit" && docLoading;
   const document = mode === "edit" ? docResult?.data : undefined;
@@ -114,7 +127,7 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
       status,
       priority: priority.trim() || undefined,
       isPublic,
-      documentTypeId,
+      documentTypeId: isForms && formsType ? formsType.id : documentTypeId,
       issuingOfficeName: issuingOfficeName.trim() || undefined,
       issuedAt: issuedAt || undefined,
       sentAt: sentAt || undefined,
@@ -134,14 +147,14 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
             if (newId && pendingFiles.length > 0) {
               await uploadFilesToDocument(newId, pendingFiles);
             }
-            navigate("/official-documents");
+            navigate(listBase);
           }
         }
       );
     } else if (id) {
       updateDocument(
         { resource: "official-documents", id, values: payload },
-        { onSuccess: () => navigate("/official-documents") }
+        { onSuccess: () => navigate(listBase) }
       );
     }
   }
@@ -247,7 +260,9 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{mode === "create" ? "Thêm công văn" : "Sửa công văn"}</h1>
+      <h1 className="text-2xl font-semibold">
+        {mode === "create" ? (isForms ? "Thêm biểu mẫu" : "Thêm công văn") : isForms ? "Sửa biểu mẫu" : "Sửa công văn"}
+      </h1>
 
       <Card>
         <CardContent className="pt-6">
@@ -268,7 +283,10 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="documentTypeId">Loại công văn</Label>
+                <Label htmlFor="documentTypeId">{isForms ? "Loại" : "Loại công văn"}</Label>
+                {isForms ? (
+                  <Input id="documentTypeId" value={FORMS_DOCUMENT_TYPE_NAME} disabled />
+                ) : (
                 <Select value={documentTypeId} onValueChange={setDocumentTypeId} disabled={typesLoading}>
                   <SelectTrigger id="documentTypeId">
                     <SelectValue placeholder="Chọn loại công văn" />
@@ -281,6 +299,7 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                )}
               </div>
             </div>
 
@@ -329,7 +348,9 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Chỉ mang tính lưu trữ — hệ thống hiện chưa có trang công khai hiển thị công văn.
+                  {isForms
+                    ? "Công khai thì hiện trên trang Kho biểu mẫu (/tien-ich-so-cong-doan/bieu-mau). Nội bộ chỉ thấy trong admin."
+                    : "Công khai thì hiện trên trang Văn bản (/van-ban). Nội bộ chỉ thấy trong admin."}
                 </p>
               </div>
             </div>
@@ -376,7 +397,7 @@ export function OfficialDocumentForm({ mode }: OfficialDocumentFormProps) {
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate("/official-documents")}>
+              <Button type="button" variant="outline" onClick={() => navigate(listBase)}>
                 Huỷ
               </Button>
               <Button type="submit" disabled={isSaving || !documentTypeId}>

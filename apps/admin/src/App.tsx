@@ -194,7 +194,7 @@ export function App() {
             list: "/public-service-links",
             create: "/public-service-links/create",
             edit: "/public-service-links/edit/:id",
-            meta: { label: "Kho biểu mẫu, đường dẫn" }
+            meta: { label: "Đường dẫn dịch vụ công" }
           },
           {
             name: "public-service-support-requests",
@@ -278,6 +278,19 @@ export function App() {
               <Route index element={<OfficialDocumentList />} />
               <Route path="create" element={<OfficialDocumentForm mode="create" />} />
               <Route path="edit/:id" element={<OfficialDocumentForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/digital-forms"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<OfficialDocumentList purpose="forms" />} />
+              <Route path="create" element={<OfficialDocumentForm mode="create" purpose="forms" />} />
+              <Route path="edit/:id" element={<OfficialDocumentForm mode="edit" purpose="forms" />} />
             </Route>
 
             <Route

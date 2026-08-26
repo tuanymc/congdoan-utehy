@@ -10,17 +10,28 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
-import { DIRECTION_LABEL, DIRECTION_OPTIONS, STATUS_LABEL, STATUS_OPTIONS } from "./constants";
+import {
+  DIRECTION_LABEL,
+  DIRECTION_OPTIONS,
+  FORMS_DOCUMENT_TYPE_NAME,
+  STATUS_LABEL,
+  STATUS_OPTIONS,
+  type OfficialDocumentPurpose
+} from "./constants";
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-export function OfficialDocumentList() {
+export function OfficialDocumentList({ purpose = "documents" }: { purpose?: OfficialDocumentPurpose }) {
+  const isForms = purpose === "forms";
+  const listBase = isForms ? "/digital-forms" : "/official-documents";
   const navigate = useNavigate();
   const { mutate: deleteDocument, isLoading: isDeleting } = useDelete();
   const { data: typesResult } = useList<DocumentTypeDto>({ resource: "document-types" });
+  const documentTypes = typesResult?.data ?? [];
+  const formsType = documentTypes.find((type) => type.name === FORMS_DOCUMENT_TYPE_NAME);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -34,24 +45,31 @@ export function OfficialDocumentList() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  const filtersReady = !isForms || Boolean(formsType?.id);
+
   const { tableQueryResult, current, setCurrent, pageCount, setFilters } = useTable<OfficialDocumentListItemDto>({
     resource: "official-documents",
-    pagination: { current: 1, pageSize: 20 }
+    pagination: { current: 1, pageSize: 20 },
+    queryOptions: { enabled: filtersReady }
   });
 
   useEffect(() => {
+    if (isForms && !formsType) return;
     const filters: CrudFilter[] = [];
     if (debouncedSearch) filters.push({ field: "search", operator: "contains", value: debouncedSearch });
-    if (direction !== "ALL") filters.push({ field: "direction", operator: "eq", value: direction });
-    if (status !== "ALL") filters.push({ field: "status", operator: "eq", value: status });
-    if (documentTypeId !== "ALL") filters.push({ field: "documentTypeId", operator: "eq", value: documentTypeId });
+    if (isForms && formsType) {
+      filters.push({ field: "documentTypeId", operator: "eq", value: formsType.id });
+    } else {
+      if (direction !== "ALL") filters.push({ field: "direction", operator: "eq", value: direction });
+      if (status !== "ALL") filters.push({ field: "status", operator: "eq", value: status });
+      if (documentTypeId !== "ALL") filters.push({ field: "documentTypeId", operator: "eq", value: documentTypeId });
+    }
     setFilters(filters, "replace");
-  }, [debouncedSearch, direction, status, documentTypeId, setFilters]);
+  }, [debouncedSearch, direction, status, documentTypeId, isForms, formsType?.id, setFilters]);
 
   const documents = tableQueryResult.data?.data ?? [];
   const total = tableQueryResult.data?.total ?? 0;
-  const isLoading = tableQueryResult.isLoading;
-  const documentTypes = typesResult?.data ?? [];
+  const isLoading = tableQueryResult.isLoading || (isForms && typesResult === undefined);
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -65,19 +83,34 @@ export function OfficialDocumentList() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold">Công văn</h1>
-          <p className="text-muted-foreground">Tổng cộng {total} công văn.</p>
+          <h1 className="text-2xl font-semibold">{isForms ? "Kho biểu mẫu" : "Công văn"}</h1>
+          <p className="text-muted-foreground">
+            {isForms
+              ? `Tổng cộng ${total} biểu mẫu — mục Công khai hiện ở trang /tien-ich-so-cong-doan/bieu-mau.`
+              : `Tổng cộng ${total} công văn.`}
+          </p>
         </div>
-        <Button onClick={() => navigate("/official-documents/create")}>Thêm công văn</Button>
+        <Button onClick={() => navigate(`${listBase}/create`)} disabled={isForms && !formsType}>
+          {isForms ? "Thêm biểu mẫu" : "Thêm công văn"}
+        </Button>
       </div>
+
+      {isForms && typesResult && !formsType ? (
+        <p className="text-sm text-destructive">
+          Chưa có loại công văn “{FORMS_DOCUMENT_TYPE_NAME}”. Tạo loại này ở mục Loại công văn (hoặc chạy seed) rồi
+          quay lại đây.
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-3 lg:flex-row">
         <Input
-          placeholder="Tìm theo tiêu đề, số hiệu, nội dung..."
+          placeholder={isForms ? "Tìm theo tên biểu mẫu..." : "Tìm theo tiêu đề, số hiệu, nội dung..."}
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           className="lg:max-w-xs"
         />
+        {isForms ? null : (
+          <>
         <Select value={documentTypeId} onValueChange={setDocumentTypeId}>
           <SelectTrigger className="lg:max-w-56">
             <SelectValue />
@@ -117,6 +150,8 @@ export function OfficialDocumentList() {
             ))}
           </SelectContent>
         </Select>
+          </>
+        )}
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -124,11 +159,12 @@ export function OfficialDocumentList() {
           <TableHeader>
             <TableRow>
               <TableHead>Tiêu đề</TableHead>
-              <TableHead>Số hiệu</TableHead>
-              <TableHead>Loại</TableHead>
-              <TableHead>Hướng</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Ngày ban hành</TableHead>
+              {isForms ? null : <TableHead>Số hiệu</TableHead>}
+              {isForms ? null : <TableHead>Loại</TableHead>}
+              {isForms ? null : <TableHead>Hướng</TableHead>}
+              {isForms ? null : <TableHead>Trạng thái</TableHead>}
+              <TableHead>{isForms ? "Ngày cập nhật" : "Ngày ban hành"}</TableHead>
+              {isForms ? <TableHead>Hiển thị</TableHead> : null}
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
@@ -136,7 +172,7 @@ export function OfficialDocumentList() {
             {isLoading &&
               Array.from({ length: 8 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={isForms ? 4 : 7}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -144,8 +180,8 @@ export function OfficialDocumentList() {
 
             {!isLoading && documents.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                  Không có công văn nào phù hợp.
+                <TableCell colSpan={isForms ? 4 : 7} className="py-8 text-center text-muted-foreground">
+                  {isForms ? "Chưa có biểu mẫu nào." : "Không có công văn nào phù hợp."}
                 </TableCell>
               </TableRow>
             )}
@@ -154,18 +190,31 @@ export function OfficialDocumentList() {
               documents.map((doc) => (
                 <TableRow key={doc.id}>
                   <TableCell className="max-w-xs truncate font-medium">{doc.title}</TableCell>
-                  <TableCell className="text-muted-foreground">{doc.documentNumber ?? "—"}</TableCell>
-                  <TableCell>{doc.documentType.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{DIRECTION_LABEL[doc.direction]}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{STATUS_LABEL[doc.status]}</Badge>
-                  </TableCell>
+                  {isForms ? null : (
+                    <TableCell className="text-muted-foreground">{doc.documentNumber ?? "—"}</TableCell>
+                  )}
+                  {isForms ? null : <TableCell>{doc.documentType.name}</TableCell>}
+                  {isForms ? null : (
+                    <TableCell>
+                      <Badge variant="outline">{DIRECTION_LABEL[doc.direction]}</Badge>
+                    </TableCell>
+                  )}
+                  {isForms ? null : (
+                    <TableCell>
+                      <Badge variant="secondary">{STATUS_LABEL[doc.status]}</Badge>
+                    </TableCell>
+                  )}
                   <TableCell>{formatDate(doc.issuedAt)}</TableCell>
+                  {isForms ? (
+                    <TableCell>
+                      <Badge variant={doc.isPublic ? "default" : "secondary"}>
+                        {doc.isPublic ? "Công khai" : "Nội bộ"}
+                      </Badge>
+                    </TableCell>
+                  ) : null}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => navigate(`/official-documents/edit/${doc.id}`)}>
+                      <Button variant="outline" size="sm" onClick={() => navigate(`${listBase}/edit/${doc.id}`)}>
                         Sửa
                       </Button>
                       <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(doc)}>
@@ -195,8 +244,8 @@ export function OfficialDocumentList() {
 
       <ConfirmDeleteDialog
         open={deleteTarget !== null}
-        title="Xoá công văn"
-        description={`Bạn có chắc chắn muốn xoá công văn "${deleteTarget?.title ?? ""}"? File đính kèm của công văn này cũng sẽ bị xoá khỏi hệ thống (không phải file vật lý). Hành động này không thể hoàn tác.`}
+        title={isForms ? "Xoá biểu mẫu" : "Xoá công văn"}
+        description={`Bạn có chắc chắn muốn xoá ${isForms ? "biểu mẫu" : "công văn"} "${deleteTarget?.title ?? ""}"? File đính kèm cũng sẽ bị xoá khỏi hệ thống. Hành động này không thể hoàn tác.`}
         isPending={isDeleting}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}

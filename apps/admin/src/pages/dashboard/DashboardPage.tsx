@@ -11,6 +11,7 @@ import {
   ArrowRight,
   BarChart3,
   CalendarDays,
+  ClipboardList,
   FileText,
   FolderTree,
   HandHeart,
@@ -131,7 +132,8 @@ const QUICK_LINKS: QuickLink[] = [
   { to: "/home-slides", label: "Banner trang chủ", description: "Ảnh trượt trang công khai", icon: Images, clerkOnly: true },
   { to: "/union-committee-members", label: "Ban chấp hành", description: "Theo nhiệm kỳ", icon: Landmark, clerkOnly: true },
   { to: "/ai-tools", label: "Kho công cụ AI", description: "Tiện ích số cho đoàn viên", icon: Sparkles, clerkOnly: true },
-  { to: "/public-service-links", label: "Biểu mẫu, đường dẫn", description: "Kho liên kết dịch vụ công", icon: Link2, clerkOnly: true },
+  { to: "/digital-forms", label: "Kho biểu mẫu", description: "Biểu mẫu đoàn viên trên website", icon: ClipboardList, clerkOnly: true },
+  { to: "/public-service-links", label: "Đường dẫn dịch vụ công", description: "Liên kết kèm mã QR", icon: Link2, clerkOnly: true },
   { to: "/users", label: "Người dùng", description: "Tài khoản đăng nhập hệ thống", icon: UsersIcon, adminOnly: true },
   { to: "/site-settings", label: "Cấu hình chung", description: "Tên site, SEO, liên hệ", icon: Settings, adminOnly: true }
 ];
