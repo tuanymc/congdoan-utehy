@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
-import type { CreateHomeSlideRequest } from "@congdoan/types";
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString } from "class-validator";
+import { HOME_BANNER_PLACEMENTS } from "@congdoan/types";
+import type { CreateHomeSlideRequest, HomeBannerPlacement } from "@congdoan/types";
 
 export class CreateHomeSlideDto implements CreateHomeSlideRequest {
   @ApiProperty()
@@ -25,4 +26,9 @@ export class CreateHomeSlideDto implements CreateHomeSlideRequest {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ enum: HOME_BANNER_PLACEMENTS })
+  @IsOptional()
+  @IsIn(HOME_BANNER_PLACEMENTS)
+  placement?: HomeBannerPlacement;
 }

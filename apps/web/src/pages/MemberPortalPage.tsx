@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { AuthUser, ChangePasswordRequest, MyUnionMemberDto, UpdateMyUnionMemberRequest } from "@congdoan/types";
 import {
   ArrowRight,
+  BookOpen,
   Building2,
   CalendarCheck,
   ClipboardList,
@@ -32,6 +33,12 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const QUICK_UTILITIES = [
+  {
+    icon: BookOpen,
+    title: "Cẩm nang - Kiến thức số",
+    description: "Hướng dẫn và kiến thức chuyển đổi số dành cho đoàn viên.",
+    to: "/tien-ich-so-cong-doan/cam-nang-kien-thuc-so"
+  },
   {
     icon: CalendarCheck,
     title: "Đăng ký hoạt động",

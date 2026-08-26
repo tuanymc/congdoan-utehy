@@ -60,3 +60,8 @@ export interface CreateCategoryRequest {
 }
 
 export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}
+
+/** Chuyên mục bài viết của tiểu mục Tiện ích số "Cẩm nang - Kiến thức số" — không hiện trong dropdown
+ * Tin hoạt động (showInMenu=false) và không lẫn vào danh sách /tin-tuc khi không lọc chuyên mục. */
+export const DIGITAL_HANDBOOK_CATEGORY_SLUG = "cam-nang-kien-thuc-so";
+export const DIGITAL_HANDBOOK_PATH = "/tien-ich-so-cong-doan/cam-nang-kien-thuc-so";

@@ -64,6 +64,25 @@ describe("apiFetch", () => {
     expect(result).toBeUndefined();
   });
 
+  it("trả về undefined khi POST 200 không có body (IIS ARR đổi 204 thành 200 rỗng)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 200 }));
+
+    const result = await apiFetch("/surveys/abc/responses", { method: "POST", body: { answers: [] } });
+
+    expect(result).toBeUndefined();
+  });
+
+  it("nhận JSON { ok: true } khi gửi khảo sát thành công", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(201, { ok: true }));
+
+    const result = await apiFetch<{ ok: true }>("/surveys/abc/responses", {
+      method: "POST",
+      body: { answers: [] }
+    });
+
+    expect(result).toEqual({ ok: true });
+  });
+
   it("ném lỗi rõ ràng khi response 200 nhưng body rỗng bất thường (không âm thầm trả về null)", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 200 }));
 

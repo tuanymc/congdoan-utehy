@@ -70,6 +70,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     throw new Error(FALLBACK_ERROR_MESSAGE);
   }
 
+  const method = ((rest.method as string | undefined) ?? "GET").toUpperCase();
+  const isMutating = method !== "GET" && method !== "HEAD";
+
   if (response.status === 204) {
     return undefined as T;
   }
@@ -96,19 +99,14 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     });
   }
 
-  // POST tạo bản ghi (vd gửi khảo sát) hay trả 201 + body rỗng — NestJS void không serialize JSON.
-  // Trước đây nhánh dưới ném Error thường, SurveyDetailPage hiện "Không thể gửi câu trả lời lúc này"
-  // dù server đã lưu thành công.
-  if (payload === null && response.status === 201) {
+  // Body rỗng với 2xx: NestJS `void` mặc định 201 không serialize JSON; IIS ARR đôi khi đổi 204 thành
+  // 200 Content-Length=0. Gửi khảo sát production từng báo lỗi giả dù đã lưu. GET 200 rỗng vẫn là lỗi
+  // (API danh sách/chi tiết luôn trả JSON).
+  if (payload === null && (response.status === 201 || (isMutating && response.status === 200))) {
     return undefined as T;
   }
 
-  // response.ok=true nhưng body rỗng/không parse được JSON hợp lệ là bất thường — API luôn trả JSON
-  // thật cho response 200 (204 đã xử lý riêng ở trên), không bao giờ chủ đích trả body rỗng. Từng gây
-  // lỗi thật: các trang gọi .then((data) => data.items/.length) không ngờ nhận "null" nên crash trắng
-  // trang (vd "Cannot read properties of null (reading 'items')") thay vì rơi vào .catch() như mong
-  // muốn. Ném lỗi rõ ràng ở đây để mọi nơi gọi apiFetch đều xử lý qua .catch() sẵn có, thay vì phải tự
-  // đoán "có thể null" ở từng nơi gọi.
+  // GET/HEAD 200 mà thiếu JSON — ném lỗi để .catch() bắt, tránh crash "reading 'items' of null".
   if (payload === null) {
     throw new Error(
       `Máy chủ trả về dữ liệu không hợp lệ cho ${path} (response ok nhưng thiếu nội dung JSON).`

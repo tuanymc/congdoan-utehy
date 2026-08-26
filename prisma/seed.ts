@@ -172,6 +172,19 @@ async function main() {
     create: { slug: "tin-chung", name: "Tin chung", sortOrder: 0 }
   });
 
+  console.log("Seeding chuyên mục Cẩm nang - Kiến thức số (Tiện ích số)...");
+  await prisma.category.upsert({
+    where: { slug: "cam-nang-kien-thuc-so" },
+    update: { name: "Cẩm nang - Kiến thức số", showInMenu: false },
+    create: {
+      slug: "cam-nang-kien-thuc-so",
+      name: "Cẩm nang - Kiến thức số",
+      description: "Giới thiệu, hướng dẫn và kiến thức chuyển đổi số dành cho đoàn viên.",
+      sortOrder: 900,
+      showInMenu: false
+    }
+  });
+
   // Menu điều hướng mặc định — khớp y hệt cấu trúc từng hard-code ở apps/web Header.tsx trước khi có
   // trang quản lý menu trong admin. Chỉ "create" (update: {}) — sau lần seed đầu tiên, admin có thể tự
   // sửa/xoá/thêm mục qua trang quản trị mà không lo lần "pnpm prisma:seed" sau ghi đè mất tuỳ chỉnh.

@@ -81,6 +81,12 @@ export interface SubmitSurveyResponseRequest {
   answers: SubmitSurveyAnswerRequest[];
 }
 
+/** Body JSON khi gửi khảo sát thành công — luôn trả object (không 204/201 rỗng) để IIS ARR và
+ * apiFetch không hiểu nhầm là lỗi. */
+export interface SubmitSurveyResponseResultDto {
+  ok: true;
+}
+
 /** Kết quả tổng hợp 1 câu hỏi — optionCounts có giá trị khi type="SINGLE_CHOICE", textAnswers khi
  * type="TEXT" (chỉ 1 trong 2 field có dữ liệu tuỳ loại câu hỏi). */
 export interface SurveyQuestionResultDto {

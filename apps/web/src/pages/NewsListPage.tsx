@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
-import type { CategoryDto, PaginatedResult, PostListItemDto } from "@congdoan/types";
+import {
+  DIGITAL_HANDBOOK_CATEGORY_SLUG,
+  DIGITAL_HANDBOOK_PATH,
+  type CategoryDto,
+  type PaginatedResult,
+  type PostListItemDto
+} from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +16,7 @@ import { cn } from "@/components/ui/utils";
 const PAGE_SIZE = 9;
 /** Chuyên mục này đã chuyển sang Kho biểu mẫu — không còn lọc trên trang tin tức. */
 const FORMS_MOVED_SLUG = "van-ban";
+const HIDDEN_NEWS_FILTER_SLUGS = new Set([FORMS_MOVED_SLUG, DIGITAL_HANDBOOK_CATEGORY_SLUG]);
 
 export function NewsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,10 +77,14 @@ export function NewsListPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const newsCategories = categories.filter((category) => category.slug !== FORMS_MOVED_SLUG);
+  const newsCategories = categories.filter((category) => !HIDDEN_NEWS_FILTER_SLUGS.has(category.slug));
 
   if (categorySlug === FORMS_MOVED_SLUG) {
     return <Navigate to="/tien-ich-so-cong-doan/bieu-mau" replace />;
+  }
+
+  if (categorySlug === DIGITAL_HANDBOOK_CATEGORY_SLUG) {
+    return <Navigate to={DIGITAL_HANDBOOK_PATH} replace />;
   }
 
   return (

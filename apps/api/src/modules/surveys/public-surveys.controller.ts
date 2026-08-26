@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import type { PublicSurveyDetailDto, PublicSurveyListItemDto } from "@congdoan/types";
+import type { PublicSurveyDetailDto, PublicSurveyListItemDto, SubmitSurveyResponseResultDto } from "@congdoan/types";
 import { SurveysService } from "./surveys.service";
 import { SubmitSurveyResponseDto } from "./dto/submit-survey-response.dto";
 
@@ -27,8 +27,13 @@ export class PublicSurveysController {
   }
 
   @Post(":id/responses")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  submitResponse(@Param("id") id: string, @Body() dto: SubmitSurveyResponseDto): Promise<void> {
-    return this.surveysService.submitResponse(id, dto);
+  async submitResponse(
+    @Param("id") id: string,
+    @Body() dto: SubmitSurveyResponseDto
+  ): Promise<SubmitSurveyResponseResultDto> {
+    // Trả JSON `{ ok: true }` (201 + body), không dùng 204 rỗng: production IIS ARR chuyển tiếp
+    // 201/204 Content-Length=0, apiFetch coi body rỗng là lỗi dù đã lưu thành công.
+    await this.surveysService.submitResponse(id, dto);
+    return { ok: true };
   }
 }

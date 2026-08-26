@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDelete, useList } from "@refinedev/core";
 import type { HomeSlideDto } from "@congdoan/types";
+import { HOME_BANNER_PLACEMENT_LABELS } from "@congdoan/types";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -26,7 +27,9 @@ export function HomeSlideList() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-semibold">Banner trang chủ</h1>
-          <p className="text-muted-foreground">Tổng cộng {slides.length} banner. Chỉ banner "Đang hiển thị" mới xuất hiện ở slider trang chủ.</p>
+          <p className="text-muted-foreground">
+            Tổng cộng {slides.length} banner. Chọn vị trí: slider đầu trang, dưới slide, hoặc trên footer.
+          </p>
         </div>
         <Button onClick={() => navigate("/home-slides/create")}>Thêm banner</Button>
       </div>
@@ -37,6 +40,7 @@ export function HomeSlideList() {
             <TableRow>
               <TableHead>Ảnh</TableHead>
               <TableHead>Tên</TableHead>
+              <TableHead>Vị trí</TableHead>
               <TableHead>Liên kết</TableHead>
               <TableHead>Thứ tự</TableHead>
               <TableHead>Trạng thái</TableHead>
@@ -47,7 +51,7 @@ export function HomeSlideList() {
             {isLoading &&
               Array.from({ length: 3 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -55,7 +59,7 @@ export function HomeSlideList() {
 
             {!isLoading && slides.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   Chưa có banner nào.
                 </TableCell>
               </TableRow>
@@ -68,6 +72,7 @@ export function HomeSlideList() {
                     <img src={slide.imageUrl} alt={slide.name} className="h-12 w-20 rounded object-cover" />
                   </TableCell>
                   <TableCell className="font-medium">{slide.name}</TableCell>
+                  <TableCell>{HOME_BANNER_PLACEMENT_LABELS[slide.placement] ?? slide.placement}</TableCell>
                   <TableCell className="max-w-xs truncate text-muted-foreground">{slide.linkUrl ?? "—"}</TableCell>
                   <TableCell>{slide.sortOrder}</TableCell>
                   <TableCell>

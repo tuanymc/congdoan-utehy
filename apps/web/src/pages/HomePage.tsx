@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { HomeSlideDto, PaginatedResult, PostListItemDto } from "@congdoan/types";
+import {
+  DIGITAL_HANDBOOK_CATEGORY_SLUG,
+  DIGITAL_HANDBOOK_PATH,
+  type HomeSlideDto,
+  type PaginatedResult,
+  type PostListItemDto,
+  type PublicSurveyListItemDto
+} from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PostCard } from "@/components/PostCard";
 import { HomeSlider } from "@/components/HomeSlider";
-import { Newspaper, Info, FileText, Users, Phone, LogIn } from "lucide-react";
+import { HomeBannerStrip } from "@/components/HomeBannerStrip";
+import { HomeQuickAccess } from "@/components/HomeQuickAccess";
+import { BookOpen, ClipboardList } from "lucide-react";
 
 /** Số liệu truyền thống — xác thực từ trang Giới thiệu chung web cũ (huân chương Lao động hạng Ba
  * 1986/hạng Nhất 1996, huân chương Độc lập hạng Ba 2001) — trùng nguồn với STATS trong AboutPage.tsx. */
@@ -17,49 +26,34 @@ const HERO_STATS = [
   { value: "3", label: "Huân chương" }
 ];
 
-const SHORTCUTS = [
-  {
-    to: "/tin-tuc",
-    icon: Newspaper,
-    title: "Tin tức",
-    description: "Hoạt động, thông báo và phong trào thi đua của Công đoàn trường."
-  },
-  {
-    to: "/gioi-thieu",
-    icon: Info,
-    title: "Giới thiệu",
-    description: "Chức năng, nhiệm vụ và cơ cấu tổ chức của Công đoàn UTEHY."
-  },
-  {
-    to: "/van-ban",
-    icon: FileText,
-    title: "Văn bản",
-    description: "Công văn, thông báo do Công đoàn trường ban hành và công khai."
-  },
-  {
-    to: "/danh-ba-cong-doan-vien",
-    icon: Users,
-    title: "Công đoàn viên",
-    description: "Danh bạ công khai cán bộ, giảng viên là đoàn viên Công đoàn trường."
-  },
-  {
-    to: "/lien-he",
-    icon: Phone,
-    title: "Liên hệ",
-    description: "Thông tin liên hệ Văn phòng Công đoàn trường."
-  },
-  {
-    to: "/cong-doan-vien",
-    icon: LogIn,
-    title: "Cổng đoàn viên",
-    description: "Đăng nhập để xem thông tin dành riêng cho đoàn viên đã có tài khoản."
-  }
-] as const;
+const HOME_DIGITAL_LIMIT = 3;
+
+function formatDate(dateIso: string | null): string {
+  if (!dateIso) return "";
+  return new Date(dateIso).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
+function formatSurveyDeadline(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 
 export function HomePage() {
   const [posts, setPosts] = useState<PostListItemDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [slides, setSlides] = useState<HomeSlideDto[]>([]);
+  const [handbookPosts, setHandbookPosts] = useState<PostListItemDto[] | null>(null);
+  const [surveys, setSurveys] = useState<PublicSurveyListItemDto[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +73,31 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    apiFetch<PaginatedResult<PostListItemDto>>(
+      `/posts?categorySlug=${DIGITAL_HANDBOOK_CATEGORY_SLUG}&pageSize=${HOME_DIGITAL_LIMIT}`
+    )
+      .then((result) => {
+        if (!cancelled) setHandbookPosts(result.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setHandbookPosts([]);
+      });
+
+    apiFetch<PublicSurveyListItemDto[]>("/surveys")
+      .then((data) => {
+        if (!cancelled) setSurveys((data ?? []).slice(0, HOME_DIGITAL_LIMIT));
+      })
+      .catch(() => {
+        if (!cancelled) setSurveys([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     apiFetch<HomeSlideDto[]>("/home-slides")
       // "?? []" phòng trường hợp apiFetch trả về null (vd response 200 nhưng body rỗng bất thường) —
       // slides.length ở JSX bên dưới không tự chống null, để state lọt null vào sẽ crash trắng trang.
@@ -88,15 +107,21 @@ export function HomePage() {
       });
   }, []);
 
+  const sliderSlides = slides.filter((slide) => (slide.placement ?? "SLIDER") === "SLIDER");
+  const afterSlideBanners = slides.filter((slide) => slide.placement === "AFTER_SLIDE");
+  const beforeFooterBanners = slides.filter((slide) => slide.placement === "BEFORE_FOOTER");
+
   return (
     <div>
-      {slides.length > 0 ? <HomeSlider slides={slides} /> : null}
+      {sliderSlides.length > 0 ? <HomeSlider slides={sliderSlides} /> : null}
+
+      <HomeBannerStrip banners={afterSlideBanners} className="py-4 sm:py-6" />
 
       {/* Banner giới thiệu — gradient xanh dương đậm dần, khớp bảng màu mới (xem apps/web/src/index.css,
        * --chart-5 cùng tông #0f2a6b). Trước là "to-[#78171b]" (đỏ) sót lại từ bảng màu cũ, gây lệch
-       * tông khi đổi sang xanh dương làm màu chủ đạo. */}
-      <section className="bg-gradient-to-br from-primary to-[#0f2a6b] text-primary-foreground">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+       * tông khi đổi sang xanh dương làm màu chủ đạo. pb lớn hơn để card truy cập nhanh gối lên mép. */}
+      <section className="bg-gradient-to-br from-primary to-[#0f2a6b] pb-16 text-primary-foreground sm:pb-20">
+        <div className="mx-auto max-w-6xl px-4 pt-16 sm:pt-20">
           <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
             Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên
           </p>
@@ -134,31 +159,129 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Lối tắt */}
-      <section className="mx-auto max-w-6xl px-4 py-12">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SHORTCUTS.map((item) => (
-            <Link key={item.to} to={item.to}>
-              <Card className="h-full transition-shadow hover:shadow-md">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <item.icon className="size-5" />
-                    </span>
-                    <CardTitle className="text-base">{item.title}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+      <div className="-mt-10 pb-10 sm:-mt-12 sm:pb-12">
+        <HomeQuickAccess />
+      </div>
+
+      {/* Cẩm nang số + khảo sát — một section Tiện ích số trên trang chủ */}
+      <section className="bg-muted/40">
+        <div className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <h2 className="text-2xl font-bold">Tiện ích số</h2>
+            <Button asChild variant="link" className="shrink-0">
+              <Link to="/tien-ich-so-cong-doan">Tất cả tiện ích →</Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <BookOpen className="size-5 text-primary" />
+                  Cẩm nang - Kiến thức số
+                </h3>
+                <Button asChild variant="link" className="h-auto p-0">
+                  <Link to={DIGITAL_HANDBOOK_PATH}>Xem tất cả →</Link>
+                </Button>
+              </div>
+              {handbookPosts === null ? (
+                <div className="space-y-3">
+                  {Array.from({ length: HOME_DIGITAL_LIMIT }).map((_, index) => (
+                    <Skeleton key={index} className="h-24 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : handbookPosts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Chưa có bài viết trong mục này.</p>
+              ) : (
+                <div className="space-y-3">
+                  {handbookPosts.map((post) => (
+                    <Link key={post.id} to={`${DIGITAL_HANDBOOK_PATH}/${post.slug}`} className="block">
+                      <Card className="transition-shadow hover:shadow-md">
+                        <CardContent className="flex gap-4 py-4">
+                          <div className="hidden size-20 shrink-0 overflow-hidden rounded-md bg-muted sm:block">
+                            {post.coverImageUrl ? (
+                              <img
+                                src={post.coverImageUrl}
+                                alt=""
+                                className="size-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="flex size-full items-center justify-center text-primary">
+                                <BookOpen className="size-6" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-2 font-medium hover:text-primary">{post.title}</p>
+                            {post.excerpt ? (
+                              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.excerpt}</p>
+                            ) : null}
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {formatDate(post.publishedAt ?? post.createdAt)}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <ClipboardList className="size-5 text-primary" />
+                  Khảo sát ý kiến
+                </h3>
+                <Button asChild variant="link" className="h-auto p-0">
+                  <Link to="/tien-ich-so-cong-doan/khao-sat">Xem tất cả →</Link>
+                </Button>
+              </div>
+              {surveys === null ? (
+                <div className="space-y-3">
+                  {Array.from({ length: HOME_DIGITAL_LIMIT }).map((_, index) => (
+                    <Skeleton key={index} className="h-24 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : surveys.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Hiện chưa có khảo sát nào đang mở.</p>
+              ) : (
+                <div className="space-y-3">
+                  {surveys.map((survey) => {
+                    const deadline = formatSurveyDeadline(survey.endAt);
+                    return (
+                      <Link key={survey.id} to={`/tien-ich-so-cong-doan/khao-sat/${survey.id}`} className="block">
+                        <Card className="transition-shadow hover:shadow-md">
+                          <CardContent className="flex gap-4 py-4">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <ClipboardList className="size-5" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-2 font-medium hover:text-primary">{survey.title}</p>
+                              {survey.description ? (
+                                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{survey.description}</p>
+                              ) : null}
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {survey.questionCount} câu hỏi
+                                {deadline ? ` — hạn trả lời: ${deadline}` : ""}
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Tin tức mới nhất */}
-      <section className="mx-auto max-w-6xl px-4 pb-16">
+      <section className="mx-auto max-w-6xl px-4 pb-10">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">Tin tức mới nhất</h2>
           <Button asChild variant="link">
@@ -184,6 +307,8 @@ export function HomePage() {
           </div>
         )}
       </section>
+
+      <HomeBannerStrip banners={beforeFooterBanners} className="pb-4 pt-2 sm:pb-6" />
     </div>
   );
 }

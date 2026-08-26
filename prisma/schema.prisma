@@ -366,6 +366,11 @@ model HomeSlide {
   linkUrl   String?
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
+  /// Vị trí trên trang chủ. String (không dùng Prisma enum — SQL Server connector không hỗ trợ enum
+  /// gốc). Giá trị: SLIDER (trượt đầu trang, thay tblSlide), AFTER_SLIDE (dải ảnh ngay dưới slider),
+  /// BEFORE_FOOTER (dải ảnh ngay trên footer). Web cũ tách tblSlide / tblSlideLink; web mới gom một
+  /// bảng, admin chọn vị trí. Mặc định SLIDER để banner ETL sẵn không đổi chỗ.
+  placement String   @default("SLIDER")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

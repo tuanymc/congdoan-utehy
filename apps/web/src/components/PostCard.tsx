@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom";
-import type { PostListItemDto } from "@congdoan/types";
+import { DIGITAL_HANDBOOK_CATEGORY_SLUG, DIGITAL_HANDBOOK_PATH, type PostListItemDto } from "@congdoan/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+function postHref(post: PostListItemDto): string {
+  if (post.category.slug === DIGITAL_HANDBOOK_CATEGORY_SLUG) {
+    return `${DIGITAL_HANDBOOK_PATH}/${post.slug}`;
+  }
+  return `/tin-tuc/${post.slug}`;
+}
 
 function formatDate(dateIso: string | null): string {
   if (!dateIso) return "";
@@ -13,9 +20,10 @@ function formatDate(dateIso: string | null): string {
 }
 
 export function PostCard({ post }: { post: PostListItemDto }) {
+  const href = postHref(post);
   return (
     <Card className="overflow-hidden py-0 transition-shadow hover:shadow-md">
-      <Link to={`/tin-tuc/${post.slug}`} className="block">
+      <Link to={href} className="block">
         <div className="aspect-video w-full overflow-hidden bg-muted">
           {post.coverImageUrl ? (
             <img
@@ -36,7 +44,7 @@ export function PostCard({ post }: { post: PostListItemDto }) {
           {post.category.name}
         </Badge>
         <CardTitle className="line-clamp-2 text-base">
-          <Link to={`/tin-tuc/${post.slug}`} className="hover:text-primary">
+          <Link to={href} className="hover:text-primary">
             {post.title}
           </Link>
         </CardTitle>

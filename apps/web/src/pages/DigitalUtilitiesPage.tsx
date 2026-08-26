@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CalendarCheck, ClipboardList, FileText, HandHeart, Sparkles, Users } from "lucide-react";
+import { BookOpen, CalendarCheck, ClipboardList, FileText, HandHeart, Sparkles, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -14,6 +14,13 @@ interface UtilityCard {
 }
 
 const UTILITIES: UtilityCard[] = [
+  {
+    icon: BookOpen,
+    title: "Cẩm nang - Kiến thức số",
+    description: "Giới thiệu, hướng dẫn và kiến thức chuyển đổi số dành cho đoàn viên.",
+    to: "/tien-ich-so-cong-doan/cam-nang-kien-thuc-so",
+    status: "available"
+  },
   {
     icon: FileText,
     title: "Kho biểu mẫu",

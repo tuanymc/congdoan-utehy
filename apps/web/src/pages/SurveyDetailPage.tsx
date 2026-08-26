@@ -60,9 +60,8 @@ export function SurveyDetailPage() {
       await apiFetch(`/surveys/${id}/responses`, { method: "POST", body: { answers: payloadAnswers } });
       setSubmitted(true);
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : "Không thể gửi câu trả lời lúc này, vui lòng thử lại sau."
-      );
+      const message = err instanceof Error ? err.message.trim() : "";
+      setSubmitError(message || "Không thể gửi câu trả lời lúc này, vui lòng thử lại sau.");
     } finally {
       setIsSubmitting(false);
     }

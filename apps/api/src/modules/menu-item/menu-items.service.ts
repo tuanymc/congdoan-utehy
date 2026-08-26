@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import type { MenuItemDto, PublicMenuItemDto } from "@congdoan/types";
+import { DIGITAL_HANDBOOK_CATEGORY_SLUG, type MenuItemDto, type PublicMenuItemDto } from "@congdoan/types";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
 import { CreateMenuItemDto } from "./dto/create-menu-item.dto";
@@ -10,9 +10,17 @@ import { UpdateMenuItemDto } from "./dto/update-menu-item.dto";
  * =false — vì đã có mục menu riêng trỏ thẳng tới ("tin-tuc-khac" -> "Ý kiến Công đoàn viên",
  * "van-hoa-doc" -> "Văn hóa đọc"), hoặc vì tên chuyên mục trùng với 1 khu vực khác của site nhưng
  * không phải cùng nội dung ("van-ban"/"tin-chung" là chuyên mục bài viết thật, không phải trang Văn
- * bản/Công văn). Giữ y hệt danh sách loại trừ từng hard-code ở apps/web Header.tsx trước khi menu
- * được đưa vào quản lý qua admin (xem lịch sử đổi menu trong git log Header.tsx). */
-const AUTO_CATEGORY_EXCLUDED_SLUGS = new Set(["gioi-thieu", "van-ban", "tin-chung", "tin-tuc-khac", "van-hoa-doc"]);
+ * bản/Công văn). "cam-nang-kien-thuc-so" thuộc Tiện ích số, không phải Tin hoạt động. Giữ y hệt danh
+ * sách loại trừ từng hard-code ở apps/web Header.tsx trước khi menu được đưa vào quản lý qua admin
+ * (xem lịch sử đổi menu trong git log Header.tsx). */
+const AUTO_CATEGORY_EXCLUDED_SLUGS = new Set([
+  "gioi-thieu",
+  "van-ban",
+  "tin-chung",
+  "tin-tuc-khac",
+  "van-hoa-doc",
+  DIGITAL_HANDBOOK_CATEGORY_SLUG
+]);
 
 @Injectable()
 export class MenuItemsService {

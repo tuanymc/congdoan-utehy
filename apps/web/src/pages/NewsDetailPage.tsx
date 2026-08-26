@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import type { PaginatedResult, PostDetailDto, PostListItemDto } from "@congdoan/types";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import {
+  DIGITAL_HANDBOOK_CATEGORY_SLUG,
+  DIGITAL_HANDBOOK_PATH,
+  type PaginatedResult,
+  type PostDetailDto,
+  type PostListItemDto
+} from "@congdoan/types";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +27,8 @@ function formatDate(dateIso: string | null): string {
 
 export function NewsDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const isHandbookRoute = location.pathname.startsWith(DIGITAL_HANDBOOK_PATH);
   const [post, setPost] = useState<PostDetailDto | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +93,9 @@ export function NewsDetailPage() {
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
         <p className="text-destructive">{error}</p>
         <Button asChild variant="link">
-          <Link to="/tin-tuc">Quay lại danh sách tin tức</Link>
+          <Link to={isHandbookRoute ? DIGITAL_HANDBOOK_PATH : "/tin-tuc"}>
+            {isHandbookRoute ? "Quay lại Cẩm nang - Kiến thức số" : "Quay lại danh sách tin tức"}
+          </Link>
         </Button>
       </div>
     );
@@ -104,9 +114,21 @@ export function NewsDetailPage() {
     );
   }
 
+  const isHandbook = post.category.slug === DIGITAL_HANDBOOK_CATEGORY_SLUG;
+  const listHref = isHandbook ? DIGITAL_HANDBOOK_PATH : "/tin-tuc";
+  const itemHref = (itemSlug: string) =>
+    isHandbook ? `${DIGITAL_HANDBOOK_PATH}/${itemSlug}` : `/tin-tuc/${itemSlug}`;
+
+  if (isHandbook && !isHandbookRoute) {
+    return <Navigate to={`${DIGITAL_HANDBOOK_PATH}/${post.slug}`} replace />;
+  }
+  if (!isHandbook && isHandbookRoute) {
+    return <Navigate to={`/tin-tuc/${post.slug}`} replace />;
+  }
+
   const sidebarItems: DetailSidebarItem[] = (otherPosts ?? []).map((item) => ({
     id: item.id,
-    href: `/tin-tuc/${item.slug}`,
+    href: itemHref(item.slug),
     title: item.title,
     meta: formatDate(item.publishedAt ?? item.createdAt)
   }));
@@ -118,7 +140,9 @@ export function NewsDetailPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <article className="min-w-0 lg:col-span-2">
           <Button asChild variant="link" className="mb-4 h-auto p-0">
-            <Link to="/tin-tuc">← Quay lại danh sách tin tức</Link>
+            <Link to={listHref}>
+              {isHandbook ? "← Quay lại Cẩm nang - Kiến thức số" : "← Quay lại danh sách tin tức"}
+            </Link>
           </Button>
 
           <Badge variant="secondary">{post.category.name}</Badge>
@@ -159,10 +183,10 @@ export function NewsDetailPage() {
         <aside className="lg:col-span-1">
           <div className="lg:sticky lg:top-20">
             <DetailSidebar
-              title="Tin tức khác"
+              title={isHandbook ? "Bài viết khác" : "Tin tức khác"}
               items={sidebarItems}
               isLoading={otherPosts === null}
-              viewAllHref={`/tin-tuc?category=${post.category.slug}`}
+              viewAllHref={isHandbook ? DIGITAL_HANDBOOK_PATH : `/tin-tuc?category=${post.category.slug}`}
               viewAllLabel="Xem tất cả"
               emptyLabel="Chưa có bài viết khác trong chuyên mục này."
             />

@@ -1,5 +1,12 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import type { PaginatedResult, PaginationQuery, PostDetailDto, PostListItemDto, PostStatus } from "@congdoan/types";
+import {
+  DIGITAL_HANDBOOK_CATEGORY_SLUG,
+  type PaginatedResult,
+  type PaginationQuery,
+  type PostDetailDto,
+  type PostListItemDto,
+  type PostStatus
+} from "@congdoan/types";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
@@ -50,7 +57,7 @@ export class PostsService {
       status: "PUBLISHED",
       ...(query.categorySlug
         ? { category: { slug: query.categorySlug } }
-        : { category: { slug: { not: "van-ban" } } }),
+        : { category: { slug: { notIn: ["van-ban", DIGITAL_HANDBOOK_CATEGORY_SLUG] } } }),
       ...(query.search ? { title: { contains: query.search } } : {})
     };
 
