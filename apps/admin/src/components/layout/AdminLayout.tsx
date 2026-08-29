@@ -19,6 +19,7 @@ import {
   Mail,
   Menu,
   Newspaper,
+  Scale,
   Settings,
   Sparkles,
   Tags,
@@ -76,7 +77,8 @@ const DIGITAL_NAV_ITEMS: NavItem[] = [
   { to: "/public-service-procedures", label: "Thủ tục dịch vụ công", icon: FileText },
   { to: "/public-service-links", label: "Đường dẫn dịch vụ công", icon: Link2 },
   { to: "/public-service-support-requests", label: "Công đoàn hỗ trợ tôi", icon: HandHeart },
-  { to: "/public-service-notices", label: "Cảnh báo và nhắc việc", icon: BellRing }
+  { to: "/public-service-notices", label: "Cảnh báo và nhắc việc", icon: BellRing },
+  { to: "/legal-education-campaigns", label: "Phổ biến pháp luật", icon: Scale }
 ];
 
 // "sitesetting"/"user" chỉ cấp cho ADMIN (không nằm trong clerkManagedModules ở prisma/seed.ts).

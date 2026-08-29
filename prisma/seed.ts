@@ -12,6 +12,7 @@ import { hash } from "bcryptjs";
 import { SYSTEM_ROLES } from "../packages/types/src/common";
 import type { PublicServiceProcedureCategory } from "../packages/types/src/public-service";
 import { seedUnionSatisfactionSurvey } from "./seed-survey-content";
+import { seedLegalEducationQ3_2026 } from "./seed-legal-education-q3-2026";
 
 const prisma = new PrismaClient();
 
@@ -45,7 +46,8 @@ const PERMISSION_SEED = [
   "publicserviceprocedure",
   "publicservicelink",
   "publicservicesupportrequest",
-  "publicservicenotice"
+  "publicservicenotice",
+  "legaleducation"
 ].flatMap((module) =>
   ["view", "create", "update", "delete"].map((action) => ({
     key: `${module}:${action}`,
@@ -131,7 +133,8 @@ async function main() {
     "publicserviceprocedure",
     "publicservicelink",
     "publicservicesupportrequest",
-    "publicservicenotice"
+    "publicservicenotice",
+    "legaleducation"
   ];
   const clerkDocumentPermissions = await prisma.permission.findMany({
     where: { module: { in: clerkManagedModules }, action: { in: ["view", "create", "update"] } }
@@ -632,6 +635,9 @@ async function main() {
 
   console.log("Seeding khảo sát ý kiến đoàn viên (nội dung chính thức, thay bản test)...");
   await seedUnionSatisfactionSurvey(prisma);
+
+  console.log("Seeding phổ biến pháp luật Quý III/2026 (tài liệu công khai, bài thi chờ rà soát đáp án)...");
+  await seedLegalEducationQ3_2026(prisma);
 
   console.log("Done. Tài khoản admin mặc định:", adminEmail, "(đổi mật khẩu ngay sau lần đăng nhập đầu tiên)");
 }

@@ -19,6 +19,7 @@ import { EventsModule } from "./modules/events/events.module";
 import { AiToolsModule } from "./modules/ai-tools/ai-tools.module";
 import { SurveysModule } from "./modules/surveys/surveys.module";
 import { PublicServicesModule } from "./modules/public-services/public-services.module";
+import { LegalEducationModule } from "./modules/legal-education/legal-education.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 
 @Module({
@@ -42,6 +43,7 @@ import { UploadsModule } from "./modules/uploads/uploads.module";
     AiToolsModule,
     SurveysModule,
     PublicServicesModule,
+    LegalEducationModule,
     UploadsModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }]

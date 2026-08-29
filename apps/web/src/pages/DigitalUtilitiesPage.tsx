@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BookOpen, CalendarCheck, ClipboardList, FileText, HandHeart, Sparkles, Users } from "lucide-react";
+import { BookOpen, CalendarCheck, ClipboardList, FileText, HandHeart, Scale, Sparkles, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -54,6 +54,13 @@ const UTILITIES: UtilityCard[] = [
     title: "Công cụ AI",
     description: "Kho công cụ AI hữu ích phục vụ giảng dạy, nghiên cứu — dành riêng cho đoàn viên đã đăng nhập.",
     to: "/tien-ich-so-cong-doan/cong-cu-ai",
+    status: "available"
+  },
+  {
+    icon: Scale,
+    title: "Phổ biến pháp luật",
+    description: "Tài liệu giáo dục pháp luật và thi trắc nghiệm kiến thức dành cho công đoàn viên.",
+    to: "/tien-ich-so-cong-doan/pho-bien-phap-luat",
     status: "available"
   },
   {

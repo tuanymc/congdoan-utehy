@@ -18,7 +18,8 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "migrate:legacy": "tsx prisma/migrate-legacy-content.ts",
     "migrate:van-ban-forms": "tsx prisma/migrate-van-ban-posts-to-forms.ts",
-    "seed:survey": "tsx prisma/seed-survey-content.ts"
+    "seed:survey": "tsx prisma/seed-survey-content.ts",
+    "seed:legal-education": "tsx prisma/seed-legal-education-q3-2026.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

@@ -13,6 +13,7 @@ import {
   Lock,
   Mail,
   Phone,
+  Scale,
   Sparkles,
   UserRound
 } from "lucide-react";
@@ -62,6 +63,12 @@ const QUICK_UTILITIES = [
     title: "Dịch vụ công",
     description: "Tra cứu thủ tục và gửi yêu cầu Công đoàn hỗ trợ.",
     to: "/tien-ich-so-cong-doan/dich-vu-cong"
+  },
+  {
+    icon: Scale,
+    title: "Phổ biến pháp luật",
+    description: "Đọc tài liệu và thi trắc nghiệm kiến thức pháp luật.",
+    to: "/tien-ich-so-cong-doan/pho-bien-phap-luat"
   },
   {
     icon: Sparkles,

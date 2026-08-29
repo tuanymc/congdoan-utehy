@@ -13,5 +13,6 @@ export * from "./event";
 export * from "./ai-tool-resource";
 export * from "./survey";
 export * from "./public-service";
+export * from "./legal-education";
 export * from "./dashboard";
 export * from "./upload";

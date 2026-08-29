@@ -29,7 +29,8 @@ export function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      navigate("/cong-doan-vien", { replace: true });
+      const state = location.state as LocationState | null;
+      navigate(state?.from?.pathname ?? "/cong-doan-vien", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {

@@ -54,6 +54,9 @@ model User {
   /// Không phải User nào cũng là công đoàn viên (vd tài khoản ADMIN/UNION_CLERK thuần quản trị).
   linkedUnionMembers UnionMember[]
 
+  /// Lượt thi trắc nghiệm phổ biến pháp luật — 1 user có thể thi nhiều đợt / nhiều lần (xem maxAttempts).
+  legalExamAttempts LegalExamAttempt[]
+
   @@map("users")
 }
 
@@ -1114,6 +1117,141 @@ model PublicServiceNotice {
 
   @@index([isActive, isPinned, createdAt])
   @@map("public_service_notices")
+}
+
+// ============================================================================
+// DOMAIN: LEGALEDUCATION — "Phổ biến pháp luật" (Tiện ích số). Tính năng MỚI, không migrate web cũ.
+// Đọc tài liệu: công khai. Thi trắc nghiệm: bắt buộc JWT, lưu kết quả từng user (không dùng Survey —
+// Survey là khảo sát ẩn danh, không điểm). Cascade: LegalExamAttemptAnswer.question dùng onDelete:
+// NoAction vì đã có đường cascade Exam -> Attempt -> Answer; thêm Exam -> Question -> Answer nữa thì
+// SQL Server báo P1012 (cùng bài học SurveyAnswer).
+// ============================================================================
+
+/// Một đợt phổ biến (vd "Quý III năm 2026") — gom tài liệu + 1 bài thi.
+model LegalEducationCampaign {
+  id           String    @id @default(uuid())
+  slug         String    @unique
+  title        String
+  summary      String?   @db.NVarChar(Max)
+  periodLabel  String?
+  startAt      DateTime?
+  endAt        DateTime?
+  isPublished  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  materials LegalEducationMaterial[]
+  exam      LegalExam?
+
+  @@map("legal_education_campaigns")
+}
+
+/// Bài tóm tắt / file PDF thuộc 1 đợt. slug unique trong phạm vi đợt (không unique toàn cục).
+model LegalEducationMaterial {
+  id         String @id @default(uuid())
+  campaignId String
+  campaign   LegalEducationCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  slug       String
+  title      String
+  excerpt    String? @db.NVarChar(Max)
+  content    String  @db.NVarChar(Max)
+  /// Đường dẫn tĩnh (vd /tai-lieu/phap-luat/tt_53_bgddt.pdf) — null nếu chỉ có HTML.
+  fileUrl    String?
+  sortOrder  Int     @default(0)
+  isPublished Boolean @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([campaignId, slug])
+  @@index([campaignId])
+  @@map("legal_education_materials")
+}
+
+/// 1-1 với đợt. Cấu hình thi do admin chỉnh từng đợt (thời lượng, điểm đạt, số lần, hiện đáp án...).
+model LegalExam {
+  id                   String    @id @default(uuid())
+  campaignId           String    @unique
+  campaign             LegalEducationCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  title                String
+  description          String?   @db.NVarChar(Max)
+  durationMinutes      Int       @default(30)
+  passingScorePercent  Int       @default(70)
+  maxAttempts          Int       @default(1)
+  revealAnswers        Boolean   @default(false)
+  shuffleQuestions     Boolean   @default(true)
+  shuffleOptions       Boolean   @default(true)
+  isOpen               Boolean   @default(false)
+  startAt              DateTime?
+  endAt                DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  questions LegalExamQuestion[]
+  attempts  LegalExamAttempt[]
+
+  @@map("legal_exams")
+}
+
+model LegalExamQuestion {
+  id                 String @id @default(uuid())
+  examId             String
+  exam               LegalExam @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  text               String @db.NVarChar(Max)
+  /// JSON mảng lựa chọn (["A. ...","B. ...",...]).
+  optionsJson        String @db.NVarChar(Max)
+  /// Chỉ số đáp án đúng trong mảng options (0-based). Không bao giờ trả về endpoint đoàn viên khi chưa nộp
+  /// (và cũng không trả sau nộp nếu exam.revealAnswers=false).
+  correctOptionIndex Int
+  sortOrder          Int    @default(0)
+
+  answers LegalExamAttemptAnswer[]
+
+  @@index([examId])
+  @@map("legal_exam_questions")
+}
+
+model LegalExamAttempt {
+  id     String @id @default(uuid())
+  examId String
+  exam   LegalExam @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  /// "IN_PROGRESS" | "SUBMITTED" | "EXPIRED"
+  status      String    @default("IN_PROGRESS") @db.VarChar(20)
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  score       Int?
+  total       Int?
+  passed      Boolean?
+
+  /// JSON mảng id câu hỏi theo thứ tự đã khóa lúc bắt đầu (để F5 không đổi đề).
+  questionOrderJson String? @db.NVarChar(Max)
+  /// JSON object questionId -> number[] (thứ tự chỉ số gốc của lựa chọn lúc hiển thị).
+  optionOrderJson   String? @db.NVarChar(Max)
+
+  answers LegalExamAttemptAnswer[]
+
+  @@index([examId, userId])
+  @@index([userId])
+  @@map("legal_exam_attempts")
+}
+
+model LegalExamAttemptAnswer {
+  id         String @id @default(uuid())
+  attemptId  String
+  attempt    LegalExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  questionId String
+  /// onDelete: NoAction — tránh 2 đường cascade hội tụ (Exam->Attempt->Answer và Exam->Question->Answer).
+  /// Service phải tự xoá answer trước khi xoá question (giống SurveysService.removeQuestion).
+  question   LegalExamQuestion @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  selectedOptionIndex Int?
+  isCorrect           Boolean?
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("legal_exam_attempt_answers")
 }
 
 // ============================================================================

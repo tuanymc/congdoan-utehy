@@ -34,6 +34,8 @@
  *                            chú), KHÔNG có create/deleteOne thật ở BE — UI (PublicServiceSupportRequestList.tsx)
  *                            chỉ dùng useList/useOne/useUpdate, không bao giờ gọi useCreate/useDelete
  *                            cho resource này, xem PublicServiceSupportRequestsController).
+ *  - "legal-education-campaigns"       -> /admin/legal-education/campaigns (không phân trang; tài liệu/
+ *                            câu hỏi/kết quả là tài nguyên con, gọi thẳng apiFetch).
  *
  * Chỉ implement getList, getOne, create, update, deleteOne — đủ dùng cho toàn bộ UI CRUD hiện tại.
  */
@@ -60,7 +62,8 @@ type ResourceName =
   | "public-service-procedures"
   | "public-service-links"
   | "public-service-notices"
-  | "public-service-support-requests";
+  | "public-service-support-requests"
+  | "legal-education-campaigns";
 
 /** Resource nhỏ, không phân trang ở BE — getList trả về toàn bộ mảng (giống "categories"/"document-types"). */
 const UNPAGINATED_RESOURCES: ResourceName[] = [
@@ -76,7 +79,8 @@ const UNPAGINATED_RESOURCES: ResourceName[] = [
   "public-service-procedures",
   "public-service-links",
   "public-service-notices",
-  "public-service-support-requests"
+  "public-service-support-requests",
+  "legal-education-campaigns"
 ];
 
 interface ResourcePaths {
@@ -228,6 +232,13 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/public-service-support-requests",
     update: (id) => `/admin/public-service-support-requests/${id}`,
     remove: (id) => `/admin/public-service-support-requests/${id}`
+  },
+  "legal-education-campaigns": {
+    list: "/admin/legal-education/campaigns",
+    one: (id) => `/admin/legal-education/campaigns/${id}`,
+    create: "/admin/legal-education/campaigns",
+    update: (id) => `/admin/legal-education/campaigns/${id}`,
+    remove: (id) => `/admin/legal-education/campaigns/${id}`
   }
 };
 

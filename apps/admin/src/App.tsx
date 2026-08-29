@@ -58,6 +58,11 @@ import { PublicServiceLinkForm } from "./pages/public-service-links/PublicServic
 import { PublicServiceNoticeList } from "./pages/public-service-notices/PublicServiceNoticeList";
 import { PublicServiceNoticeForm } from "./pages/public-service-notices/PublicServiceNoticeForm";
 import { PublicServiceSupportRequestList } from "./pages/public-service-support-requests/PublicServiceSupportRequestList";
+import { LegalEducationCampaignList } from "./pages/legal-education/LegalEducationCampaignList";
+import { LegalEducationCampaignForm } from "./pages/legal-education/LegalEducationCampaignForm";
+import { LegalEducationMaterialsPage } from "./pages/legal-education/LegalEducationMaterialsPage";
+import { LegalEducationQuestionsPage } from "./pages/legal-education/LegalEducationQuestionsPage";
+import { LegalEducationResultsPage } from "./pages/legal-education/LegalEducationResultsPage";
 
 // Deploy làm sub-application "/admin" trên cùng domain với trang công khai (xem
 // deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md) — router phải biết trước "/admin" để các link nội
@@ -207,6 +212,13 @@ export function App() {
             create: "/public-service-notices/create",
             edit: "/public-service-notices/edit/:id",
             meta: { label: "Cảnh báo và nhắc việc" }
+          },
+          {
+            name: "legal-education-campaigns",
+            list: "/legal-education-campaigns",
+            create: "/legal-education-campaigns/create",
+            edit: "/legal-education-campaigns/edit/:id",
+            meta: { label: "Phổ biến pháp luật" }
           }
         ]}
         options={{
@@ -472,6 +484,22 @@ export function App() {
               <Route index element={<PublicServiceNoticeList />} />
               <Route path="create" element={<PublicServiceNoticeForm mode="create" />} />
               <Route path="edit/:id" element={<PublicServiceNoticeForm mode="edit" />} />
+            </Route>
+
+            <Route
+              path="/legal-education-campaigns"
+              element={
+                <RequireDocumentAccess>
+                  <Outlet />
+                </RequireDocumentAccess>
+              }
+            >
+              <Route index element={<LegalEducationCampaignList />} />
+              <Route path="create" element={<LegalEducationCampaignForm mode="create" />} />
+              <Route path="edit/:id" element={<LegalEducationCampaignForm mode="edit" />} />
+              <Route path=":id/materials" element={<LegalEducationMaterialsPage />} />
+              <Route path=":id/questions" element={<LegalEducationQuestionsPage />} />
+              <Route path=":id/results" element={<LegalEducationResultsPage />} />
             </Route>
 
             <Route

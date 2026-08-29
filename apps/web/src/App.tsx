@@ -26,6 +26,10 @@ import { PublicServiceProcedureDetailPage } from "./pages/public-service/PublicS
 import { PublicServiceLinksPage } from "./pages/public-service/PublicServiceLinksPage";
 import { PublicServiceSupportPage } from "./pages/public-service/PublicServiceSupportPage";
 import { PublicServiceNoticesPage } from "./pages/public-service/PublicServiceNoticesPage";
+import { LegalEducationHubPage } from "./pages/legal-education/LegalEducationHubPage";
+import { LegalEducationCampaignPage } from "./pages/legal-education/LegalEducationCampaignPage";
+import { LegalEducationMaterialPage } from "./pages/legal-education/LegalEducationMaterialPage";
+import { LegalExamPage } from "./pages/legal-education/LegalExamPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 export default function App() {
@@ -54,6 +58,17 @@ export default function App() {
         <Route path="tien-ich-so-cong-doan/dich-vu-cong/lien-ket" element={<PublicServiceLinksPage />} />
         <Route path="tien-ich-so-cong-doan/dich-vu-cong/ho-tro" element={<PublicServiceSupportPage />} />
         <Route path="tien-ich-so-cong-doan/dich-vu-cong/thong-bao" element={<PublicServiceNoticesPage />} />
+        <Route path="tien-ich-so-cong-doan/pho-bien-phap-luat" element={<LegalEducationHubPage />} />
+        <Route
+          path="tien-ich-so-cong-doan/pho-bien-phap-luat/:slug/thi"
+          element={
+            <ProtectedRoute>
+              <LegalExamPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="tien-ich-so-cong-doan/pho-bien-phap-luat/:slug/:materialSlug" element={<LegalEducationMaterialPage />} />
+        <Route path="tien-ich-so-cong-doan/pho-bien-phap-luat/:slug" element={<LegalEducationCampaignPage />} />
         <Route
           path="tien-ich-so-cong-doan/cong-cu-ai"
           element={
