@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import {
   DIGITAL_HANDBOOK_CATEGORY_SLUG,
   DIGITAL_HANDBOOK_PATH,
+  LEGAL_EDUCATION_PATH,
   type HomeSlideDto,
   type PaginatedResult,
   type PostListItemDto,
+  type PublicLegalCampaignListItemDto,
   type PublicSurveyListItemDto
 } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
@@ -16,7 +18,7 @@ import { PostCard } from "@/components/PostCard";
 import { HomeSlider } from "@/components/HomeSlider";
 import { HomeBannerStrip } from "@/components/HomeBannerStrip";
 import { HomeQuickAccess } from "@/components/HomeQuickAccess";
-import { BookOpen, ClipboardList } from "lucide-react";
+import { BookOpen, ClipboardList, PencilLine, Scale } from "lucide-react";
 
 /** Số liệu truyền thống — xác thực từ trang Giới thiệu chung web cũ (huân chương Lao động hạng Ba
  * 1986/hạng Nhất 1996, huân chương Độc lập hạng Ba 2001) — trùng nguồn với STATS trong AboutPage.tsx. */
@@ -54,6 +56,7 @@ export function HomePage() {
   const [slides, setSlides] = useState<HomeSlideDto[]>([]);
   const [handbookPosts, setHandbookPosts] = useState<PostListItemDto[] | null>(null);
   const [surveys, setSurveys] = useState<PublicSurveyListItemDto[] | null>(null);
+  const [legalCampaigns, setLegalCampaigns] = useState<PublicLegalCampaignListItemDto[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +93,14 @@ export function HomePage() {
       })
       .catch(() => {
         if (!cancelled) setSurveys([]);
+      });
+
+    apiFetch<PublicLegalCampaignListItemDto[]>("/legal-education/campaigns")
+      .then((data) => {
+        if (!cancelled) setLegalCampaigns((data ?? []).slice(0, HOME_DIGITAL_LIMIT));
+      })
+      .catch(() => {
+        if (!cancelled) setLegalCampaigns([]);
       });
 
     return () => {
@@ -163,7 +174,7 @@ export function HomePage() {
         <HomeQuickAccess />
       </div>
 
-      {/* Cẩm nang số + khảo sát — một section Tiện ích số trên trang chủ */}
+      {/* Cẩm nang số + phổ biến pháp luật + khảo sát — một section Tiện ích số trên trang chủ */}
       <section className="bg-muted/40">
         <div className="mx-auto max-w-6xl px-4 py-12">
           <div className="mb-6 flex items-center justify-between gap-4">
@@ -173,7 +184,7 @@ export function HomePage() {
             </Button>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="grid gap-8 lg:grid-cols-3">
             <div>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="flex items-center gap-2 text-lg font-semibold">
@@ -224,6 +235,62 @@ export function HomePage() {
                         </CardContent>
                       </Card>
                     </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <Scale className="size-5 text-primary" />
+                  Phổ biến pháp luật
+                </h3>
+                <Button asChild variant="link" className="h-auto p-0">
+                  <Link to={LEGAL_EDUCATION_PATH}>Xem tất cả →</Link>
+                </Button>
+              </div>
+              {legalCampaigns === null ? (
+                <div className="space-y-3">
+                  {Array.from({ length: HOME_DIGITAL_LIMIT }).map((_, index) => (
+                    <Skeleton key={index} className="h-24 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : legalCampaigns.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Chưa có đợt phổ biến pháp luật nào được xuất bản.</p>
+              ) : (
+                <div className="space-y-3">
+                  {legalCampaigns.map((campaign) => (
+                    <Card key={campaign.id} className="transition-shadow hover:shadow-md">
+                      <CardContent className="flex gap-4 py-4">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <Scale className="size-5" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <Link to={`${LEGAL_EDUCATION_PATH}/${campaign.slug}`} className="block">
+                            <p className="line-clamp-2 font-medium hover:text-primary">{campaign.title}</p>
+                            {campaign.summary ? (
+                              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{campaign.summary}</p>
+                            ) : null}
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {campaign.materialCount} tài liệu
+                              {campaign.periodLabel ? ` — ${campaign.periodLabel}` : ""}
+                            </p>
+                          </Link>
+                          {campaign.examIsOpen ? (
+                            <Link
+                              to={`${LEGAL_EDUCATION_PATH}/${campaign.slug}/thi`}
+                              className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                            >
+                              <PencilLine className="size-3.5" />
+                              Thi trắc nghiệm pháp luật
+                            </Link>
+                          ) : (
+                            <p className="mt-2 text-xs text-muted-foreground">Thi trắc nghiệm chưa mở</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}
