@@ -144,9 +144,11 @@ export async function seedUnionSatisfactionSurvey(prisma: PrismaClient): Promise
     }
   });
 
-  // Bản "test 1" chỉ để kiểm tra form — xoá câu hỏi/câu trả lời cũ rồi ghi bộ câu hỏi chính thức.
-  await prisma.surveyQuestion.deleteMany({ where: { surveyId: survey.id } });
+  // SurveyAnswer.question là onDelete: NoAction (SQL Server không cho 2 đường cascade hội tụ) —
+  // phải xoá câu trả lời trước, rồi lượt trả lời, rồi mới xoá câu hỏi.
+  await prisma.surveyAnswer.deleteMany({ where: { question: { surveyId: survey.id } } });
   await prisma.surveyResponse.deleteMany({ where: { surveyId: survey.id } });
+  await prisma.surveyQuestion.deleteMany({ where: { surveyId: survey.id } });
 
   for (const question of QUESTIONS) {
     await prisma.surveyQuestion.create({
