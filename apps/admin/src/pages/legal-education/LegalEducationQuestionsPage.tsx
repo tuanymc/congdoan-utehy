@@ -11,6 +11,14 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "../../components/ui/dialog";
 import { PageLoading } from "../../components/common/PageLoading";
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
 
@@ -118,13 +126,19 @@ export function LegalEducationQuestionsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => navigate("/legal-education-campaigns")}>
-          <ArrowLeft className="size-4" />
-          Quay lại danh sách
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => navigate("/legal-education-campaigns")}>
+            <ArrowLeft className="size-4" />
+            Quay lại danh sách
+          </Button>
+          <h1 className="text-2xl font-semibold">Câu hỏi — {campaign.title}</h1>
+          <p className="text-muted-foreground">{campaign.questions.length} câu hỏi. Đáp án đánh dấu chỉ hiện ở trang quản trị.</p>
+        </div>
+        <Button className="w-fit shrink-0" onClick={() => setFormState({ mode: "create" })}>
+          <Plus className="size-4" />
+          Thêm câu hỏi
         </Button>
-        <h1 className="text-2xl font-semibold">Câu hỏi — {campaign.title}</h1>
-        <p className="text-muted-foreground">{campaign.questions.length} câu hỏi. Đáp án đánh dấu (*) chỉ hiện ở trang quản trị.</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -158,60 +172,61 @@ export function LegalEducationQuestionsPage() {
         ))}
       </div>
 
-      {formState === null ? (
-        <Button variant="outline" className="w-fit" onClick={() => setFormState({ mode: "create" })}>
-          <Plus className="size-4" />
-          Thêm câu hỏi
-        </Button>
-      ) : (
-        <Card className="max-w-xl">
-          <CardContent className="pt-6">
-            <form className="flex flex-col gap-5" onSubmit={(event) => void handleSubmit(event)}>
-              <h2 className="font-semibold">{formState.mode === "create" ? "Thêm câu hỏi" : "Sửa câu hỏi"}</h2>
-              <div className="grid gap-2">
-                <Label htmlFor="q-text">Nội dung</Label>
-                <Textarea id="q-text" required rows={3} value={text} onChange={(event) => setText(event.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="q-options">Các lựa chọn (mỗi dòng 1 lựa chọn)</Label>
-                <Textarea id="q-options" rows={5} value={optionsText} onChange={(event) => setOptionsText(event.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Đáp án đúng</Label>
-                <Select value={correctOptionIndex} onValueChange={setCorrectOptionIndex}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {optionsText
-                      .split("\n")
-                      .map((line) => line.trim())
-                      .filter(Boolean)
-                      .map((opt, i) => (
-                        <SelectItem key={`${i}-${opt}`} value={String(i)}>
-                          Lựa chọn {i + 1}: {opt.slice(0, 80)}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="q-sort">Thứ tự</Label>
-                <Input id="q-sort" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} />
-              </div>
-              {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setFormState(null)}>
-                  Huỷ
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Đang lưu..." : "Lưu câu hỏi"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+      <Dialog
+        open={formState !== null}
+        onOpenChange={(open) => {
+          if (!open && !isSaving) setFormState(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{formState?.mode === "create" ? "Thêm câu hỏi" : "Sửa câu hỏi"}</DialogTitle>
+            <DialogDescription>Mỗi lựa chọn một dòng. Chọn đáp án đúng từ danh sách.</DialogDescription>
+          </DialogHeader>
+          <form id="legal-question-form" className="flex flex-col gap-5" onSubmit={(event) => void handleSubmit(event)}>
+            <div className="grid gap-2">
+              <Label htmlFor="q-text">Nội dung</Label>
+              <Textarea id="q-text" required rows={3} value={text} onChange={(event) => setText(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="q-options">Các lựa chọn (mỗi dòng 1 lựa chọn)</Label>
+              <Textarea id="q-options" rows={5} value={optionsText} onChange={(event) => setOptionsText(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Đáp án đúng</Label>
+              <Select value={correctOptionIndex} onValueChange={setCorrectOptionIndex}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {optionsText
+                    .split("\n")
+                    .map((line) => line.trim())
+                    .filter(Boolean)
+                    .map((opt, i) => (
+                      <SelectItem key={`${i}-${opt}`} value={String(i)}>
+                        Lựa chọn {i + 1}: {opt.slice(0, 80)}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="q-sort">Thứ tự</Label>
+              <Input id="q-sort" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} />
+            </div>
+            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+          </form>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={isSaving} onClick={() => setFormState(null)}>
+              Huỷ
+            </Button>
+            <Button type="submit" form="legal-question-form" disabled={isSaving}>
+              {isSaving ? "Đang lưu..." : "Lưu câu hỏi"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDeleteDialog
         open={deleteTarget !== null}

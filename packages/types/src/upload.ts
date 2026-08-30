@@ -5,3 +5,9 @@ export interface UploadImageResponseDto {
   /** Tên file gốc do người dùng chọn (đã làm sạch khi lưu đĩa). */
   fileName: string;
 }
+
+/** Kết quả upload file tài liệu (PDF/Word) qua POST /admin/uploads/files. */
+export interface UploadFileResponseDto {
+  url: string;
+  fileName: string;
+}

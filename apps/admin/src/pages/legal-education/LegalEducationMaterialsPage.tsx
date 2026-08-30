@@ -10,8 +10,17 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "../../components/ui/dialog";
 import { PageLoading } from "../../components/common/PageLoading";
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
+import { FileUploadField } from "../../components/common/FileUploadField";
 import { RichTextEditor } from "../../components/common/RichTextEditor";
 
 type FormState = { mode: "create" } | { mode: "edit"; material: LegalEducationMaterialDto };
@@ -113,13 +122,19 @@ export function LegalEducationMaterialsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => navigate("/legal-education-campaigns")}>
-          <ArrowLeft className="size-4" />
-          Quay lại danh sách
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => navigate("/legal-education-campaigns")}>
+            <ArrowLeft className="size-4" />
+            Quay lại danh sách
+          </Button>
+          <h1 className="text-2xl font-semibold">Tài liệu — {campaign.title}</h1>
+          <p className="text-muted-foreground">{campaign.materials.length} tài liệu.</p>
+        </div>
+        <Button className="w-fit shrink-0" onClick={() => setFormState({ mode: "create" })}>
+          <Plus className="size-4" />
+          Thêm tài liệu
         </Button>
-        <h1 className="text-2xl font-semibold">Tài liệu — {campaign.title}</h1>
-        <p className="text-muted-foreground">{campaign.materials.length} tài liệu.</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -130,7 +145,7 @@ export function LegalEducationMaterialsPage() {
                 <p className="font-medium">{m.title}</p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   <Badge variant={m.isPublished ? "default" : "secondary"}>{m.isPublished ? "Công khai" : "Nháp"}</Badge>
-                  {m.fileUrl ? <Badge variant="outline">Có PDF</Badge> : null}
+                  {m.fileUrl ? <Badge variant="outline">Có file</Badge> : null}
                 </div>
               </div>
               <div className="flex shrink-0 gap-2">
@@ -148,63 +163,69 @@ export function LegalEducationMaterialsPage() {
         ))}
       </div>
 
-      {formState === null ? (
-        <Button variant="outline" className="w-fit" onClick={() => setFormState({ mode: "create" })}>
-          <Plus className="size-4" />
-          Thêm tài liệu
-        </Button>
-      ) : (
-        <Card className="max-w-3xl">
-          <CardContent className="pt-6">
-            <form className="flex flex-col gap-5" onSubmit={(event) => void handleSubmit(event)}>
-              <h2 className="font-semibold">{formState.mode === "create" ? "Thêm tài liệu" : "Sửa tài liệu"}</h2>
+      <Dialog
+        open={formState !== null}
+        onOpenChange={(open) => {
+          if (!open && !isSaving) setFormState(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{formState?.mode === "create" ? "Thêm tài liệu" : "Sửa tài liệu"}</DialogTitle>
+            <DialogDescription>
+              Soạn nội dung tóm tắt và tải file PDF/Word đính kèm nếu có.
+            </DialogDescription>
+          </DialogHeader>
+          <form id="legal-material-form" className="flex flex-col gap-5" onSubmit={(event) => void handleSubmit(event)}>
+            <div className="grid gap-2">
+              <Label htmlFor="m-title">Tiêu đề</Label>
+              <Input id="m-title" required value={title} onChange={(event) => setTitle(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="m-excerpt">Tóm tắt ngắn</Label>
+              <Input id="m-excerpt" value={excerpt} onChange={(event) => setExcerpt(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Nội dung</Label>
+              <RichTextEditor value={content} onChange={setContent} placeholder="Soạn nội dung tóm tắt..." />
+            </div>
+            <FileUploadField
+              id="m-fileUrl"
+              label="File đính kèm"
+              value={fileUrl}
+              onChange={setFileUrl}
+              placeholder="/tai-lieu/phap-luat/tt_53_bgddt.pdf"
+            />
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="m-title">Tiêu đề</Label>
-                <Input id="m-title" required value={title} onChange={(event) => setTitle(event.target.value)} />
+                <Label htmlFor="m-sort">Thứ tự</Label>
+                <Input id="m-sort" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="m-excerpt">Tóm tắt ngắn</Label>
-                <Input id="m-excerpt" value={excerpt} onChange={(event) => setExcerpt(event.target.value)} />
+                <Label>Hiển thị</Label>
+                <Select value={isPublished} onValueChange={(value) => setIsPublished(value as "true" | "false")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Công khai</SelectItem>
+                    <SelectItem value="false">Nháp</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid gap-2">
-                <Label>Nội dung</Label>
-                <RichTextEditor value={content} onChange={setContent} placeholder="Soạn nội dung tóm tắt..." />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="m-fileUrl">Đường dẫn PDF (vd /tai-lieu/phap-luat/tt_53_bgddt.pdf)</Label>
-                <Input id="m-fileUrl" value={fileUrl} onChange={(event) => setFileUrl(event.target.value)} />
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="m-sort">Thứ tự</Label>
-                  <Input id="m-sort" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Hiển thị</Label>
-                  <Select value={isPublished} onValueChange={(value) => setIsPublished(value as "true" | "false")}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Công khai</SelectItem>
-                      <SelectItem value="false">Nháp</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setFormState(null)}>
-                  Huỷ
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Đang lưu..." : "Lưu tài liệu"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            </div>
+            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+          </form>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={isSaving} onClick={() => setFormState(null)}>
+              Huỷ
+            </Button>
+            <Button type="submit" form="legal-material-form" disabled={isSaving}>
+              {isSaving ? "Đang lưu..." : "Lưu tài liệu"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDeleteDialog
         open={deleteTarget !== null}
