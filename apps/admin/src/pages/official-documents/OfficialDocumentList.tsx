@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDelete, useList, useTable } from "@refinedev/core";
 import type { CrudFilter } from "@refinedev/core";
 import type { DocumentDirection, DocumentStatus, DocumentTypeDto, OfficialDocumentListItemDto } from "@congdoan/types";
@@ -10,14 +10,23 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
+import { cn } from "../../components/ui/utils";
 import {
   DIRECTION_LABEL,
-  DIRECTION_OPTIONS,
   FORMS_DOCUMENT_TYPE_NAME,
   STATUS_LABEL,
   STATUS_OPTIONS,
   type OfficialDocumentPurpose
 } from "./constants";
+
+const DOCUMENT_TABS: Array<{ value: DocumentDirection; label: string }> = [
+  { value: "OUTGOING", label: DIRECTION_LABEL.OUTGOING },
+  { value: "INCOMING", label: DIRECTION_LABEL.INCOMING }
+];
+
+function parseDirectionTab(value: string | null): DocumentDirection {
+  return value === "INCOMING" ? "INCOMING" : "OUTGOING";
+}
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -28,14 +37,15 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
   const isForms = purpose === "forms";
   const listBase = isForms ? "/digital-forms" : "/official-documents";
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { mutate: deleteDocument, isLoading: isDeleting } = useDelete();
   const { data: typesResult } = useList<DocumentTypeDto>({ resource: "document-types" });
   const documentTypes = typesResult?.data ?? [];
   const formsType = documentTypes.find((type) => type.name === FORMS_DOCUMENT_TYPE_NAME);
 
+  const [direction, setDirection] = useState<DocumentDirection>(() => parseDirectionTab(searchParams.get("direction")));
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [direction, setDirection] = useState<DocumentDirection | "ALL">("ALL");
   const [status, setStatus] = useState<DocumentStatus | "ALL">("ALL");
   const [documentTypeId, setDocumentTypeId] = useState<string>("ALL");
   const [deleteTarget, setDeleteTarget] = useState<OfficialDocumentListItemDto | null>(null);
@@ -60,7 +70,7 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
     if (isForms && formsType) {
       filters.push({ field: "documentTypeId", operator: "eq", value: formsType.id });
     } else {
-      if (direction !== "ALL") filters.push({ field: "direction", operator: "eq", value: direction });
+      filters.push({ field: "direction", operator: "eq", value: direction });
       if (status !== "ALL") filters.push({ field: "status", operator: "eq", value: status });
       if (documentTypeId !== "ALL") filters.push({ field: "documentTypeId", operator: "eq", value: documentTypeId });
     }
@@ -70,6 +80,13 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
   const documents = tableQueryResult.data?.data ?? [];
   const total = tableQueryResult.data?.total ?? 0;
   const isLoading = tableQueryResult.isLoading || (isForms && typesResult === undefined);
+  const columnCount = isForms ? 5 : 6;
+
+  function setDirectionTab(next: DocumentDirection) {
+    if (next === direction) return;
+    setDirection(next);
+    setCurrent(1);
+  }
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -87,10 +104,13 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
           <p className="text-muted-foreground">
             {isForms
               ? `Tổng cộng ${total} biểu mẫu — mục Công khai hiện ở trang /tien-ich-so-cong-doan/bieu-mau.`
-              : `Tổng cộng ${total} công văn.`}
+              : `Tổng cộng ${total} ${direction === "INCOMING" ? "công văn đến" : "công văn đi"}.`}
           </p>
         </div>
-        <Button onClick={() => navigate(`${listBase}/create`)} disabled={isForms && !formsType}>
+        <Button
+          onClick={() => navigate(isForms ? `${listBase}/create` : `${listBase}/create?direction=${direction}`)}
+          disabled={isForms && !formsType}
+        >
           {isForms ? "Thêm biểu mẫu" : "Thêm công văn"}
         </Button>
       </div>
@@ -102,6 +122,28 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
         </p>
       ) : null}
 
+      {isForms ? null : (
+        <div className="flex w-fit gap-1 rounded-lg border bg-muted/50 p-1" role="tablist" aria-label="Hướng công văn">
+          {DOCUMENT_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={direction === tab.value}
+              onClick={() => setDirectionTab(tab.value)}
+              className={cn(
+                "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                direction === tab.value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 lg:flex-row">
         <Input
           placeholder={isForms ? "Tìm theo tên biểu mẫu..." : "Tìm theo tiêu đề, số hiệu, nội dung..."}
@@ -111,45 +153,32 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
         />
         {isForms ? null : (
           <>
-        <Select value={documentTypeId} onValueChange={setDocumentTypeId}>
-          <SelectTrigger className="lg:max-w-56">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Tất cả loại công văn</SelectItem>
-            {documentTypes.map((type) => (
-              <SelectItem key={type.id} value={type.id}>
-                {type.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={direction} onValueChange={(value) => setDirection(value as DocumentDirection | "ALL")}>
-          <SelectTrigger className="lg:max-w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Tất cả hướng</SelectItem>
-            {DIRECTION_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={status} onValueChange={(value) => setStatus(value as DocumentStatus | "ALL")}>
-          <SelectTrigger className="lg:max-w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <Select value={documentTypeId} onValueChange={setDocumentTypeId}>
+              <SelectTrigger className="lg:max-w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả loại công văn</SelectItem>
+                {documentTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={status} onValueChange={(value) => setStatus(value as DocumentStatus | "ALL")}>
+              <SelectTrigger className="lg:max-w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </>
         )}
       </div>
@@ -158,13 +187,12 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
         <Table>
           <TableHeader>
             <TableRow>
-              {isForms ? <TableHead className="w-16">Ảnh</TableHead> : null}
+              {isForms ? <TableHead className="w-16">Ảnh</TableHead> : <TableHead>Thời gian</TableHead>}
+              {isForms ? null : <TableHead>Loại công văn</TableHead>}
+              {isForms ? null : <TableHead>Số công văn</TableHead>}
               <TableHead>Tiêu đề</TableHead>
-              {isForms ? null : <TableHead>Số hiệu</TableHead>}
-              {isForms ? null : <TableHead>Loại</TableHead>}
-              {isForms ? null : <TableHead>Hướng</TableHead>}
               {isForms ? null : <TableHead>Trạng thái</TableHead>}
-              <TableHead>{isForms ? "Ngày cập nhật" : "Ngày ban hành"}</TableHead>
+              {isForms ? <TableHead>Ngày cập nhật</TableHead> : null}
               {isForms ? <TableHead>Hiển thị</TableHead> : null}
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
@@ -173,7 +201,7 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
             {isLoading &&
               Array.from({ length: 8 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`}>
-                  <TableCell colSpan={isForms ? 5 : 7}>
+                  <TableCell colSpan={columnCount}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -181,7 +209,7 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
 
             {!isLoading && documents.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isForms ? 5 : 7} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={columnCount} className="py-8 text-center text-muted-foreground">
                   {isForms ? "Chưa có biểu mẫu nào." : "Không có công văn nào phù hợp."}
                 </TableCell>
               </TableRow>
@@ -198,23 +226,20 @@ export function OfficialDocumentList({ purpose = "documents" }: { purpose?: Offi
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                  ) : null}
-                  <TableCell className="max-w-xs truncate font-medium">{doc.title}</TableCell>
-                  {isForms ? null : (
-                    <TableCell className="text-muted-foreground">{doc.documentNumber ?? "—"}</TableCell>
+                  ) : (
+                    <TableCell className="whitespace-nowrap">{formatDate(doc.issuedAt ?? doc.createdAt)}</TableCell>
                   )}
                   {isForms ? null : <TableCell>{doc.documentType.name}</TableCell>}
                   {isForms ? null : (
-                    <TableCell>
-                      <Badge variant="outline">{DIRECTION_LABEL[doc.direction]}</Badge>
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{doc.documentNumber ?? "—"}</TableCell>
                   )}
+                  <TableCell className="max-w-xs truncate font-medium">{doc.title}</TableCell>
                   {isForms ? null : (
                     <TableCell>
                       <Badge variant="secondary">{STATUS_LABEL[doc.status]}</Badge>
                     </TableCell>
                   )}
-                  <TableCell>{formatDate(doc.issuedAt)}</TableCell>
+                  {isForms ? <TableCell>{formatDate(doc.issuedAt)}</TableCell> : null}
                   {isForms ? (
                     <TableCell>
                       <Badge variant={doc.isPublic ? "default" : "secondary"}>

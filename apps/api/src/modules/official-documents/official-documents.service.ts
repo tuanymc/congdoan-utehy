@@ -193,7 +193,13 @@ export class OfficialDocumentsService {
       this.prisma.officialDocument.findMany({
         where,
         ...documentWithRelations,
-        orderBy: { createdAt: "desc" },
+        // Quản trị: thời gian (ngày ban hành) giảm dần, rồi loại công văn, rồi số hiệu giảm dần.
+        orderBy: [
+          { issuedAt: "desc" },
+          { documentType: { name: "asc" } },
+          { documentNumber: "desc" },
+          { createdAt: "desc" }
+        ],
         skip: (page - 1) * pageSize,
         take: pageSize
       })

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useCreate, useList, useOne, useUpdate } from "@refinedev/core";
 import { Download, Trash2, Upload } from "lucide-react";
 import type {
@@ -50,6 +50,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const isForms = purpose === "forms";
   const listBase = isForms ? "/digital-forms" : "/official-documents";
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const { data: typesResult, isLoading: typesLoading } = useList<DocumentTypeDto>({ resource: "document-types" });
@@ -68,7 +69,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const [title, setTitle] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
   const [documentTypeId, setDocumentTypeId] = useState("");
-  const [direction, setDirection] = useState<DocumentDirection>("DRAFT");
+  const [direction, setDirection] = useState<DocumentDirection>("OUTGOING");
   const [status, setStatus] = useState<DocumentStatus>("SAVE_DRAFT");
   const [priority, setPriority] = useState("");
   const [isPublic, setIsPublic] = useState(false);
@@ -108,6 +109,14 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const formsType = documentTypes.find((type) => type.name === FORMS_DOCUMENT_TYPE_NAME);
 
   useEffect(() => {
+    if (mode !== "create" || isForms) return;
+    const fromQuery = searchParams.get("direction");
+    if (fromQuery === "OUTGOING" || fromQuery === "INCOMING") {
+      setDirection(fromQuery);
+    }
+  }, [mode, isForms, searchParams]);
+
+  useEffect(() => {
     if (mode !== "create" || !isForms) return;
     setIsPublic(true);
     setStatus("PUBLISHED");
@@ -118,6 +127,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const isSaving = isCreating || isUpdating;
   const isLoadingInitial = mode === "edit" && docLoading;
   const document = mode === "edit" ? docResult?.data : undefined;
+  const listUrl = isForms ? listBase : `${listBase}?direction=${direction}`;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -152,14 +162,14 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
             if (newId && pendingFiles.length > 0) {
               await uploadFilesToDocument(newId, pendingFiles);
             }
-            navigate(listBase);
+            navigate(listUrl);
           }
         }
       );
     } else if (id) {
       updateDocument(
         { resource: "official-documents", id, values: payload },
-        { onSuccess: () => navigate(listBase) }
+        { onSuccess: () => navigate(listUrl) }
       );
     }
   }
@@ -421,7 +431,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate(listBase)}>
+              <Button type="button" variant="outline" onClick={() => navigate(listUrl)}>
                 Huỷ
               </Button>
               <Button type="submit" disabled={isSaving || !documentTypeId}>
