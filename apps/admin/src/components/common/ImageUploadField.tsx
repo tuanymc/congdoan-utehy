@@ -5,7 +5,8 @@ import { apiFetchUpload, ApiError } from "../../lib/api-client";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { pushToast } from "../common/toast-store";
+import { cn } from "../ui/utils";
+import { pushToast } from "./toast-store";
 
 interface ImageUploadFieldProps {
   id: string;
@@ -14,13 +15,15 @@ interface ImageUploadFieldProps {
   onChange: (url: string) => void;
   /** Gợi ý placeholder khi chưa có URL. */
   placeholder?: string;
+  /** Class ảnh xem trước — mặc định khung ngang (ảnh bìa). */
+  previewClassName?: string;
 }
 
 /**
- * Ô ảnh bìa: vừa nhập URL thủ công, vừa chọn file upload qua POST /admin/uploads/images.
+ * Ô ảnh: vừa nhập URL thủ công, vừa chọn file upload qua POST /admin/uploads/images.
  * URL trả về root-relative (/upload/images/...) — khớp ảnh web cũ và IIS static.
  */
-export function ImageUploadField({ id, label, value, onChange, placeholder }: ImageUploadFieldProps) {
+export function ImageUploadField({ id, label, value, onChange, placeholder, previewClassName }: ImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -66,18 +69,17 @@ export function ImageUploadField({ id, label, value, onChange, placeholder }: Im
           className="hidden"
           onChange={(event) => void handleFileChange(event)}
         />
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isUploading}
-          onClick={() => inputRef.current?.click()}
-        >
+        <Button type="button" variant="outline" disabled={isUploading} onClick={() => inputRef.current?.click()}>
           {isUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
           {isUploading ? "Đang tải..." : "Tải ảnh lên"}
         </Button>
       </div>
       {value ? (
-        <img src={value} alt="Xem trước" className="mt-1 h-32 max-w-md rounded-md border object-cover" />
+        <img
+          src={value}
+          alt="Xem trước"
+          className={cn("mt-1 h-32 max-w-md rounded-md border object-cover", previewClassName)}
+        />
       ) : null}
     </div>
   );

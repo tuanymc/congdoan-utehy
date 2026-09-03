@@ -13,6 +13,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { PageLoading } from "../../components/common/PageLoading";
+import { ImageUploadField } from "../../components/common/ImageUploadField";
 import { CreateUnionMemberLoginDialog } from "./CreateUnionMemberLoginDialog";
 
 interface UnionMemberFormProps {
@@ -313,15 +314,14 @@ export function UnionMemberForm({ mode }: UnionMemberFormProps) {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="photoUrl">Ảnh đại diện (đường dẫn, không bắt buộc)</Label>
-              <Input
-                id="photoUrl"
-                placeholder="/upload/images/AnhCDV/xxx.jpg"
-                value={photoUrl}
-                onChange={(event) => setPhotoUrl(event.target.value)}
-              />
-            </div>
+            <ImageUploadField
+              id="photoUrl"
+              label="Ảnh đại diện"
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              placeholder="/upload/images/AnhCDV/xxx.jpg"
+              previewClassName="h-40 w-32 max-w-none"
+            />
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="grid gap-2">

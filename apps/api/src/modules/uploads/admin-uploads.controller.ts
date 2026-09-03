@@ -10,13 +10,14 @@ import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import type { UploadFileResponseDto, UploadImageResponseDto } from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
-import { RequirePermissions } from "../../common/decorators/roles.decorator";
+import { RequireAnyPermissions, RequirePermissions } from "../../common/decorators/roles.decorator";
 import { UploadsService, type UploadedDocumentFile, type UploadedImageFile } from "./uploads.service";
 
 /**
- * Upload ảnh công khai (ảnh bìa / ảnh trong nội dung bài viết). File ghi vào UPLOAD_IMAGES_DIR và
- * trả URL root-relative "/upload/images/..." — IIS phục vụ tĩnh từ thư mục web (không qua Nest).
- * Dùng permission "post:create" (ADMIN đã có; thao tác tạo/sửa bài đều gắn quyền này trên JWT admin).
+ * Upload ảnh công khai (ảnh bìa / ảnh trong nội dung bài viết / ảnh công đoàn viên). File ghi vào
+ * UPLOAD_IMAGES_DIR và trả URL root-relative "/upload/images/..." — IIS phục vụ tĩnh từ thư mục web
+ * (không qua Nest). Cần 1 trong các quyền tạo/sửa nội dung có dùng ảnh (ADMIN có hết; UNION_CLERK có
+ * unionmember/homeslide/document).
  */
 @ApiBearerAuth()
 @ApiTags("admin-uploads")
@@ -25,7 +26,7 @@ import { UploadsService, type UploadedDocumentFile, type UploadedImageFile } fro
 export class AdminUploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
-  @RequirePermissions("post:create")
+  @RequireAnyPermissions("post:create", "unionmember:update", "homeslide:update", "document:update")
   @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
