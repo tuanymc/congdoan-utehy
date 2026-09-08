@@ -1,7 +1,7 @@
 /**
  * Tạo tài khoản đăng nhập (vai trò MEMBER) cho công đoàn viên chưa có userId.
  * Mật khẩu mặc định: DEFAULT_UNION_MEMBER_PASSWORD (hyute123).
- * An toàn chạy lại: bỏ qua hồ sơ đã có tài khoản / thiếu email / email trùng quản trị.
+ * Không gửi email. An toàn chạy lại: bỏ qua hồ sơ đã có tài khoản / thiếu email / email trùng quản trị.
  *
  * Trên VPS (PowerShell, thư mục gốc repo, ví dụ C:\inetpub\congdoan-src):
  *   Copy-Item C:\inetpub\congdoan\shared\.env .env -Force
@@ -13,7 +13,6 @@ import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { SYSTEM_ROLES } from "../packages/types/src/common";
 import { DEFAULT_UNION_MEMBER_PASSWORD } from "../packages/types/src/union-directory";
-import { sendSmtpMail } from "../apps/api/src/common/smtp-send";
 
 loadEnv();
 const sharedEnv = "C:\\inetpub\\congdoan\\shared\\.env";
@@ -26,50 +25,6 @@ const prisma = new PrismaClient();
 
 function isValidEmail(value: string): boolean {
   return EMAIL_RE.test(value);
-}
-
-function isMailConfigured(): boolean {
-  return Boolean(process.env.SMTP_USER?.trim() && process.env.SMTP_PASSWORD);
-}
-
-async function sendAccountMail(to: string, fullName: string, staffCode: string | null): Promise<boolean> {
-  if (!isMailConfigured()) return false;
-  const loginUrl = `${(process.env.PUBLIC_WEB_URL ?? "https://congdoan.hyute.edu.vn").replace(/\/$/, "")}/dang-nhap`;
-  const from =
-    process.env.SMTP_FROM?.trim() ||
-    `Công đoàn HYUTE <${process.env.SMTP_USER?.trim() || "congdoanutehy@gmail.com"}>`;
-  const body = [
-    `Kính gửi ${fullName},`,
-    "",
-    "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên đã tạo tài khoản để bạn đăng nhập cổng thông tin công đoàn viên.",
-    "",
-    `Mã cán bộ: ${staffCode ?? "—"}`,
-    `Email đăng nhập: ${to}`,
-    `Mật khẩu: ${DEFAULT_UNION_MEMBER_PASSWORD}`,
-    "",
-    `Đăng nhập tại: ${loginUrl}`,
-    "Bạn cũng có thể đăng nhập bằng mã cán bộ. Sau khi đăng nhập, vui lòng đổi mật khẩu tại mục Bảo mật.",
-    "",
-    "Trân trọng,",
-    "Công đoàn HYUTE"
-  ].join("\n");
-  try {
-    await sendSmtpMail({
-      host: process.env.SMTP_HOST?.trim() || "smtp.gmail.com",
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: process.env.SMTP_SECURE === "true" || Number(process.env.SMTP_PORT ?? 587) === 465,
-      user: process.env.SMTP_USER!.trim(),
-      password: process.env.SMTP_PASSWORD!,
-      from,
-      to,
-      subject: "Tài khoản cổng công đoàn viên HYUTE",
-      text: body
-    });
-    return true;
-  } catch (error) {
-    console.warn(`Không gửi được email tới ${to}: ${error instanceof Error ? error.message : String(error)}`);
-    return false;
-  }
 }
 
 async function main() {
@@ -100,13 +55,12 @@ async function main() {
   let created = 0;
   let linkedExisting = 0;
   let skipped = 0;
-  let emailed = 0;
   const skipReasons: string[] = [];
 
   console.log(
     `Tìm thấy ${members.length} công đoàn viên chưa có tài khoản. Mật khẩu mặc định: ${DEFAULT_UNION_MEMBER_PASSWORD}`
   );
-  console.log(`SMTP: ${isMailConfigured() ? "đã cấu hình, sẽ gửi email" : "chưa cấu hình, chỉ tạo tài khoản"}`);
+  console.log("Không gửi email — chỉ tạo / gắn tài khoản.");
 
   for (const member of members) {
     const email = member.email?.trim() ?? "";
@@ -176,17 +130,14 @@ async function main() {
       }
     });
 
-    const emailSent = await sendAccountMail(email, member.fullName, member.legacyCode);
-    if (emailSent) emailed += 1;
     created += 1;
-    console.log(`Tạo mới: ${label} <${email}>${emailSent ? " (đã gửi email)" : ""}`);
+    console.log(`Tạo mới: ${label} <${email}>`);
   }
 
   console.log("\nKết quả:");
   console.log(`  Tạo mới: ${created}`);
   console.log(`  Gắn tài khoản sẵn có: ${linkedExisting}`);
   console.log(`  Bỏ qua: ${skipped}`);
-  console.log(`  Đã gửi email: ${emailed}`);
   if (skipReasons.length > 0) {
     console.log("\nHồ sơ bỏ qua:");
     for (const reason of skipReasons) console.log(`  - ${reason}`);

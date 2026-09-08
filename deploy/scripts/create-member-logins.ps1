@@ -34,5 +34,5 @@ if (-not (Test-Path -LiteralPath "$RepoRoot\.env")) {
   }
 }
 
-Write-Host "== Create missing union-member logins (default password hyute123) ==" -ForegroundColor Cyan
+Write-Host "== Create missing union-member logins (password hyute123, no email) ==" -ForegroundColor Cyan
 pnpm create:member-logins
