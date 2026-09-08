@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { PrismaModule } from "./prisma/prisma.module";
 import { HealthModule } from "./modules/health/health.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
@@ -22,9 +24,20 @@ import { PublicServicesModule } from "./modules/public-services/public-services.
 import { LegalEducationModule } from "./modules/legal-education/legal-education.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 
+/** PM2 cwd = apps/api — nếu .env cạnh API thiếu DOCUMENT_FILES_DIR thì lấy thêm .env gốc repo. */
+function configEnvFilePaths(): string[] {
+  const cwdEnv = join(process.cwd(), ".env");
+  const paths = [cwdEnv];
+  const repoRootEnv = join(process.cwd(), "..", "..", ".env");
+  if (existsSync(join(process.cwd(), "dist", "main.js")) && existsSync(repoRootEnv)) {
+    paths.push(repoRootEnv);
+  }
+  return paths;
+}
+
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: configEnvFilePaths() }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // giới hạn chung; auth.controller có thể siết thêm sau
     PrismaModule,
     HealthModule,

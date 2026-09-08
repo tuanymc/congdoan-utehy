@@ -62,6 +62,21 @@ describe("findAttachmentPhysicalPath", () => {
       join(base, "thuyiop", "Thông_báo_rà_soát,_thống_kê_trẻ_mồ_côi-19-8-2026--7-47-453.pdf")
     );
   });
+
+  it("tìm file admin-uploads khi DOCUMENT_FILES_DIR không chứa file nhưng extra base có", () => {
+    const extra = join(tmpdir(), `congdoan-attach-extra-${Date.now()}`);
+    const rel = "admin-uploads/5a730cdc-c594-48e1-b121-4503005cef8f/f6261501-file.pdf";
+    mkdirSync(join(extra, "admin-uploads", "5a730cdc-c594-48e1-b121-4503005cef8f"), { recursive: true });
+    writeFileSync(join(extra, rel), "ok");
+    const found = findAttachmentPhysicalPath(base, rel, [extra]);
+    expect(found).toBe(join(extra, rel));
+    rmSync(extra, { recursive: true, force: true });
+  });
+
+  it("tìm file khi path CSDL có dấu / trước DocumentFiles", () => {
+    const found = findAttachmentPhysicalPath(base, "/DocumentFiles/admin/Kế hoạch hoạt động.pdf");
+    expect(found).toBe(join(base, "admin", "Kế hoạch hoạt động.pdf"));
+  });
 });
 
 describe("contentDispositionHeader", () => {

@@ -138,6 +138,12 @@ function toDetail(d: DocumentWithRelations): OfficialDocumentDetailDto {
   };
 }
 
+function envDir(name: string, fallback: string): string {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  return raw.replace(/^["']|["']$/g, "");
+}
+
 /**
  * CRUD "Công văn" — các method không có hậu tố "Public" chỉ dùng ở trang quản trị (yêu cầu JWT +
  * permission "document:*"). Các method *Public() phục vụ PublicOfficialDocumentsController (route
@@ -151,16 +157,22 @@ export class OfficialDocumentsService {
   /// Thư mục gốc chứa file đính kèm công văn đã gộp trên server (xem deploy guide Bước 6.5 mục 3).
   /// Mặc định "<cwd>/document-files" chỉ để chạy dev cục bộ không lỗi — trên server PHẢI đặt
   /// DOCUMENT_FILES_DIR trong .env trỏ đúng "C:\inetpub\congdoan2026\document-files".
-  private readonly documentFilesDir = process.env.DOCUMENT_FILES_DIR ?? join(process.cwd(), "document-files");
+  private readonly documentFilesDir = envDir("DOCUMENT_FILES_DIR", join(process.cwd(), "document-files"));
   /// Trên production PHẢI đặt UPLOAD_IMAGES_DIR trỏ đúng "C:\inetpub\congdoan2026\web\upload\images"
   /// (cùng physical path IIS phục vụ /upload/images). Dev mặc định "./upload/images" cạnh cwd API.
-  private readonly uploadImagesDir = process.env.UPLOAD_IMAGES_DIR ?? join(process.cwd(), "upload", "images");
+  private readonly uploadImagesDir = envDir("UPLOAD_IMAGES_DIR", join(process.cwd(), "upload", "images"));
   /// Thư mục gốc site công khai (chứa upload/) — file biểu mẫu chuyển từ bài viết tin tức thường nằm
   /// "/upload/..." chứ không nằm trong document-files. Suy từ UPLOAD_IMAGES_DIR (../..).
-  private readonly publicWebDir = process.env.PUBLIC_WEB_DIR ?? join(this.uploadImagesDir, "..", "..");
+  private readonly publicWebDir = envDir("PUBLIC_WEB_DIR", join(this.uploadImagesDir, "..", ".."));
 
+  /** Thư mục khác cần dò khi DOCUMENT_FILES_DIR không khớp chỗ file thật sự được ghi (PM2 cwd=
+   * apps/api nên "./document-files" nằm cạnh API, trong khi .env gốc repo có thể trỏ inetpub). */
   private extraAttachmentBases(): string[] {
-    return [this.publicWebDir];
+    return [
+      this.publicWebDir,
+      join(process.cwd(), "document-files"),
+      join(process.cwd(), "..", "..", "document-files")
+    ];
   }
 
   constructor(
@@ -393,7 +405,9 @@ export class OfficialDocumentsService {
     );
     if (!physicalPath) {
       throw new NotFoundException(
-        "File đính kèm không tồn tại trên server — có thể chưa copy đủ thư mục DocumentFiles từ web cũ (xem deploy guide Bước 6.5 mục 3)."
+        attachment.path.startsWith("admin-uploads/")
+          ? "File đính kèm vừa tải lên không tìm thấy trên đĩa. Kiểm tra DOCUMENT_FILES_DIR trong .env (PM2 cwd là apps/api) và thư mục document-files/admin-uploads."
+          : "File đính kèm không tồn tại trên server — có thể chưa copy đủ thư mục DocumentFiles từ web cũ (xem deploy guide Bước 6.5 mục 3)."
       );
     }
     return { fileName: attachment.fileName, physicalPath };

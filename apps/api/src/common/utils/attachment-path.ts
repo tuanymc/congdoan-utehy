@@ -16,14 +16,31 @@ export function findAttachmentPhysicalPath(
   relPath: string,
   extraBaseDirs: string[] = []
 ): string | null {
-  const strippedOriginal = stripLeadingSlash(stripDocumentFilesPrefix(relPath));
-  const bases = [baseDir, ...extraBaseDirs].filter(Boolean);
+  // Bỏ slash đầu TRƯỚC rồi mới bỏ tiền tố DocumentFiles — path CSDL đôi khi là
+  // "/DocumentFiles/user/file.pdf"; làm ngược lại thì vẫn còn "DocumentFiles/..." và tìm sai chỗ.
+  const strippedOriginal = stripDocumentFilesPrefix(stripLeadingSlash(relPath));
+  const bases = uniqueResolvedDirs([baseDir, ...extraBaseDirs]);
 
   for (const base of bases) {
     const found = findInBase(base, strippedOriginal);
     if (found) return found;
   }
   return null;
+}
+
+/** Gộp các thư mục gốc tìm file, bỏ trùng (Windows không phân biệt hoa/thường). */
+export function uniqueResolvedDirs(dirs: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const dir of dirs) {
+    if (!dir) continue;
+    const resolved = resolve(dir);
+    const key = process.platform === "win32" ? resolved.toLowerCase() : resolved;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(resolved);
+  }
+  return result;
 }
 
 function findInBase(baseDir: string, strippedOriginal: string): string | null {
@@ -60,12 +77,14 @@ function stripLeadingSlash(relPath: string): string {
 }
 
 function stripDocumentFilesPrefix(relPath: string): string {
-  return relPath.replace(/^DocumentFiles[\\/]/i, "");
+  return relPath.replace(/^(?:~[/\\])?DocumentFiles[\\/]/i, "");
 }
 
 function isInsideBase(resolvedBase: string, resolvedPath: string): boolean {
-  const prefix = resolvedBase.endsWith(sep) ? resolvedBase : resolvedBase + sep;
-  return resolvedPath === resolvedBase || resolvedPath.startsWith(prefix);
+  const base = process.platform === "win32" ? resolvedBase.toLowerCase() : resolvedBase;
+  const path = process.platform === "win32" ? resolvedPath.toLowerCase() : resolvedPath;
+  const prefix = base.endsWith(sep) ? base : base + sep;
+  return path === base || path.startsWith(prefix);
 }
 
 function decodeUriLoose(value: string): string {
@@ -202,7 +221,7 @@ export function contentDispositionHeader(fileName: string, type: "inline" | "att
 
 /** Giữ cho chỗ ghi/xoá file upload mới (tên đã sanitize ASCII) — không dùng cho file ETL tiếng Việt. */
 export function resolveAttachmentPhysicalPath(baseDir: string, relPath: string): string {
-  const stripped = stripDocumentFilesPrefix(relPath);
+  const stripped = stripDocumentFilesPrefix(stripLeadingSlash(relPath));
   const resolvedBase = resolve(baseDir);
   const resolvedPath = resolve(join(resolvedBase, stripped));
   if (!isInsideBase(resolvedBase, resolvedPath)) {
