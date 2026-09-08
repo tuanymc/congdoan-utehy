@@ -4,7 +4,7 @@
  * Không gửi email. An toàn chạy lại: bỏ qua hồ sơ đã có tài khoản / thiếu email / email trùng quản trị.
  *
  * Trên VPS (PowerShell, thư mục gốc repo, ví dụ C:\inetpub\congdoan-src):
- *   Copy-Item C:\inetpub\congdoan\shared\.env .env -Force
+ *   Copy-Item C:\inetpub\congdoan2026\shared\.env .env -Force
  *   pnpm create:member-logins
  */
 import { existsSync } from "fs";
@@ -15,9 +15,13 @@ import { SYSTEM_ROLES } from "../packages/types/src/common";
 import { DEFAULT_UNION_MEMBER_PASSWORD } from "../packages/types/src/union-directory";
 
 loadEnv();
-const sharedEnv = "C:\\inetpub\\congdoan\\shared\\.env";
-if (!process.env.DATABASE_URL && existsSync(sharedEnv)) {
-  loadEnv({ path: sharedEnv });
+const sharedEnvCandidates = [
+  "C:\\inetpub\\congdoan2026\\shared\\.env",
+  "C:\\inetpub\\congdoan\\shared\\.env"
+];
+if (!process.env.DATABASE_URL) {
+  const sharedEnv = sharedEnvCandidates.find((p) => existsSync(p));
+  if (sharedEnv) loadEnv({ path: sharedEnv });
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

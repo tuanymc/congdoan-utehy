@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = "C:\inetpub\congdoan-src"
 $WebSitePath = "C:\inetpub\congdoan2026\web"
 $AdminSitePath = "C:\inetpub\congdoan2026\admin"
-$ApiEnvFile = "C:\inetpub\congdoan\shared\.env"
+$ApiEnvFile = "C:\inetpub\congdoan2026\shared\.env"
 if (-not (Test-Path $ApiEnvFile)) {
   $ApiEnvFile = "C:\inetpub\congdoan-src\apps\api\.env"
 }
@@ -46,20 +46,10 @@ Write-Host "== copy admin -> IIS ==" -ForegroundColor Cyan
 Copy-Item "$RepoRoot\apps\admin\dist\*" -Destination $AdminSitePath -Recurse -Force
 Copy-Item "$RepoRoot\deploy\iis\web.config.admin" -Destination "$AdminSitePath\web.config" -Force
 
-Write-Host "== ensure UPLOAD_IMAGES_DIR in API .env ==" -ForegroundColor Cyan
-if (Test-Path $ApiEnvFile) {
-  $envText = Get-Content $ApiEnvFile -Raw
-  if ($envText -notmatch "UPLOAD_IMAGES_DIR") {
-    Add-Content $ApiEnvFile "`r`nUPLOAD_IMAGES_DIR=C:\inetpub\congdoan2026\web\upload\images`r`n"
-    Write-Host "Added UPLOAD_IMAGES_DIR to $ApiEnvFile"
-  } else {
-    Write-Host "UPLOAD_IMAGES_DIR already set in $ApiEnvFile"
-  }
-  if ((Test-Path "$RepoRoot\apps\api\.env") -and ($ApiEnvFile -ne "$RepoRoot\apps\api\.env")) {
-    Copy-Item $ApiEnvFile -Destination "$RepoRoot\apps\api\.env" -Force
-  }
-} else {
-  Write-Warning "API .env not found ($ApiEnvFile) - add UPLOAD_IMAGES_DIR manually."
+Write-Host "== ensure production file dirs in API .env ==" -ForegroundColor Cyan
+& "$RepoRoot\deploy\scripts\ensure-env-paths.ps1" -EnvFile $ApiEnvFile
+if ((Test-Path $ApiEnvFile) -and (Test-Path "$RepoRoot\apps\api\.env") -and ($ApiEnvFile -ne "$RepoRoot\apps\api\.env")) {
+  Copy-Item $ApiEnvFile -Destination "$RepoRoot\apps\api\.env" -Force
 }
 
 Write-Host "== pm2 reload API ==" -ForegroundColor Cyan

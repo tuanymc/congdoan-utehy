@@ -21,7 +21,7 @@ param(
   [string]$AdminSitePath = "C:\inetpub\congdoan\admin",
 
   # Real .env is NOT in the repo. Keep it on the server; this script only copies it.
-  [string]$ApiEnvFile = "C:\inetpub\congdoan\shared\.env",
+  [string]$ApiEnvFile = "C:\inetpub\congdoan2026\shared\.env",
 
   [switch]$GeneratePrisma
 )
@@ -41,6 +41,14 @@ Write-Host "== Deploy union site HYUTE - env: $Environment ==" -ForegroundColor 
 
 # 1) API env next to dist/main.js (PM2 cwd)
 Write-Host "-- Deploy apps/api --"
+if (-not (Test-Path $ApiEnvFile)) {
+  $legacyEnv = "C:\inetpub\congdoan\shared\.env"
+  if (Test-Path $legacyEnv) {
+    Write-Warning "Using legacy $legacyEnv - move this file to C:\inetpub\congdoan2026\shared\.env"
+    $ApiEnvFile = $legacyEnv
+  }
+}
+& "$PSScriptRoot\ensure-env-paths.ps1" -EnvFile $ApiEnvFile
 if (Test-Path $ApiEnvFile) {
   Copy-Item $ApiEnvFile -Destination (Join-Path $ApiAppPath ".env") -Force
   Copy-Item $ApiEnvFile -Destination (Join-Path $RepoRoot ".env") -Force

@@ -28,7 +28,7 @@ chốt, xem `docs/CURSOR_PROMPT_Website_CongDoan_UTEHY.md` mục "Kiến trúc t
    ở Bước 5 trong `deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md` (đã chốt dùng 1 domain duy nhất,
    không tách subdomain riêng cho admin/api).
 5. Cài self-hosted GitHub Actions runner trên chính server này (xem `.github/workflows/ci.yml`).
-6. Tạo file `.env` thật tại `C:\inetpub\congdoan\shared\.env` (không commit vào git) theo mẫu
+6. Tạo file `.env` thật tại `C:\inetpub\congdoan2026\shared\.env` (không commit vào git) theo mẫu
    `.env.example` ở gốc repo — script `deploy.ps1` sẽ copy file này vào cạnh `dist/main.js` mỗi lần
    deploy.
 

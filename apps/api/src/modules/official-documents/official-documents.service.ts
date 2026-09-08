@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { findAttachmentPhysicalPath, resolveAttachmentPhysicalPath } from "../../common/utils/attachment-path";
+import { envDirOrProduction, PRODUCTION_DIRS } from "../../common/utils/env-dir";
 import { randomUUID } from "node:crypto";
 import type {
   DocumentDirection,
@@ -138,12 +139,6 @@ function toDetail(d: DocumentWithRelations): OfficialDocumentDetailDto {
   };
 }
 
-function envDir(name: string, fallback: string): string {
-  const raw = process.env[name]?.trim();
-  if (!raw) return fallback;
-  return raw.replace(/^["']|["']$/g, "");
-}
-
 /**
  * CRUD "Công văn" — các method không có hậu tố "Public" chỉ dùng ở trang quản trị (yêu cầu JWT +
  * permission "document:*"). Các method *Public() phục vụ PublicOfficialDocumentsController (route
@@ -155,21 +150,21 @@ function envDir(name: string, fallback: string): string {
 @Injectable()
 export class OfficialDocumentsService {
   /// Thư mục gốc chứa file đính kèm công văn đã gộp trên server (xem deploy guide Bước 6.5 mục 3).
-  /// Mặc định "<cwd>/document-files" chỉ để chạy dev cục bộ không lỗi — trên server PHẢI đặt
-  /// DOCUMENT_FILES_DIR trong .env trỏ đúng "C:\inetpub\congdoan2026\document-files".
-  private readonly documentFilesDir = envDir("DOCUMENT_FILES_DIR", join(process.cwd(), "document-files"));
-  /// Trên production PHẢI đặt UPLOAD_IMAGES_DIR trỏ đúng "C:\inetpub\congdoan2026\web\upload\images"
-  /// (cùng physical path IIS phục vụ /upload/images). Dev mặc định "./upload/images" cạnh cwd API.
-  private readonly uploadImagesDir = envDir("UPLOAD_IMAGES_DIR", join(process.cwd(), "upload", "images"));
+  /// Dev: "<cwd>/document-files". Production: inetpub nếu .env thiếu hoặc còn "./document-files".
+  private readonly documentFilesDir = envDirOrProduction("DOCUMENT_FILES_DIR", join(process.cwd(), "document-files"));
+  /// Trên production PHẢI trùng physical path IIS phục vụ /upload/images.
+  private readonly uploadImagesDir = envDirOrProduction("UPLOAD_IMAGES_DIR", join(process.cwd(), "upload", "images"));
   /// Thư mục gốc site công khai (chứa upload/) — file biểu mẫu chuyển từ bài viết tin tức thường nằm
-  /// "/upload/..." chứ không nằm trong document-files. Suy từ UPLOAD_IMAGES_DIR (../..).
-  private readonly publicWebDir = envDir("PUBLIC_WEB_DIR", join(this.uploadImagesDir, "..", ".."));
+  /// "/upload/..." chứ không nằm trong document-files.
+  private readonly publicWebDir = envDirOrProduction("PUBLIC_WEB_DIR", join(this.uploadImagesDir, "..", ".."));
 
   /** Thư mục khác cần dò khi DOCUMENT_FILES_DIR không khớp chỗ file thật sự được ghi (PM2 cwd=
-   * apps/api nên "./document-files" nằm cạnh API, trong khi .env gốc repo có thể trỏ inetpub). */
+   * apps/api nên "./document-files" nằm cạnh API, trong khi file cũ nằm ở inetpub). */
   private extraAttachmentBases(): string[] {
     return [
       this.publicWebDir,
+      PRODUCTION_DIRS.DOCUMENT_FILES_DIR,
+      PRODUCTION_DIRS.PUBLIC_WEB_DIR,
       join(process.cwd(), "document-files"),
       join(process.cwd(), "..", "..", "document-files")
     ];

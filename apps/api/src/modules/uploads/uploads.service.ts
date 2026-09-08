@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
+import { envDirOrProduction } from "../../common/utils/env-dir";
 import { randomUUID } from "node:crypto";
 import type { UploadFileResponseDto, UploadImageResponseDto } from "@congdoan/types";
 
@@ -55,12 +56,13 @@ function sanitizeFileNameForDisk(name: string): string {
  */
 @Injectable()
 export class UploadsService {
-  /// Trên production PHẢI đặt UPLOAD_IMAGES_DIR trỏ đúng "C:\inetpub\congdoan2026\web\upload\images"
-  /// (cùng physical path IIS phục vụ /upload/images). Dev mặc định "./upload/images" cạnh cwd API.
-  private readonly uploadImagesDir = process.env.UPLOAD_IMAGES_DIR ?? join(process.cwd(), "upload", "images");
-  /// File PDF/Word phổ biến pháp luật — cạnh upload/images, IIS phục vụ /upload/legal-education/...
-  private readonly uploadLegalFilesDir =
-    process.env.UPLOAD_LEGAL_FILES_DIR ?? join(this.uploadImagesDir, "..", LEGAL_FILES_SUBDIR);
+  /// Trên production: inetpub nếu .env thiếu hoặc còn "./upload/images" (cùng path IIS /upload/images).
+  private readonly uploadImagesDir = envDirOrProduction("UPLOAD_IMAGES_DIR", join(process.cwd(), "upload", "images"));
+  /// File PDF/Word phổ biến pháp luật — IIS phục vụ /upload/legal-education/...
+  private readonly uploadLegalFilesDir = envDirOrProduction(
+    "UPLOAD_LEGAL_FILES_DIR",
+    join(this.uploadImagesDir, "..", LEGAL_FILES_SUBDIR)
+  );
 
   saveImage(file: UploadedImageFile | undefined): UploadImageResponseDto {
     if (!file) {

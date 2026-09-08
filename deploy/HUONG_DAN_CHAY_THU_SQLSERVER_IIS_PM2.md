@@ -76,8 +76,8 @@ Sau khi cài ARR, mở **IIS Manager** → chọn tên **Server** ở cấp cao 
 Tạo thư mục chứa file `.env` thật, **không đặt trong thư mục repo** (để không lỡ commit):
 
 ```powershell
-mkdir C:\inetpub\congdoan\shared
-notepad C:\inetpub\congdoan\shared\.env
+mkdir C:\inetpub\congdoan2026\shared
+notepad C:\inetpub\congdoan2026\shared\.env
 ```
 
 Dán nội dung dựa theo `.env.example` ở gốc repo, chỉnh lại giá trị thật:
@@ -120,8 +120,8 @@ pnpm install --frozen-lockfile
 # QUAN TRỌNG: lệnh Prisma CLI (prisma:generate/deploy/seed) chạy từ THƯ MỤC GỐC repo, nên đọc
 # .env ở gốc repo (hoặc prisma/.env) — KHÔNG phải apps/api/.env (đó là chỗ tiến trình PM2 đọc, xem
 # Bước 4). Copy .env ra CẢ HAI chỗ:
-Copy-Item C:\inetpub\congdoan\shared\.env .env               # cho các lệnh Prisma CLI chạy ở bước này
-Copy-Item C:\inetpub\congdoan\shared\.env apps\api\.env      # cho tiến trình API chạy qua PM2 ở Bước 4
+Copy-Item C:\inetpub\congdoan2026\shared\.env .env               # cho các lệnh Prisma CLI chạy ở bước này
+Copy-Item C:\inetpub\congdoan2026\shared\.env apps\api\.env      # cho tiến trình API chạy qua PM2 ở Bước 4
 
 pnpm prisma:generate
 ```
@@ -178,7 +178,7 @@ migration để áp dụng.
 
 File `.env` ở gốc repo chỉ dùng để chạy các lệnh CLI ở bước này — không commit vào Git (đã có trong
 `.gitignore`), và không cần thiết nữa sau khi triển khai xong qua `deploy.ps1` (script đó chỉ đọc từ
-`C:\inetpub\congdoan\shared\.env`, không đụng tới file `.env` ở gốc repo).
+`C:\inetpub\congdoan2026\shared\.env`, không đụng tới file `.env` ở gốc repo).
 
 Nếu `pnpm prisma:deploy` báo lỗi kết nối, kiểm tra lại: TCP/IP đã bật ở bước 1.2 chưa, tường lửa
 Windows có chặn cổng 1433 không (`New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound

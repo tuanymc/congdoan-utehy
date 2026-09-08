@@ -6,7 +6,7 @@
 
 param(
   [string]$RepoRoot = "",
-  [string]$ApiEnvFile = "C:\inetpub\congdoan\shared\.env"
+  [string]$ApiEnvFile = "C:\inetpub\congdoan2026\shared\.env"
 )
 
 $ErrorActionPreference = "Stop"

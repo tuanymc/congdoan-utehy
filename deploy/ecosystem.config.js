@@ -17,7 +17,13 @@ module.exports = {
       autorestart: true,
       max_memory_restart: "512M",
       env: {
-        NODE_ENV: "production"
+        NODE_ENV: "production",
+        // Fallback when shared .env was copied from .env.example (relative ./document-files).
+        // dotenv does not override these; set absolute paths here so downloads keep working.
+        DOCUMENT_FILES_DIR: "C:\\inetpub\\congdoan2026\\document-files",
+        UPLOAD_IMAGES_DIR: "C:\\inetpub\\congdoan2026\\web\\upload\\images",
+        PUBLIC_WEB_DIR: "C:\\inetpub\\congdoan2026\\web",
+        UPLOAD_LEGAL_FILES_DIR: "C:\\inetpub\\congdoan2026\\web\\upload\\legal-education"
       },
       env_staging: {
         NODE_ENV: "staging"
