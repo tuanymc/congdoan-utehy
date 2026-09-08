@@ -166,6 +166,8 @@ export interface PublicLegalCampaignListItemDto {
   materialCount: number;
   examIsOpen: boolean;
   examPracticeIsOpen: boolean;
+  examEndAt: string | null;
+  examPracticeEndAt: string | null;
 }
 
 /** Chi tiết đợt công khai: tài liệu + metadata bài thi (KHÔNG câu hỏi). */

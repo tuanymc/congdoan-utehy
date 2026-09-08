@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PostCard } from "@/components/PostCard";
 import { HomeSlider } from "@/components/HomeSlider";
 import { HomeBannerStrip } from "@/components/HomeBannerStrip";
+import { HomeFeaturedEvents } from "@/components/HomeFeaturedEvents";
 import { HomeQuickAccess } from "@/components/HomeQuickAccess";
 import { BookOpen, ClipboardList, PencilLine, Scale } from "lucide-react";
 
@@ -97,7 +98,7 @@ export function HomePage() {
 
     apiFetch<PublicLegalCampaignListItemDto[]>("/legal-education/campaigns")
       .then((data) => {
-        if (!cancelled) setLegalCampaigns((data ?? []).slice(0, HOME_DIGITAL_LIMIT));
+        if (!cancelled) setLegalCampaigns(data ?? []);
       })
       .catch(() => {
         if (!cancelled) setLegalCampaigns([]);
@@ -125,6 +126,8 @@ export function HomePage() {
   return (
     <div>
       {sliderSlides.length > 0 ? <HomeSlider slides={sliderSlides} /> : null}
+
+      <HomeFeaturedEvents campaigns={legalCampaigns} />
 
       <HomeBannerStrip banners={afterSlideBanners} className="py-4 sm:py-6" />
 
@@ -260,7 +263,7 @@ export function HomePage() {
                 <p className="text-sm text-muted-foreground">Chưa có đợt phổ biến pháp luật nào được xuất bản.</p>
               ) : (
                 <div className="space-y-3">
-                  {legalCampaigns.map((campaign) => (
+                  {legalCampaigns.slice(0, HOME_DIGITAL_LIMIT).map((campaign) => (
                     <Card key={campaign.id} className="transition-shadow hover:shadow-md">
                       <CardContent className="flex gap-4 py-4">
                         <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">

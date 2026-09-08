@@ -820,7 +820,9 @@ export class LegalEducationService {
       periodLabel: c.periodLabel,
       materialCount: c.materials.length,
       examIsOpen: c.exam ? officialWindowOpen(c.exam, now) : false,
-      examPracticeIsOpen: c.exam ? practiceWindowOpen(c.exam, now) : false
+      examPracticeIsOpen: c.exam ? practiceWindowOpen(c.exam, now) : false,
+      examEndAt: toIso(c.exam?.endAt ?? null),
+      examPracticeEndAt: toIso(c.exam?.practiceEndAt ?? null)
     }));
   }
 
