@@ -1,34 +1,38 @@
-# Tạo tài khoản đăng nhập cho công đoàn viên chưa có user.
-# Mật khẩu mặc định: hyute123. An toàn chạy lại (bỏ qua người đã có tài khoản).
+# Create logins for union members who do not have a User yet.
+# Default password: hyute123. Safe to re-run (skips members who already have accounts).
 #
-# Trên VPS, PowerShell (Run as Administrator không bắt buộc):
+# On the VPS:
 #   powershell -File C:\inetpub\congdoan-src\deploy\scripts\create-member-logins.ps1
 
 param(
-  [string]$RepoRoot = "C:\inetpub\congdoan-src",
+  [string]$RepoRoot = "",
   [string]$ApiEnvFile = "C:\inetpub\congdoan\shared\.env"
 )
 
 $ErrorActionPreference = "Stop"
-
-if (-not (Test-Path $RepoRoot)) {
-  throw "Không thấy thư mục nguồn $RepoRoot. Đổi -RepoRoot cho đúng path git trên VPS."
+# Windows PowerShell 5.1 reads .ps1 as ANSI unless this file is ASCII-only.
+if (-not $RepoRoot) {
+  $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 }
 
-Set-Location $RepoRoot
-
-if (-not (Test-Path "$RepoRoot\prisma\create-missing-union-member-logins.ts")) {
-  throw "Thiếu script tạo tài khoản. Kéo code mới (git pull) rồi chạy lại."
+if (-not (Test-Path -LiteralPath $RepoRoot)) {
+  throw "Repo folder not found: $RepoRoot. Pass -RepoRoot to the real git path."
 }
 
-if (-not (Test-Path "$RepoRoot\.env")) {
-  if (Test-Path $ApiEnvFile) {
-    Copy-Item $ApiEnvFile -Destination "$RepoRoot\.env" -Force
-    Write-Host "Đã copy $ApiEnvFile -> $RepoRoot\.env"
+Set-Location -LiteralPath $RepoRoot
+
+if (-not (Test-Path -LiteralPath "$RepoRoot\prisma\create-missing-union-member-logins.ts")) {
+  throw "Missing prisma/create-missing-union-member-logins.ts. git pull then retry."
+}
+
+if (-not (Test-Path -LiteralPath "$RepoRoot\.env")) {
+  if (Test-Path -LiteralPath $ApiEnvFile) {
+    Copy-Item -LiteralPath $ApiEnvFile -Destination "$RepoRoot\.env" -Force
+    Write-Host "Copied $ApiEnvFile -> $RepoRoot\.env"
   } else {
-    throw "Không thấy .env. Tạo $ApiEnvFile (có DATABASE_URL) rồi chạy lại."
+    throw "Missing .env. Create $ApiEnvFile with DATABASE_URL then retry."
   }
 }
 
-Write-Host "== Tạo tài khoản công đoàn viên chưa có user (mật khẩu mặc định hyute123) ==" -ForegroundColor Cyan
+Write-Host "== Create missing union-member logins (default password hyute123) ==" -ForegroundColor Cyan
 pnpm create:member-logins
