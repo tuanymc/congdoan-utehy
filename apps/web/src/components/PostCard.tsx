@@ -34,7 +34,7 @@ export function PostCard({ post }: { post: PostListItemDto }) {
             />
           ) : (
             <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-              Công đoàn UTEHY
+              Công đoàn HYUTE
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 # Quy trình tổ chức thi tìm hiểu pháp luật và hướng dẫn thực hiện
 
-Áp dụng trên Website Công đoàn UTEHY — mục **Tiện ích số / Phổ biến pháp luật**.
+Áp dụng trên Website Công đoàn HYUTE — mục **Tiện ích số / Phổ biến pháp luật**.
 
 Tài liệu này vừa là quy trình tổ chức (Ban chấp hành, công đoàn bộ phận, đoàn viên), vừa là hướng dẫn thao tác trên hệ thống để bảo đảm các tiêu chí: đề thi lấy từ ngân hàng câu hỏi; mỗi bài thi trộn thứ tự câu và trộn đáp án; thời gian và số câu tùy biến; mở / khóa cuộc thi; có cửa sổ thi thử; tính điểm và thống kê theo cá nhân, theo công đoàn bộ phận.
 

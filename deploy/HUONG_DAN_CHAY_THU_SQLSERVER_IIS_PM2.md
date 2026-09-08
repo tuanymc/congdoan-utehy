@@ -89,10 +89,10 @@ JWT_ACCESS_EXPIRES_IN="15m"
 JWT_REFRESH_SECRET="<chuỗi ngẫu nhiên dài khác, đổi khác giá trị mẫu>"
 JWT_REFRESH_EXPIRES_IN="7d"
 REDIS_URL="redis://localhost:6379"
-SEED_ADMIN_EMAIL="admin@congdoan.utehy.edu.vn"
+SEED_ADMIN_EMAIL="admin@congdoan.hyute.edu.vn"
 SEED_ADMIN_PASSWORD="<mật khẩu admin ban đầu, đổi ngay sau khi đăng nhập lần đầu>"
 API_PORT=3000
-# Web và admin cùng chạy trên 1 domain congdoan.utehy.edu.vn (web ở "/", admin ở "/admin" — xem
+# Web và admin cùng chạy trên 1 domain congdoan.hyute.edu.vn (web ở "/", admin ở "/admin" — xem
 # Bước 5), nên request từ trình duyệt tới API luôn same-origin, KHÔNG bị CORS chặn. Dòng này chỉ
 # thật sự cần khi chạy "pnpm dev" cục bộ (web/admin dev server ở port riêng, khác origin với API).
 CORS_ORIGINS="http://localhost:5173,http://localhost:5174"
@@ -211,7 +211,7 @@ cần đụng đến IIS — xem `pm2 logs congdoan-api` để biết lỗi th�
 
 ## Bước 5 — Tạo 1 site IIS + 2 sub-application (1 domain duy nhất)
 
-Đã chốt dùng **1 domain duy nhất** `congdoan.utehy.edu.vn` cho cả 3 phần, chia theo đường dẫn.
+Đã chốt dùng **1 domain duy nhất** `congdoan.hyute.edu.vn` cho cả 3 phần, chia theo đường dẫn.
 
 Server này đang có sẵn **web cũ** đang chạy thật — physical path và tên site IIS bên dưới dùng
 `congdoan2026` (không phải `congdoan`) để deploy bản thử nghiệm **song song**, không đụng tới/đè lên
@@ -257,7 +257,7 @@ Import-Module WebAdministration
 # QUAN TRỌNG: web cũ nhiều khả năng ĐÃ bind sẵn hostname "congdoan.utehy.edu.vn" trên cổng 80/443 —
 # một hostname không thể gắn cho 2 site IIS cùng lúc trên cùng cổng. Vì đây là bản thử nghiệm song
 # song, tạm bind qua CỔNG RIÊNG (vd 8080) thay vì -HostHeader, test qua http://localhost:8080/ hoặc
-# http://<IP-server>:8080/. Chỉ chuyển sang -HostHeader "congdoan.utehy.edu.vn" (đổi cổng thật
+# http://<IP-server>:8080/. Chỉ chuyển sang -HostHeader "congdoan.hyute.edu.vn" (đổi cổng thật
 # 80/443) khi đã sẵn sàng CẮT hẳn sang bản mới (tắt/gỡ binding cũ trước để tránh xung đột).
 New-Website -Name "congdoan2026" -PhysicalPath "C:\inetpub\congdoan2026\web" -Port 8080
 
@@ -280,7 +280,7 @@ riêng 1 App Pool "No Managed Code" và gán qua tham số `-ApplicationPool` c�
 ## Bước 6 — Kiểm tra end-to-end
 
 Đang chạy song song ở cổng riêng `http://localhost:8080` (xem lưu ý ở Bước 5) — đổi thành
-`https://congdoan.utehy.edu.vn` sau khi cắt hẳn sang domain thật:
+`https://congdoan.hyute.edu.vn` sau khi cắt hẳn sang domain thật:
 
 1. Mở `http://localhost:8080/` — phải thấy trang chủ Công đoàn tải được.
 2. Mở `http://localhost:8080/admin/login` — đăng nhập bằng `SEED_ADMIN_EMAIL` /

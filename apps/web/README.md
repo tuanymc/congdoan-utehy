@@ -1,6 +1,6 @@
 # apps/web
 
-Frontend công khai + cổng đoàn viên của Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên.
+Frontend công khai + cổng đoàn viên của Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên.
 Vite + React 18 + TypeScript (strict) + React Router v6 + Tailwind CSS v4 + một số component
 shadcn/ui (Radix UI) được copy có chọn lọc từ `_design_reference/university-information-portal`.
 

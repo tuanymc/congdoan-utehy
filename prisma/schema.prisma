@@ -1,4 +1,4 @@
-// Prisma schema — Website Công đoàn UTEHY
+// Prisma schema — Website Công đoàn HYUTE
 // CSDL: SQL Server (giữ nguyên loại CSDL theo bản thiết kế, không đổi sang Postgres/MySQL).
 //
 // Triển khai theo 5 domain (xem docs/CURSOR_PROMPT_Website_CongDoan_UTEHY.md mục 4):
@@ -774,8 +774,8 @@ model SiteSetting {
   /// Cố định "singleton" — đảm bảo chỉ có 1 dòng duy nhất, KHÔNG @default(uuid()) như các model khác.
   id String @id @default("singleton")
 
-  siteName  String  @default("Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên")
-  shortName String  @default("Công đoàn UTEHY")
+  siteName  String  @default("Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên")
+  shortName String  @default("Công đoàn HYUTE")
   slogan    String?
   /// Đoạn giới thiệu ngắn hiển thị ở footer — KHÔNG dùng cho thẻ meta description (xem seoDescription).
   description String? @db.NVarChar(Max)

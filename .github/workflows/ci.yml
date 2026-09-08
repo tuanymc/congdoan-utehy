@@ -1,4 +1,4 @@
-name: CI/CD — Website Công đoàn UTEHY
+name: CI/CD — Website Công đoàn HYUTE
 
 # Chạy trên self-hosted runner cài trực tiếp trên Windows Server (xem deploy/README.md) — KHÔNG
 # build/push Docker image ở bất kỳ bước nào. Đây là quyết định đã chốt.

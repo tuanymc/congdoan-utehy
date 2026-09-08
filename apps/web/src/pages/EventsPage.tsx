@@ -63,7 +63,7 @@ export function EventsPage() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold">Đăng ký hoạt động</h1>
       <p className="mt-2 text-muted-foreground">
-        Các hoạt động, phong trào do Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên tổ chức — bấm vào để xem
+        Các hoạt động, phong trào do Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên tổ chức — bấm vào để xem
         chi tiết và đăng ký tham gia.
       </p>
 

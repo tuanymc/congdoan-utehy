@@ -263,7 +263,7 @@ function ProfilePanel({
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className={inputClassName}
-              placeholder="email@utehy.edu.vn"
+              placeholder="email@hyute.edu.vn"
             />
           </div>
 
@@ -487,7 +487,7 @@ export function MemberPortalPage() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <p className="text-sm font-medium text-primary">Cổng đoàn viên</p>
       <p className="mt-1 max-w-2xl text-muted-foreground">
-        Quản lý thông tin cá nhân và sử dụng các tiện ích số của Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng
+        Quản lý thông tin cá nhân và sử dụng các tiện ích số của Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng
         Yên.
       </p>
 

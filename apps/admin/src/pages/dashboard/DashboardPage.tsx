@@ -181,7 +181,7 @@ export function DashboardPage() {
           {greetingForNow()}, {identity?.fullName ?? "bạn"}
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-primary-foreground/85">
-          Tổng quan vận hành website Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — tin bài, danh bạ,
+          Tổng quan vận hành website Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — tin bài, danh bạ,
           công văn và tiện ích số.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">

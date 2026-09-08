@@ -2,7 +2,7 @@
 
 /**
  * Design tokens dùng chung cho apps/web và apps/admin — Tailwind CSS v4 (CSS-first config).
- * Bảng màu nhận diện: Xanh dương Công đoàn (chủ đạo, 60%) + Xanh lá UTEHY (điểm nhấn/CTA, 30%) +
+ * Bảng màu nhận diện: Xanh dương Công đoàn (chủ đạo, 60%) + Xanh lá HYUTE (điểm nhấn/CTA, 30%) +
  * trắng/xám nhạt (nền & phụ trợ, 10%) — theo phương án nhận diện đã chốt, thay bảng đỏ cờ/vàng sao
  * dùng tạm trước đó.
  *
@@ -22,7 +22,7 @@
   --popover-foreground: #0f172a;
   --primary: #1d4ed8;        /* xanh dương Công đoàn — chủ đạo (60%) */
   --primary-foreground: #ffffff;
-  --secondary: #43b14b;      /* xanh lá UTEHY — điểm nhấn/CTA (30%) */
+  --secondary: #43b14b;      /* xanh lá HYUTE — điểm nhấn/CTA (30%) */
   --secondary-foreground: #ffffff;
   --muted: #f8fafc;
   --muted-foreground: #64748b;

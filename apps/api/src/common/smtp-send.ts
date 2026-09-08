@@ -60,7 +60,7 @@ export async function sendSmtpMail(options: SmtpSendOptions): Promise<void> {
 }
 
 function ehloName(): string {
-  return "congdoan.utehy.edu.vn";
+  return "congdoan.hyute.edu.vn";
 }
 
 function extractAddress(from: string): string {

@@ -44,7 +44,7 @@ export function LoginPage() {
         <CardHeader>
           <CardTitle>Đăng nhập cổng đoàn viên</CardTitle>
           <CardDescription>
-            Dành cho cán bộ, giảng viên, người lao động là đoàn viên Công đoàn UTEHY. Đăng nhập bằng email
+            Dành cho cán bộ, giảng viên, người lao động là đoàn viên Công đoàn HYUTE. Đăng nhập bằng email
             hoặc mã cán bộ.
           </CardDescription>
         </CardHeader>
@@ -62,7 +62,7 @@ export function LoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="w-full rounded-md border bg-input-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
-                placeholder="ten@utehy.edu.vn hoặc mã cán bộ"
+                placeholder="ten@hyute.edu.vn hoặc mã cán bộ"
               />
             </div>
             <div className="space-y-1.5">

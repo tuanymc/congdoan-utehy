@@ -45,12 +45,12 @@ describe("AuthService", () => {
   it("từ chối đăng nhập khi sai mật khẩu", async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: "u1",
-      email: "admin@congdoan.utehy.edu.vn",
+      email: "admin@congdoan.hyute.edu.vn",
       isActive: true,
       passwordHash,
       roles: []
     });
-    await expect(service.login("admin@congdoan.utehy.edu.vn", "sai-mat-khau")).rejects.toBeInstanceOf(
+    await expect(service.login("admin@congdoan.hyute.edu.vn", "sai-mat-khau")).rejects.toBeInstanceOf(
       UnauthorizedException
     );
   });
@@ -58,7 +58,7 @@ describe("AuthService", () => {
   it("đăng nhập thành công trả về access token, refresh token và thông tin user", async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: "u1",
-      email: "admin@congdoan.utehy.edu.vn",
+      email: "admin@congdoan.hyute.edu.vn",
       fullName: "Quản trị viên",
       isActive: true,
       passwordHash,
@@ -72,13 +72,13 @@ describe("AuthService", () => {
       ]
     });
 
-    const result = await service.login("admin@congdoan.utehy.edu.vn", password);
+    const result = await service.login("admin@congdoan.hyute.edu.vn", password);
 
     expect(result.accessToken).toBeDefined();
     expect(result.refreshToken).toBeDefined();
     expect(result.user).toEqual({
       id: "u1",
-      email: "admin@congdoan.utehy.edu.vn",
+      email: "admin@congdoan.hyute.edu.vn",
       fullName: "Quản trị viên",
       roles: ["ADMIN"]
     });

@@ -148,7 +148,7 @@ async function main() {
   }
 
   console.log("Seeding admin user...");
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@congdoan.utehy.edu.vn";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@congdoan.hyute.edu.vn";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe@123";
   const passwordHash = await hash(adminPassword, 12);
 
@@ -330,20 +330,31 @@ async function main() {
     });
   }
 
-  // Cấu hình chung toàn site — chỉ "create" (update: {}), giữ đúng nội dung đang hard-code sẵn ở
-  // Footer.tsx/Header.tsx làm giá trị khởi tạo để đổi sang lấy từ CSDL mà giao diện không đổi khác gì
-  // — admin tự sửa qua trang "Cấu hình chung" sau lần seed đầu tiên, các lần seed sau không ghi đè.
+  // Cấu hình chung toàn site — lần seed này cập nhật tên trường mới (HYUTE, từ 3/9/2026). Các field
+  // khác (địa chỉ, điện thoại, logo...) giữ nguyên nếu admin đã sửa; chỉ "create" đầy đủ khi chưa có
+  // dòng cấu hình.
   console.log("Seeding cấu hình chung (site settings)...");
   await prisma.siteSetting.upsert({
     where: { id: "singleton" },
-    update: {},
+    update: {
+      siteName: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên",
+      shortName: "Công đoàn HYUTE",
+      description:
+        "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — tổ chức đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của cán bộ, giảng viên, người lao động nhà trường.",
+      copyrightText: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên. Bảo lưu mọi quyền.",
+      seoTitle: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên",
+      seoDescription:
+        "Cổng thông tin điện tử Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — tin tức, hoạt động và tiện ích số dành cho đoàn viên.",
+      seoKeywords:
+        "công đoàn, HYUTE, công đoàn HYUTE, đại học công nghệ kỹ thuật hưng yên, hung yen university of technology and engineering"
+    },
     create: {
       id: "singleton",
-      siteName: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên",
-      shortName: "Công đoàn UTEHY",
+      siteName: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên",
+      shortName: "Công đoàn HYUTE",
       slogan: "Đoàn kết – Trách nhiệm – Vì quyền lợi đoàn viên",
       description:
-        "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — tổ chức đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của cán bộ, giảng viên, người lao động nhà trường.",
+        "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — tổ chức đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của cán bộ, giảng viên, người lao động nhà trường.",
       logoUrl: "/logo.png",
       address: "Xã Dân Tiến, Huyện Khoái Châu, Tỉnh Hưng Yên",
       hotline: "0962.490.411",
@@ -352,11 +363,12 @@ async function main() {
       workingHoursWeekday: "Thứ Hai – Thứ Sáu: 7h30 – 17h00",
       workingHoursLunch: "Nghỉ trưa: 11h30 – 13h30",
       workingHoursWeekend: "Thứ Bảy, Chủ nhật: Nghỉ",
-      copyrightText: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên. Bảo lưu mọi quyền.",
-      seoTitle: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên",
+      copyrightText: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên. Bảo lưu mọi quyền.",
+      seoTitle: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên",
       seoDescription:
-        "Cổng thông tin điện tử Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — tin tức, hoạt động và tiện ích số dành cho đoàn viên.",
-      seoKeywords: "công đoàn, UTEHY, công đoàn UTEHY, đại học sư phạm kỹ thuật hưng yên"
+        "Cổng thông tin điện tử Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — tin tức, hoạt động và tiện ích số dành cho đoàn viên.",
+      seoKeywords:
+        "công đoàn, HYUTE, công đoàn HYUTE, đại học công nghệ kỹ thuật hưng yên, hung yen university of technology and engineering"
     }
   });
 

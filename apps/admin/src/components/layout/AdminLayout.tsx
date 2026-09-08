@@ -92,8 +92,8 @@ function BrandTitle() {
     <span className="flex items-center gap-2">
       {/* Logo trường/công đoàn — file tĩnh tại apps/admin/public/logo.png, xem ghi chú ở
        * apps/web/src/components/layout/Header.tsx (cùng file logo dùng chung cho cả 2 app). */}
-      <img src="/logo.png" alt="Công đoàn UTEHY" className="h-8 w-auto shrink-0" />
-      <span className="text-lg font-semibold text-primary">Công đoàn UTEHY</span>
+      <img src="/logo.png" alt="Công đoàn HYUTE" className="h-8 w-auto shrink-0" />
+      <span className="text-lg font-semibold text-primary">Công đoàn HYUTE</span>
     </span>
   );
 }
@@ -186,7 +186,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 <SidebarNav groups={navGroups} onNavigate={() => setMobileOpen(false)} />
               </SheetContent>
             </Sheet>
-            <span className="font-semibold text-primary">Công đoàn UTEHY</span>
+            <span className="font-semibold text-primary">Công đoàn HYUTE</span>
           </div>
 
           <div className="hidden md:block" />

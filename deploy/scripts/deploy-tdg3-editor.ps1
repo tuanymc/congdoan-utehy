@@ -66,5 +66,5 @@ Write-Host "== pm2 reload API ==" -ForegroundColor Cyan
 pm2 reload deploy\ecosystem.config.js --update-env
 pm2 status
 
-Write-Host "== done. Open https://congdoan.utehy.edu.vn/van-ban and Ctrl+F5 ==" -ForegroundColor Green
+Write-Host "== done. Open https://congdoan.hyute.edu.vn/van-ban and Ctrl+F5 ==" -ForegroundColor Green
 Write-Host "View Source: JS hash must differ from index-tY2hlQHo.js. Search box must appear."

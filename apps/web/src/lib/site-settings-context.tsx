@@ -11,11 +11,11 @@ import type { SiteSettingDto } from "@congdoan/types";
 import { apiFetch } from "./api-client";
 
 export const DEFAULT_SETTINGS: SiteSettingDto = {
-  siteName: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên",
-  shortName: "Công đoàn UTEHY",
+  siteName: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên",
+  shortName: "Công đoàn HYUTE",
   slogan: "Đoàn kết – Trách nhiệm – Vì quyền lợi đoàn viên",
   description:
-    "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — tổ chức đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của cán bộ, giảng viên, người lao động nhà trường.",
+    "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — tổ chức đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của cán bộ, giảng viên, người lao động nhà trường.",
   logoUrl: "/logo.png",
   address: "Xã Dân Tiến, Huyện Khoái Châu, Tỉnh Hưng Yên",
   hotline: "0962.490.411",
@@ -26,11 +26,11 @@ export const DEFAULT_SETTINGS: SiteSettingDto = {
   workingHoursWeekday: "Thứ Hai – Thứ Sáu: 7h30 – 17h00",
   workingHoursLunch: "Nghỉ trưa: 11h30 – 13h30",
   workingHoursWeekend: "Thứ Bảy, Chủ nhật: Nghỉ",
-  copyrightText: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên. Bảo lưu mọi quyền.",
-  seoTitle: "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên",
+  copyrightText: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên. Bảo lưu mọi quyền.",
+  seoTitle: "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên",
   seoDescription:
-    "Cổng thông tin điện tử Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — tin tức, hoạt động và tiện ích số dành cho đoàn viên.",
-  seoKeywords: "công đoàn, UTEHY, công đoàn UTEHY, đại học sư phạm kỹ thuật hưng yên",
+    "Cổng thông tin điện tử Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — tin tức, hoạt động và tiện ích số dành cho đoàn viên.",
+  seoKeywords: "công đoàn, HYUTE, công đoàn HYUTE, đại học công nghệ kỹ thuật hưng yên, hung yen university of technology and engineering",
   ogImageUrl: null
 };
 

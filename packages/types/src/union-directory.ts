@@ -162,7 +162,7 @@ export interface UnionMemberAdminDetailDto extends UnionMemberListItemDto {
 }
 
 /** Mật khẩu mặc định khi admin tạo tài khoản công đoàn viên (có thể chọn ngẫu nhiên thay thế). */
-export const DEFAULT_UNION_MEMBER_PASSWORD = "utehy123";
+export const DEFAULT_UNION_MEMBER_PASSWORD = "hyute123";
 
 export type CreateUnionMemberLoginPasswordMode = "default" | "random";
 

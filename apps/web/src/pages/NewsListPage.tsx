@@ -91,7 +91,7 @@ export function NewsListPage() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold">Tin tức Công đoàn</h1>
       <p className="mt-2 text-muted-foreground">
-        Thông báo, hoạt động phong trào và tin tức của Công đoàn Trường Đại học Sư phạm Kỹ thuật
+        Thông báo, hoạt động phong trào và tin tức của Công đoàn Trường Đại học Công nghệ Kỹ thuật
         Hưng Yên.
       </p>
 

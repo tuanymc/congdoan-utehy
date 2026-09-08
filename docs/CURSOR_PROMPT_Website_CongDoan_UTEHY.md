@@ -1,4 +1,4 @@
-# Prompt cho Cursor — Xây dựng lại Website Công đoàn UTEHY
+# Prompt cho Cursor — Xây dựng lại Website Công đoàn HYUTE
 
 ## Cách dùng file này
 
@@ -10,7 +10,7 @@ Nếu Cursor được cấp quyền đọc thư mục dự án cũ (`CongDoan.ut
 
 ## 0. Vai trò và nguyên tắc làm việc
 
-Bạn là kỹ sư phần mềm full-stack cấp senior, xây dựng lại **Website Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên** từ một hệ thống ASP.NET Web Forms cũ sang kiến trúc hiện đại. Tuân thủ nghiêm ngặt các nguyên tắc sau trong suốt dự án:
+Bạn là kỹ sư phần mềm full-stack cấp senior, xây dựng lại **Website Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên** từ một hệ thống ASP.NET Web Forms cũ sang kiến trúc hiện đại. Tuân thủ nghiêm ngặt các nguyên tắc sau trong suốt dự án:
 
 - Không bỏ sót bất kỳ chức năng nào trong danh sách "Chức năng kế thừa bắt buộc" ở mục 5.1. Nếu nghi ngờ một chức năng chưa rõ nghiệp vụ, dừng lại và hỏi thay vì tự suy đoán.
 - Không đổi loại cơ sở dữ liệu — bắt buộc dùng **SQL Server**. Không tự ý chuyển sang PostgreSQL/MySQL dù có lý do "dễ dùng hơn".
@@ -60,7 +60,7 @@ Toàn bộ 3 ứng dụng (public site, cổng đoàn viên, admin) đều dùng
 
 Hệ thống được deploy trực tiếp lên Windows Server đang có sẵn, theo đúng năng lực vận hành hiện tại của đội CNTT (IIS quen thuộc, PM2 quản lý tiến trình Node.js). Đây là quyết định đã chốt — Cursor **không được** tự ý đưa Docker/docker-compose vào bất kỳ phase nào, kể cả "chỉ cho local dev".
 
-- **IIS**: đóng vai trò reverse proxy/HTTPS termination phía trước tiến trình Node.js, dùng module **Application Request Routing (ARR) + URL Rewrite**. Cấu hình 3 site (hoặc 3 path/binding) trỏ tới: `apps/api` (proxy `/api/*` sang cổng nội bộ NestJS, ví dụ `127.0.0.1:3000`), `apps/web` (serve file tĩnh build ra từ Vite, hoặc proxy nếu dùng SSR), `apps/admin` (tương tự, thường tách subdomain/subpath riêng, ví dụ `admin.congdoan.utehy.edu.vn`).
+- **IIS**: đóng vai trò reverse proxy/HTTPS termination phía trước tiến trình Node.js, dùng module **Application Request Routing (ARR) + URL Rewrite**. Cấu hình 3 site (hoặc 3 path/binding) trỏ tới: `apps/api` (proxy `/api/*` sang cổng nội bộ NestJS, ví dụ `127.0.0.1:3000`), `apps/web` (serve file tĩnh build ra từ Vite, hoặc proxy nếu dùng SSR), `apps/admin` (tương tự, thường tách subdomain/subpath riêng, ví dụ `admin.congdoan.hyute.edu.vn`).
 - **PM2**: quản lý tiến trình `apps/api` (và `apps/web`/`apps/admin` nếu có phần SSR chạy Node) bằng file `ecosystem.config.js` — tự khởi động lại khi crash, chạy cluster mode theo số CPU nếu cần, ghi log ra file. Dùng `pm2-windows-startup` (hoặc NSSM) để PM2 tự khởi động cùng Windows Server khi reboot.
 - **Memurai**: cài như Windows Service riêng, kết nối qua biến môi trường `REDIS_URL` giống hệt cấu hình client Redis chuẩn (Memurai tương thích giao thức Redis).
 - **SQL Server**: chạy native trên Windows Server như hiện tại (không đổi).

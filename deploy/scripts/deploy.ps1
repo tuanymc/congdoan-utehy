@@ -23,7 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path "$PSScriptRoot\..\.."
 
-Write-Host "== Deploy Website Công đoàn UTEHY — môi trường: $Environment ==" -ForegroundColor Cyan
+Write-Host "== Deploy Website Công đoàn HYUTE — môi trường: $Environment ==" -ForegroundColor Cyan
 
 # 1) API: copy dist + node_modules (production only) + package.json, giữ nguyên .env trên server
 Write-Host "-- Deploy apps/api --"

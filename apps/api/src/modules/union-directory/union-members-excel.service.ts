@@ -236,7 +236,7 @@ export class UnionMembersExcelService {
     });
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = "Hệ thống quản trị Công đoàn UTEHY";
+    workbook.creator = "Hệ thống quản trị Công đoàn HYUTE";
     workbook.created = new Date();
 
     const sheet = workbook.addWorksheet("Công đoàn viên");

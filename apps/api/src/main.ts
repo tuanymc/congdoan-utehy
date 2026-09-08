@@ -27,8 +27,8 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("Website Công đoàn UTEHY — API")
-    .setDescription("API cho hệ thống Công đoàn UTEHY (public site, cổng đoàn viên, trang quản trị)")
+    .setTitle("Website Công đoàn HYUTE — API")
+    .setDescription("API cho hệ thống Công đoàn HYUTE (public site, cổng đoàn viên, trang quản trị)")
     .setVersion("0.1.0")
     .addBearerAuth()
     .build();

@@ -2,7 +2,7 @@
 <!--
   Mẫu web.config cho apps/api (reverse proxy sang tiến trình Node.js do PM2 quản lý, mặc định lắng
   nghe cổng nội bộ 3000 — khớp API_PORT trong .env). Đặt vào physical path của IIS Application mount
-  ở "/api", nested dưới site chính (congdoan.utehy.edu.vn/api) — xem Bước 5 trong
+  ở "/api", nested dưới site chính (congdoan.hyute.edu.vn/api) — xem Bước 5 trong
   deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md. Thư mục physical path này rỗng, KHÔNG chứa
   apps/api/dist — chỉ cần đúng 1 file web.config này để làm proxy.
 

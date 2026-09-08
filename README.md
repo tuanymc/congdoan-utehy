@@ -1,4 +1,4 @@
-# Website Công đoàn UTEHY — Dự án nâng cấp
+# Website Công đoàn HYUTE — Dự án nâng cấp
 
 Cấu trúc thư mục đã được tổ chức lại theo bản thiết kế nâng cấp (Node.js + React + SQL Server).
 Triển khai production trên **Windows Server có sẵn bằng IIS + PM2 + Memurai** — không dùng Docker.

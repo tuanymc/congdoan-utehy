@@ -127,7 +127,7 @@ export function DocumentsPage() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold">Văn bản</h1>
       <p className="mt-2 text-muted-foreground">
-        Tra cứu công văn, thông báo do Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên ban hành và công khai.
+        Tra cứu công văn, thông báo do Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên ban hành và công khai.
       </p>
 
       <Card className="mt-6">

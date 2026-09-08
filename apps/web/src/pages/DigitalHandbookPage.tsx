@@ -63,7 +63,7 @@ export function DigitalHandbookPage() {
       <h1 className="mt-2 text-3xl font-bold">Cẩm nang - Kiến thức số</h1>
       <p className="mt-2 text-muted-foreground">
         Giới thiệu, hướng dẫn và kiến thức chuyển đổi số dành cho đoàn viên Công đoàn Trường Đại học
-        Sư phạm Kỹ thuật Hưng Yên.
+        Công nghệ Kỹ thuật Hưng Yên.
       </p>
 
       <div className="mt-8">

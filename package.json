@@ -20,7 +20,8 @@
     "migrate:legacy": "tsx prisma/migrate-legacy-content.ts",
     "migrate:van-ban-forms": "tsx prisma/migrate-van-ban-posts-to-forms.ts",
     "seed:survey": "tsx prisma/seed-survey-content.ts",
-    "seed:legal-education": "tsx prisma/seed-legal-education-q3-2026.ts"
+    "seed:legal-education": "tsx prisma/seed-legal-education-q3-2026.ts",
+    "create:member-logins": "tsx prisma/create-missing-union-member-logins.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

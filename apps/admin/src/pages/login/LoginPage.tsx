@@ -20,8 +20,8 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center gap-1 text-center">
-          <img src="/logo.png" alt="Công đoàn UTEHY" className="mb-1 h-14 w-auto object-contain" />
-          <CardTitle className="text-xl">Công đoàn UTEHY</CardTitle>
+          <img src="/logo.png" alt="Công đoàn HYUTE" className="mb-1 h-14 w-auto object-contain" />
+          <CardTitle className="text-xl">Công đoàn HYUTE</CardTitle>
           <CardDescription>Đăng nhập trang quản trị</CardDescription>
         </CardHeader>
         <CardContent>
@@ -35,7 +35,7 @@ export function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="admin@congdoan.utehy.edu.vn"
+                placeholder="admin@congdoan.hyute.edu.vn"
               />
             </div>
             <div className="flex flex-col gap-2">

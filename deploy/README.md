@@ -23,7 +23,7 @@ chốt, xem `docs/CURSOR_PROMPT_Website_CongDoan_UTEHY.md` mục "Kiến trúc t
    (https://www.memurai.com — bản Redis-compatible cho Windows, cài như Windows Service).
 3. Cài IIS + module **Application Request Routing (ARR)** + **URL Rewrite**, bật "Enable proxy"
    trong ARR Server Proxy Settings (xem chi tiết comment trong `iis/web.config.api`).
-4. Tạo 1 site IIS duy nhất (binding `congdoan.utehy.edu.vn`, physical path = `apps/web/dist`) +
+4. Tạo 1 site IIS duy nhất (binding `congdoan.hyute.edu.vn`, physical path = `apps/web/dist`) +
    2 IIS Application nested `/admin` và `/api` trỏ tới physical path riêng — xem hướng dẫn chi tiết
    ở Bước 5 trong `deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md` (đã chốt dùng 1 domain duy nhất,
    không tách subdomain riêng cho admin/api).

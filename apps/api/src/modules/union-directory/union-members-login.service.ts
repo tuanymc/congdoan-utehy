@@ -89,7 +89,7 @@ export class UnionMembersLoginService {
     }
 
     const defaultHash = dto.passwordMode === "default" ? await hash(DEFAULT_UNION_MEMBER_PASSWORD, 12) : null;
-    const loginUrl = `${(process.env.PUBLIC_WEB_URL ?? "https://tdg3.utehy.edu.vn").replace(/\/$/, "")}/dang-nhap`;
+    const loginUrl = `${(process.env.PUBLIC_WEB_URL ?? "https://congdoan.hyute.edu.vn").replace(/\/$/, "")}/dang-nhap`;
     const items: CreateUnionMemberLoginItemResult[] = [...skips];
 
     for (const member of members) {
@@ -253,7 +253,7 @@ export class UnionMembersLoginService {
     const emailBody = [
       `Kính gửi ${member.fullName},`,
       "",
-      "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên đã tạo tài khoản để bạn đăng nhập cổng thông tin công đoàn viên.",
+      "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên đã tạo tài khoản để bạn đăng nhập cổng thông tin công đoàn viên.",
       "",
       `Mã cán bộ: ${member.legacyCode ?? "—"}`,
       `Email đăng nhập: ${email}`,
@@ -263,10 +263,10 @@ export class UnionMembersLoginService {
       "Bạn cũng có thể đăng nhập bằng mã cán bộ. Sau khi đăng nhập, vui lòng đổi mật khẩu tại mục Bảo mật.",
       "",
       "Trân trọng,",
-      "Công đoàn UTEHY"
+      "Công đoàn HYUTE"
     ].join("\n");
 
-    const emailSent = await this.mail.sendMail(email, "Tài khoản cổng công đoàn viên UTEHY", emailBody);
+    const emailSent = await this.mail.sendMail(email, "Tài khoản cổng công đoàn viên HYUTE", emailBody);
     if (!emailSent) {
       this.logger.warn(`Đã tạo tài khoản ${email} nhưng chưa gửi được email.`);
     }

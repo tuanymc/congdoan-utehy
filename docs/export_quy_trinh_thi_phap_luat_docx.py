@@ -166,7 +166,7 @@ def build() -> None:
     header = section.header
     hp = header.paragraphs[0]
     hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_run_font(hp.add_run("CÔNG ĐOÀN TRƯỜNG ĐẠI HỌC SƯ PHẠM KỸ THUẬT HƯNG YÊN"), size=10, italic=True, color=GRAY)
+    set_run_font(hp.add_run("CÔNG ĐOÀN TRƯỜNG ĐẠI HỌC CÔNG NGHỆ KỸ THUẬT HƯNG YÊN"), size=10, italic=True, color=GRAY)
 
     footer = section.footer
     fp = footer.paragraphs[0]
@@ -188,7 +188,7 @@ def build() -> None:
 
     # ===== Bìa =====
     add_para(doc, "CÔNG ĐOÀN VIỆT NAM", size=13, bold=True, align="center", space_after=0, color=RED)
-    add_para(doc, "CÔNG ĐOÀN TRƯỜNG ĐẠI HỌC SƯ PHẠM KỸ THUẬT HƯNG YÊN", size=13, bold=True, align="center", space_after=2, color=RED)
+    add_para(doc, "CÔNG ĐOÀN TRƯỜNG ĐẠI HỌC CÔNG NGHỆ KỸ THUẬT HƯNG YÊN", size=13, bold=True, align="center", space_after=2, color=RED)
     line = add_para(doc, "", align="center", space_after=14)
     set_run_font(line.add_run("————————"), size=12, color=RED)
 
@@ -198,7 +198,7 @@ def build() -> None:
 
     add_para(
         doc,
-        "Áp dụng trên Website Công đoàn UTEHY — Tiện ích số / Phổ biến pháp luật",
+        "Áp dụng trên Website Công đoàn HYUTE — Tiện ích số / Phổ biến pháp luật",
         size=12,
         italic=True,
         align="center",
@@ -533,7 +533,7 @@ def build() -> None:
     heading(doc, "ĐIỀU KHOẢN THI HÀNH", 1)
     add_para(
         doc,
-        "Quy trình, quy tắc và hướng dẫn này được thực hiện thống nhất trên Website Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên. Khi Ban chấp hành điều chỉnh thể lệ một đợt cụ thể (số câu, thời lượng, mức đạt, lịch thi thử / thi chính thức), cán bộ cấu hình đúng trên đợt đó; các nguyên tắc trộn đề, trộn đáp án, đồng hồ đếm ngược, xếp hạng khi cùng điểm và công thức điểm đơn vị giữ nguyên trừ khi có văn bản sửa đổi.",
+        "Quy trình, quy tắc và hướng dẫn này được thực hiện thống nhất trên Website Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên. Khi Ban chấp hành điều chỉnh thể lệ một đợt cụ thể (số câu, thời lượng, mức đạt, lịch thi thử / thi chính thức), cán bộ cấu hình đúng trên đợt đó; các nguyên tắc trộn đề, trộn đáp án, đồng hồ đếm ngược, xếp hạng khi cùng điểm và công thức điểm đơn vị giữ nguyên trừ khi có văn bản sửa đổi.",
         align="justify",
         first_line=True,
     )

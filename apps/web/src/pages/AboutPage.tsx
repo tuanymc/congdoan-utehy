@@ -373,11 +373,11 @@ export function AboutPage() {
     <div>
       <section className="bg-gradient-to-br from-primary to-[#0f2a6b] text-primary-foreground">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Công đoàn UTEHY</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Công đoàn HYUTE</p>
           <h1 className="mt-3 max-w-3xl text-3xl font-bold leading-tight sm:text-5xl">Giới thiệu Công đoàn Trường</h1>
           <p className="mt-4 max-w-2xl text-base text-primary-foreground/90 sm:text-lg">
             Tổ chức đại diện, chăm lo và bảo vệ quyền lợi hợp pháp, chính đáng của cán bộ, giảng viên, người lao
-            động Trường Đại học Sư phạm Kỹ thuật Hưng Yên.
+            động Trường Đại học Công nghệ Kỹ thuật Hưng Yên.
           </p>
 
           <div className="mt-10 grid max-w-2xl grid-cols-3 gap-6 border-t border-primary-foreground/20 pt-8">
@@ -490,7 +490,7 @@ export function AboutPage() {
       <section className="bg-gradient-to-br from-primary to-[#0f2a6b] text-primary-foreground">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Kết nối</p>
-          <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight">Đồng hành cùng đoàn viên Công đoàn UTEHY</h2>
+          <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight">Đồng hành cùng đoàn viên Công đoàn HYUTE</h2>
           <p className="mt-3 max-w-xl text-primary-foreground/85">
             Tra cứu danh bạ công đoàn viên hoặc gửi liên hệ tới Văn phòng Công đoàn trường.
           </p>

@@ -2,9 +2,9 @@
 <!--
   Mẫu web.config cho apps/admin — file tĩnh build từ Vite (output tại apps/admin/dist, đã build với
   base "/admin/" — xem apps/admin/vite.config.ts). Đặt vào physical path của IIS Application mount
-  ở "/admin", nested dưới site chính (congdoan.utehy.edu.vn/admin) — xem Bước 5 trong
+  ở "/admin", nested dưới site chính (congdoan.hyute.edu.vn/admin) — xem Bước 5 trong
   deploy/HUONG_DAN_CHAY_THU_SQLSERVER_IIS_PM2.md. Nếu tách site/subdomain riêng cho admin
-  (admin.congdoan.utehy.edu.vn) thay vì mount làm sub-application thì cũng dùng nguyên file này,
+  (admin.congdoan.hyute.edu.vn) thay vì mount làm sub-application thì cũng dùng nguyên file này,
   chỉ cần build lại apps/admin KHÔNG có base "/admin/" (đổi base về "/" trong vite.config.ts).
 
   Cân nhắc thêm IP restriction của IIS trên application/site này nếu muốn thêm 1 lớp bảo vệ ngoài
@@ -25,7 +25,7 @@
             <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
             <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
           </conditions>
-          <!-- KHÔNG bắt đầu bằng "/" — url tuyệt đối sẽ trỏ về gốc site cha (congdoan.utehy.edu.vn/)
+          <!-- KHÔNG bắt đầu bằng "/" — url tuyệt đối sẽ trỏ về gốc site cha (congdoan.hyute.edu.vn/)
                thay vì gốc của Application "/admin" này, làm vỡ SPA fallback. -->
           <action type="Rewrite" url="index.html" />
         </rule>

@@ -134,7 +134,7 @@ export function HomePage() {
       <section className="bg-gradient-to-br from-primary to-[#0f2a6b] pb-16 text-primary-foreground sm:pb-20">
         <div className="mx-auto max-w-6xl px-4 pt-16 sm:pt-20">
           <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
-            Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên
+            Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên
           </p>
           <h1 className="mt-3 max-w-3xl text-3xl font-bold sm:text-4xl">
             Đoàn kết – Trách nhiệm – Vì quyền lợi hợp pháp, chính đáng của đoàn viên

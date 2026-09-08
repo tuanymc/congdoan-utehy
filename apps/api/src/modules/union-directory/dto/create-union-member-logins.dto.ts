@@ -7,7 +7,7 @@ import type {
 
 export class CreateUnionMemberLoginsDto implements CreateUnionMemberLoginsRequest {
   @ApiProperty({ enum: ["default", "random"] })
-  @IsIn(["default", "random"], { message: "Chọn mật khẩu mặc định (utehy123) hoặc mật khẩu ngẫu nhiên." })
+  @IsIn(["default", "random"], { message: "Chọn mật khẩu mặc định (hyute123) hoặc mật khẩu ngẫu nhiên." })
   passwordMode!: CreateUnionMemberLoginPasswordMode;
 
   @ApiPropertyOptional({ type: [String] })

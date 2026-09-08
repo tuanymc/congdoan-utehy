@@ -106,7 +106,7 @@ export function Header() {
           <span className="flex flex-col leading-tight">
             <span className="text-sm font-bold text-primary sm:text-base">{settings.shortName}</span>
             <span className="hidden text-xs text-muted-foreground sm:block">
-              Trường Đại học Sư phạm Kỹ thuật Hưng Yên
+              Trường Đại học Công nghệ Kỹ thuật Hưng Yên
             </span>
           </span>
         </Link>

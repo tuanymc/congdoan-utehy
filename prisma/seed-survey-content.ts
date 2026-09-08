@@ -16,7 +16,7 @@ export const UNION_SATISFACTION_SURVEY_ID = "1041ff78-2c9a-493a-83c3-00e8794372a
 const TITLE = "Khảo sát mức độ hài lòng của đoàn viên về hoạt động Công đoàn năm học 2025–2026";
 
 const DESCRIPTION = [
-  "Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên trân trọng kính mời đoàn viên tham gia khảo sát.",
+  "Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên trân trọng kính mời đoàn viên tham gia khảo sát.",
   "Kết quả giúp Ban Chấp hành nắm bắt nhu cầu, đánh giá hiệu quả hoạt động và điều chỉnh kế hoạch chăm lo, đại diện, bảo vệ quyền lợi người lao động trong năm học.",
   "Khảo sát hoàn toàn ẩn danh — không thu thập họ tên, mã cán bộ hay thông tin định danh. Thời gian hoàn thành khoảng 3–5 phút. Mọi ý kiến đều được ghi nhận và chỉ sử dụng cho mục đích cải thiện hoạt động Công đoàn."
 ].join("\n\n");

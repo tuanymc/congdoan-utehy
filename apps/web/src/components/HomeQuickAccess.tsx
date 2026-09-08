@@ -14,7 +14,7 @@ const SHORTCUTS = [
     to: "/gioi-thieu",
     icon: Info,
     title: "Giới thiệu",
-    description: "Chức năng, nhiệm vụ và cơ cấu tổ chức của Công đoàn UTEHY.",
+    description: "Chức năng, nhiệm vụ và cơ cấu tổ chức của Công đoàn HYUTE.",
     tone: "navy"
   },
   {

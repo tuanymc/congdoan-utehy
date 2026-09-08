@@ -1,7 +1,7 @@
 # @congdoan/admin
 
 Trang quản trị (React + [Refine](https://refine.dev), headless — không dùng `@refinedev/antd`/`@refinedev/mui`)
-cho website Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên. Giao diện dựng bằng Tailwind CSS v4 +
+cho website Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên. Giao diện dựng bằng Tailwind CSS v4 +
 các component shadcn/ui (Radix) copy từ `_design_reference/university-information-portal`, dùng chung
 bảng màu Công đoàn (đỏ `#C0272D` + vàng `#F5B700`) và type từ `@congdoan/types` với `apps/web`.
 
@@ -24,7 +24,7 @@ Sao chép `.env.example` thành `.env.local` nếu cần đổi `VITE_API_BASE_U
 
 Dùng tài khoản ADMIN được seed sẵn khi chạy `pnpm prisma:seed` ở thư mục gốc:
 
-- Email: `admin@congdoan.utehy.edu.vn` (biến `SEED_ADMIN_EMAIL`)
+- Email: `admin@congdoan.hyute.edu.vn` (biến `SEED_ADMIN_EMAIL`)
 - Mật khẩu: xem biến `SEED_ADMIN_PASSWORD` trong file `.env` ở thư mục gốc repo (mặc định trong
   `.env.example` là `ChangeMe@123` — đổi ngay ở môi trường thật).
 

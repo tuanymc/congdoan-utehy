@@ -186,7 +186,7 @@ export function UnionMemberList() {
       <p className="text-sm text-muted-foreground">
         Xuất Excel để tải toàn bộ hồ sơ (kể cả các trường nội bộ) ra file mẫu, chỉnh sửa rồi nhập lại — dòng có
         "Mã cán bộ" khớp sẵn có sẽ được cập nhật, dòng mới hoặc không khớp sẽ tự tạo công đoàn viên mới. Tạo
-        tài khoản dùng mã cán bộ + email trên hồ sơ; mật khẩu mặc định <code>utehy123</code> hoặc mật khẩu
+        tài khoản dùng mã cán bộ + email trên hồ sơ; mật khẩu mặc định <code>hyute123</code> hoặc mật khẩu
         ngẫu nhiên gửi về email. Cột “Thứ tự hiển thị” sửa trực tiếp trên danh sách (Enter hoặc click ra
         ngoài để lưu); số nhỏ hơn hiện trước.
       </p>

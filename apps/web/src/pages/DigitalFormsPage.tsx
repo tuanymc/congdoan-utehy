@@ -76,7 +76,7 @@ export function DigitalFormsPage() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold">Kho biểu mẫu</h1>
       <p className="mt-2 text-muted-foreground">
-        Các biểu mẫu, đơn từ dùng chung cho đoàn viên Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên — bấm vào để xem và tải xuống.
+        Các biểu mẫu, đơn từ dùng chung cho đoàn viên Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên — bấm vào để xem và tải xuống.
       </p>
 
       <div className="relative mt-6 max-w-sm">
