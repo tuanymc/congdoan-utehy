@@ -81,6 +81,17 @@ export function PublicServiceProcedureList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {item.isActive ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={`${window.location.origin}/tien-ich-so-cong-doan/dich-vu-cong/thu-tuc/${item.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Xem
+                          </a>
+                        </Button>
+                      ) : null}
                       <Button variant="outline" size="sm" onClick={() => navigate(`/public-service-procedures/edit/${item.id}`)}>
                         Sửa
                       </Button>

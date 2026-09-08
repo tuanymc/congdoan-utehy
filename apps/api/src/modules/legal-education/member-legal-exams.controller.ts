@@ -1,6 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { JwtAccessPayload, LegalExamAttemptDto, LegalExamSubmitResultDto, MyLegalExamAttemptListItemDto } from "@congdoan/types";
+import type {
+  JwtAccessPayload,
+  LegalExamAttemptDto,
+  LegalExamAttemptKind,
+  LegalExamSubmitResultDto,
+  MyLegalExamAttemptListItemDto
+} from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { LegalEducationService } from "./legal-education.service";
@@ -24,9 +30,12 @@ export class MemberLegalExamsController {
   @Post("exams/:id/attempts")
   start(
     @Param("id") id: string,
-    @CurrentUser() user: JwtAccessPayload
+    @CurrentUser() user: JwtAccessPayload,
+    @Query("kind") kind?: string
   ): Promise<LegalExamAttemptDto> {
-    return this.legalEducation.startOrResumeAttempt(id, user.sub);
+    const requested: LegalExamAttemptKind | undefined =
+      kind === "PRACTICE" || kind === "OFFICIAL" ? kind : undefined;
+    return this.legalEducation.startOrResumeAttempt(id, user.sub, requested);
   }
 
   @Patch("exams/:id/attempts/:attemptId")

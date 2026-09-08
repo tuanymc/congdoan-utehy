@@ -49,6 +49,10 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
   const [examIsOpen, setExamIsOpen] = useState<"true" | "false">("false");
   const [examStartAt, setExamStartAt] = useState("");
   const [examEndAt, setExamEndAt] = useState("");
+  const [questionsPerAttempt, setQuestionsPerAttempt] = useState("");
+  const [practiceStartAt, setPracticeStartAt] = useState("");
+  const [practiceEndAt, setPracticeEndAt] = useState("");
+  const [practiceMaxAttempts, setPracticeMaxAttempts] = useState("5");
 
   useEffect(() => {
     if (mode === "edit" && result?.data) {
@@ -68,6 +72,10 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
       setExamIsOpen(item.exam?.isOpen ? "true" : "false");
       setExamStartAt(isoToLocalInputValue(item.exam?.startAt));
       setExamEndAt(isoToLocalInputValue(item.exam?.endAt));
+      setQuestionsPerAttempt(item.exam?.questionsPerAttempt ? String(item.exam.questionsPerAttempt) : "");
+      setPracticeStartAt(isoToLocalInputValue(item.exam?.practiceStartAt));
+      setPracticeEndAt(isoToLocalInputValue(item.exam?.practiceEndAt));
+      setPracticeMaxAttempts(String(item.exam?.practiceMaxAttempts ?? 5));
     }
   }, [mode, result]);
 
@@ -90,7 +98,11 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
       shuffleOptions: shuffleOptions === "true",
       examIsOpen: examIsOpen === "true",
       examStartAt: examStartAt ? new Date(examStartAt).toISOString() : undefined,
-      examEndAt: examEndAt ? new Date(examEndAt).toISOString() : undefined
+      examEndAt: examEndAt ? new Date(examEndAt).toISOString() : undefined,
+      questionsPerAttempt: questionsPerAttempt.trim() ? Number(questionsPerAttempt) : null,
+      practiceStartAt: practiceStartAt ? new Date(practiceStartAt).toISOString() : undefined,
+      practiceEndAt: practiceEndAt ? new Date(practiceEndAt).toISOString() : undefined,
+      practiceMaxAttempts: Number(practiceMaxAttempts) || 5
     };
 
     if (mode === "create") {
@@ -145,20 +157,27 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
               <Label htmlFor="examDescription">Mô tả bài thi</Label>
               <Textarea id="examDescription" rows={3} value={examDescription} onChange={(event) => setExamDescription(event.target.value)} />
             </div>
-            <div className="grid gap-2 sm:grid-cols-3 sm:gap-4">
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               <div className="grid gap-2">
-                <Label htmlFor="durationMinutes">Thời gian (phút)</Label>
+                <Label htmlFor="durationMinutes">Thời gian mỗi lượt (phút)</Label>
                 <Input id="durationMinutes" type="number" min={1} value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="questionsPerAttempt">Số câu mỗi đề</Label>
+                <Input id="questionsPerAttempt" type="number" min={1} value={questionsPerAttempt} onChange={(event) => setQuestionsPerAttempt(event.target.value)} placeholder="Trống = hết ngân hàng" />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="passingScorePercent">Điểm đạt (%)</Label>
                 <Input id="passingScorePercent" type="number" min={0} max={100} value={passingScorePercent} onChange={(event) => setPassingScorePercent(event.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="maxAttempts">Số lần thi</Label>
+                <Label htmlFor="maxAttempts">Số lần thi chính thức</Label>
                 <Input id="maxAttempts" type="number" min={1} value={maxAttempts} onChange={(event) => setMaxAttempts(event.target.value)} />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Số câu mỗi đề lấy ngẫu nhiên từ ngân hàng câu hỏi. Để trống thì mỗi lượt dùng toàn bộ ngân hàng. Bật xáo câu hỏi và xáo lựa chọn bên dưới để mỗi đề khác nhau.
+            </p>
             <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
               <div className="grid gap-2">
                 <Label>Hiện đáp án sau khi nộp</Label>
@@ -213,14 +232,36 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
             </div>
             <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="examStartAt">Mở thi từ (không bắt buộc)</Label>
+                <Label htmlFor="examStartAt">Mở thi chính thức từ</Label>
                 <Input id="examStartAt" type="datetime-local" value={examStartAt} onChange={(event) => setExamStartAt(event.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="examEndAt">Đóng thi (không bắt buộc)</Label>
+                <Label htmlFor="examEndAt">Khóa thi chính thức</Label>
                 <Input id="examEndAt" type="datetime-local" value={examEndAt} onChange={(event) => setExamEndAt(event.target.value)} />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Ngoài khung giờ trên, cần bật “Đang mở thi”. Sau giờ khóa, đoàn viên không bắt đầu được lượt chính thức mới.
+            </p>
+
+            <h2 className="pt-2 text-lg font-semibold">Thi thử</h2>
+            <div className="grid gap-2 sm:grid-cols-3 sm:gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="practiceStartAt">Mở thi thử từ</Label>
+                <Input id="practiceStartAt" type="datetime-local" value={practiceStartAt} onChange={(event) => setPracticeStartAt(event.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="practiceEndAt">Khóa thi thử</Label>
+                <Input id="practiceEndAt" type="datetime-local" value={practiceEndAt} onChange={(event) => setPracticeEndAt(event.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="practiceMaxAttempts">Số lần thi thử</Label>
+                <Input id="practiceMaxAttempts" type="number" min={1} value={practiceMaxAttempts} onChange={(event) => setPracticeMaxAttempts(event.target.value)} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Thi thử dùng cùng ngân hàng và cùng cách trộn đề, nhưng không tính vào xếp hạng cá nhân và điểm công đoàn bộ phận. Sau khi nộp sẽ hiện đáp án để ôn.
+            </p>
 
             {mode === "create" ? (
               <p className="text-xs text-muted-foreground">Sau khi lưu, bạn sẽ được chuyển sang màn hình thêm tài liệu cho đợt này.</p>

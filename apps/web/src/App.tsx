@@ -60,6 +60,14 @@ export default function App() {
         <Route path="tien-ich-so-cong-doan/dich-vu-cong/thong-bao" element={<PublicServiceNoticesPage />} />
         <Route path="tien-ich-so-cong-doan/pho-bien-phap-luat" element={<LegalEducationHubPage />} />
         <Route
+          path="tien-ich-so-cong-doan/pho-bien-phap-luat/:slug/thi-thu"
+          element={
+            <ProtectedRoute>
+              <LegalExamPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="tien-ich-so-cong-doan/pho-bien-phap-luat/:slug/thi"
           element={
             <ProtectedRoute>

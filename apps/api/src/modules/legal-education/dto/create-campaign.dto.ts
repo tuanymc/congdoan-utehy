@@ -95,4 +95,26 @@ export class CreateLegalEducationCampaignDto implements CreateLegalEducationCamp
   @IsOptional()
   @IsDateString()
   examEndAt?: string;
+
+  @ApiPropertyOptional({ description: "Số câu lấy ngẫu nhiên từ ngân hàng. Bỏ trống = dùng hết ngân hàng." })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  questionsPerAttempt?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  practiceStartAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  practiceEndAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  practiceMaxAttempts?: number;
 }

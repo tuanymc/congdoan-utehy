@@ -61,4 +61,26 @@ export class UpdateLegalExamDto implements UpdateLegalExamRequest {
   @IsOptional()
   @IsDateString()
   endAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  questionsPerAttempt?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  practiceStartAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  practiceEndAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  practiceMaxAttempts?: number;
 }

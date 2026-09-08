@@ -574,7 +574,7 @@ export async function seedLegalEducationQ3_2026(prisma: PrismaClient): Promise<v
     update: {
       title: `${CAMPAIGN_TITLE} — Trắc nghiệm`,
       description:
-        "45 câu trắc nghiệm kiến thức pháp luật dựa trên Thông tư 53, 54 và 56/2026/TT-BGDĐT. Thời gian 30 phút, 01 lần thi, đạt từ 70%. Bài thi chỉ mở sau khi cán bộ Công đoàn rà soát đáp án.",
+        "Ngân hàng 45 câu trắc nghiệm kiến thức pháp luật dựa trên Thông tư 53, 54 và 56/2026/TT-BGDĐT. Mỗi đề trộn ngẫu nhiên từ ngân hàng, trộn thứ tự câu và đáp án. Thời gian 30 phút, 01 lần thi chính thức, đạt từ 70%. Có thể mở cửa sổ thi thử trước khi thi chính thức.",
       durationMinutes: 30,
       passingScorePercent: 70,
       maxAttempts: 1,
@@ -586,7 +586,7 @@ export async function seedLegalEducationQ3_2026(prisma: PrismaClient): Promise<v
       campaignId: campaign.id,
       title: `${CAMPAIGN_TITLE} — Trắc nghiệm`,
       description:
-        "45 câu trắc nghiệm kiến thức pháp luật dựa trên Thông tư 53, 54 và 56/2026/TT-BGDĐT. Thời gian 30 phút, 01 lần thi, đạt từ 70%. Bài thi chỉ mở sau khi cán bộ Công đoàn rà soát đáp án.",
+        "Ngân hàng 45 câu trắc nghiệm kiến thức pháp luật dựa trên Thông tư 53, 54 và 56/2026/TT-BGDĐT. Mỗi đề trộn ngẫu nhiên từ ngân hàng, trộn thứ tự câu và đáp án. Thời gian 30 phút, 01 lần thi chính thức, đạt từ 70%. Có thể mở cửa sổ thi thử trước khi thi chính thức.",
       durationMinutes: 30,
       passingScorePercent: 70,
       maxAttempts: 1,

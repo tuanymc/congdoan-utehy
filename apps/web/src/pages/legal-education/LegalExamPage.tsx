@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { LEGAL_EDUCATION_PATH, type LegalExamAttemptDto, type LegalExamSubmitResultDto, type PublicLegalCampaignDetailDto } from "@congdoan/types";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,9 @@ function formatCountdown(ms: number): string {
 
 export function LegalExamPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const isPractice = location.pathname.endsWith("/thi-thu");
+  const kindQuery = isPractice ? "?kind=PRACTICE" : "?kind=OFFICIAL";
   const [attempt, setAttempt] = useState<LegalExamAttemptDto | null>(null);
   const [result, setResult] = useState<LegalExamSubmitResultDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +42,7 @@ export function LegalExamPage() {
     apiFetch<PublicLegalCampaignDetailDto>(`/legal-education/campaigns/${slug}`)
       .then(async (campaign) => {
         if (!campaign.exam) throw new Error("Đợt này chưa có bài thi.");
-        const started = await apiFetch<LegalExamAttemptDto>(`/legal-education/exams/${campaign.exam.id}/attempts`, {
+        const started = await apiFetch<LegalExamAttemptDto>(`/legal-education/exams/${campaign.exam.id}/attempts${kindQuery}`, {
           method: "POST"
         });
         if (cancelled) return;
@@ -56,7 +59,7 @@ export function LegalExamPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, kindQuery]);
 
   const submit = useCallback(async () => {
     const current = attemptRef.current;
@@ -130,14 +133,32 @@ export function LegalExamPage() {
       <div className="mx-auto max-w-xl px-4 py-10">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-sm font-medium text-primary">Kết quả bài thi</p>
+            <p className="text-sm font-medium text-primary">{result.isPractice ? "Kết quả thi thử" : "Kết quả thi chính thức"}</p>
             <h1 className="mt-2 text-3xl font-bold">{result.passed ? "Đạt" : "Không đạt"}</h1>
             <p className="mt-3 text-muted-foreground">
               Đồng chí trả lời đúng {result.score}/{result.total} câu ({Math.round((result.score / Math.max(result.total, 1)) * 100)}%).
               Điểm đạt từ {result.passingScorePercent}%.
+              {result.isPractice ? " Lượt thi thử không tính vào xếp hạng cá nhân và điểm đơn vị." : ""}
             </p>
             {result.status === "EXPIRED" ? (
               <p className="mt-2 text-sm text-muted-foreground">Bài thi đã hết giờ và được nộp tự động.</p>
+            ) : null}
+            {result.review ? (
+              <div className="mt-6 space-y-3 text-left">
+                {result.review.map((item, index) => (
+                  <div key={item.questionId} className="rounded-md border px-3 py-2 text-sm">
+                    <p className="font-medium">
+                      Câu {index + 1}. {item.text}
+                    </p>
+                    <p className={item.isCorrect ? "mt-1 text-green-700" : "mt-1 text-destructive"}>
+                      {item.isCorrect ? "Đúng" : "Chưa đúng"}
+                      {item.correctOptionIndex !== undefined
+                        ? ` · Đáp án đúng: ${item.options[item.correctOptionIndex] ?? ""}`
+                        : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
             ) : null}
             <Button className="mt-6" asChild>
               <Link to={slug ? `${LEGAL_EDUCATION_PATH}/${slug}` : LEGAL_EDUCATION_PATH}>Quay lại tài liệu</Link>
@@ -167,7 +188,7 @@ export function LegalExamPage() {
           ← Tài liệu phổ biến
         </Link>
         <p className={`rounded-md px-3 py-1 text-sm font-semibold ${urgent ? "bg-destructive/10 text-destructive" : "bg-muted"}`}>
-          Còn lại {formatCountdown(remainingMs)}
+          {attempt.isPractice ? "Thi thử · " : "Chính thức · "}Còn lại {formatCountdown(remainingMs)}
         </p>
       </div>
 

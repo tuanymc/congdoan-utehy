@@ -70,7 +70,11 @@ export function LegalEducationHubPage() {
                       </span>
                       <span className="inline-flex items-center gap-1">
                         <PencilLine className="size-3.5" />
-                        {item.examIsOpen ? "Đang mở thi trắc nghiệm" : "Thi trắc nghiệm chưa mở"}
+                        {item.examIsOpen
+                          ? "Đang mở thi chính thức"
+                          : item.examPracticeIsOpen
+                            ? "Đang mở thi thử"
+                            : "Thi trắc nghiệm chưa mở"}
                       </span>
                     </div>
                   </CardContent>

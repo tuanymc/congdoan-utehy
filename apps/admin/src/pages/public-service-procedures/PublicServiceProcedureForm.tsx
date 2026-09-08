@@ -120,9 +120,70 @@ export function PublicServiceProcedureForm({ mode }: PublicServiceProcedureFormP
       <Card className="max-w-3xl">
         <CardContent className="pt-6">
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+            {isActive === "false" ? (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                Thủ tục đang ở trạng thái <strong>Nháp</strong> nên <strong>không hiện</strong> trên trang công khai. Chọn
+                “Đã duyệt” bên dưới rồi Lưu để hiển thị tại{" "}
+                <a
+                  href={`${window.location.origin}/tien-ich-so-cong-doan/dich-vu-cong/thu-tuc`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  Tra cứu nhanh dịch vụ công
+                </a>
+                .
+              </p>
+            ) : slug.trim() ? (
+              <p className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                Đang công khai tại{" "}
+                <a
+                  href={`${window.location.origin}/tien-ich-so-cong-doan/dich-vu-cong/thu-tuc/${slug.trim()}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline"
+                >
+                  /tien-ich-so-cong-doan/dich-vu-cong/thu-tuc/{slug.trim()}
+                </a>
+              </p>
+            ) : null}
+
             <div className="grid gap-2">
               <Label htmlFor="title">Tên thủ tục</Label>
               <Input id="title" required value={title} onChange={(event) => setTitle(event.target.value)} />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="isActive">Hiển thị trên trang công khai</Label>
+                <Select value={isActive} onValueChange={(value) => setIsActive(value as "true" | "false")}>
+                  <SelectTrigger id="isActive">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">Nháp — không hiện trên website</SelectItem>
+                    <SelectItem value="true">Đã duyệt — hiện trên website</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Chỉ chọn “Đã duyệt” sau khi đã kiểm tra nội dung còn đúng quy định hiện hành.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="category">Nhóm thủ tục (Tra cứu nhanh)</Label>
+                <Select value={category} onValueChange={(value) => setCategory(value as PublicServiceProcedureCategory)}>
+                  <SelectTrigger id="category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PUBLIC_SERVICE_PROCEDURE_CATEGORIES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {PUBLIC_SERVICE_PROCEDURE_CATEGORY_LABELS[value]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid gap-2">
@@ -135,22 +196,6 @@ export function PublicServiceProcedureForm({ mode }: PublicServiceProcedureFormP
                 placeholder="vd: cap-doi-the-can-cuoc"
               />
               <p className="text-xs text-muted-foreground">Chỉ gồm chữ thường, số và dấu gạch ngang, không dấu cách.</p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="category">Nhóm thủ tục (Tra cứu nhanh)</Label>
-              <Select value={category} onValueChange={(value) => setCategory(value as PublicServiceProcedureCategory)}>
-                <SelectTrigger id="category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PUBLIC_SERVICE_PROCEDURE_CATEGORIES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {PUBLIC_SERVICE_PROCEDURE_CATEGORY_LABELS[value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="grid gap-2">
@@ -176,27 +221,9 @@ export function PublicServiceProcedureForm({ mode }: PublicServiceProcedureFormP
               </div>
             ))}
 
-            <div className="border-t pt-4" />
-
             <div className="grid gap-2">
               <Label htmlFor="sortOrder">Thứ tự sắp xếp</Label>
               <Input id="sortOrder" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="isActive">Trạng thái</Label>
-              <Select value={isActive} onValueChange={(value) => setIsActive(value as "true" | "false")}>
-                <SelectTrigger id="isActive">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="false">Nháp — chưa rà soát, KHÔNG hiện ở trang công khai</SelectItem>
-                  <SelectItem value="true">Đã duyệt — hiện ở trang công khai</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Chỉ chuyển sang "Đã duyệt" sau khi đã kiểm tra nội dung còn đúng quy định hiện hành.
-              </p>
             </div>
 
             <div className="flex justify-end gap-2">

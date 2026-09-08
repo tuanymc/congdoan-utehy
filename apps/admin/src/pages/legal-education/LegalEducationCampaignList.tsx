@@ -78,7 +78,7 @@ export function LegalEducationCampaignList() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={item.exam?.isOpen ? "default" : "secondary"}>
-                      {item.exam?.isOpen ? "Đang mở thi" : "Chưa mở thi"}
+                      {item.exam?.isOpen ? "Mở thi chính thức" : "Khóa thi chính thức"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

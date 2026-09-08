@@ -1183,6 +1183,12 @@ model LegalExam {
   isOpen               Boolean   @default(false)
   startAt              DateTime?
   endAt                DateTime?
+  /// Số câu lấy ngẫu nhiên từ ngân hàng cho mỗi lượt. Null = dùng toàn bộ ngân hàng.
+  questionsPerAttempt  Int?
+  /// Cửa sổ thi thử (không tính xếp hạng). Null = không mở thi thử.
+  practiceStartAt      DateTime?
+  practiceEndAt        DateTime?
+  practiceMaxAttempts  Int       @default(5)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -1219,6 +1225,8 @@ model LegalExamAttempt {
 
   /// "IN_PROGRESS" | "SUBMITTED" | "EXPIRED"
   status      String    @default("IN_PROGRESS") @db.VarChar(20)
+  /// true = lượt thi thử, không tính vào xếp hạng cá nhân / điểm công đoàn bộ phận.
+  isPractice  Boolean   @default(false)
   startedAt   DateTime  @default(now())
   submittedAt DateTime?
   score       Int?

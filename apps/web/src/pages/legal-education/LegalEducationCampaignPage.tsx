@@ -55,6 +55,15 @@ export function LegalEducationCampaignPage() {
   }
 
   const examHref = `${LEGAL_EDUCATION_PATH}/${item.slug}/thi`;
+  const practiceHref = `${LEGAL_EDUCATION_PATH}/${item.slug}/thi-thu`;
+
+  function formatWindow(start: string | null | undefined, end: string | null | undefined): string | null {
+    if (!start && !end) return null;
+    const fmt = (iso: string) => new Date(iso).toLocaleString("vi-VN");
+    if (start && end) return `${fmt(start)} – ${fmt(end)}`;
+    if (start) return `từ ${fmt(start)}`;
+    return `đến ${fmt(end!)}`;
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
@@ -123,20 +132,49 @@ export function LegalEducationCampaignPage() {
                   <p className="mt-1 text-sm text-muted-foreground">{item.exam.description}</p>
                 ) : null}
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {item.exam.questionCount} câu · {item.exam.durationMinutes} phút · đạt từ {item.exam.passingScorePercent}% · tối đa{" "}
-                  {item.exam.maxAttempts} lần thi. Dành cho công đoàn viên đã đăng nhập.
+                  Mỗi đề {item.exam.questionCount} câu
+                  {item.exam.questionBankCount > item.exam.questionCount
+                    ? ` (lấy ngẫu nhiên từ ngân hàng ${item.exam.questionBankCount} câu)`
+                    : ""}
+                  , trộn thứ tự câu và đáp án · {item.exam.durationMinutes} phút · đạt từ {item.exam.passingScorePercent}% · tối đa{" "}
+                  {item.exam.maxAttempts} lần thi chính thức. Dành cho công đoàn viên đã đăng nhập.
                 </p>
-                {item.exam.isOpen ? (
-                  <Button className="mt-4" asChild>
-                    <Link to={isAuthenticated ? examHref : "/dang-nhap"} state={isAuthenticated ? undefined : { from: { pathname: examHref } }}>
-                      {isAuthenticated ? "Bắt đầu thi" : "Đăng nhập để thi"}
-                    </Link>
-                  </Button>
-                ) : (
-                  <p className="mt-4 text-sm font-medium text-muted-foreground">
-                    Bài thi chưa mở. Vui lòng đọc tài liệu và chờ Công đoàn thông báo lịch thi.
+                {formatWindow(item.exam.practiceStartAt, item.exam.practiceEndAt) ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Thi thử: {formatWindow(item.exam.practiceStartAt, item.exam.practiceEndAt)}
+                    {item.exam.practiceIsOpen ? " — đang mở." : "."}
                   </p>
-                )}
+                ) : null}
+                {formatWindow(item.exam.startAt, item.exam.endAt) ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Thi chính thức: {formatWindow(item.exam.startAt, item.exam.endAt)}
+                    {item.exam.isOpen ? " — đang mở." : "."}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {item.exam.practiceIsOpen ? (
+                    <Button variant="outline" asChild>
+                      <Link
+                        to={isAuthenticated ? practiceHref : "/dang-nhap"}
+                        state={isAuthenticated ? undefined : { from: { pathname: practiceHref } }}
+                      >
+                        {isAuthenticated ? "Thi thử" : "Đăng nhập để thi thử"}
+                      </Link>
+                    </Button>
+                  ) : null}
+                  {item.exam.isOpen ? (
+                    <Button asChild>
+                      <Link to={isAuthenticated ? examHref : "/dang-nhap"} state={isAuthenticated ? undefined : { from: { pathname: examHref } }}>
+                        {isAuthenticated ? "Thi chính thức" : "Đăng nhập để thi chính thức"}
+                      </Link>
+                    </Button>
+                  ) : null}
+                </div>
+                {!item.exam.isOpen && !item.exam.practiceIsOpen ? (
+                  <p className="mt-4 text-sm font-medium text-muted-foreground">
+                    Bài thi chưa mở. Vui lòng đọc tài liệu và chờ Công đoàn thông báo lịch thi thử / thi chính thức.
+                  </p>
+                ) : null}
               </div>
             </div>
           </CardContent>

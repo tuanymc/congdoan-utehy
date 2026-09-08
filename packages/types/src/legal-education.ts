@@ -5,6 +5,15 @@ export const LEGAL_EDUCATION_PATH = "/tien-ich-so-cong-doan/pho-bien-phap-luat";
 
 export type LegalExamAttemptStatus = "IN_PROGRESS" | "SUBMITTED" | "EXPIRED";
 
+export type LegalExamAttemptKind = "PRACTICE" | "OFFICIAL";
+
+/** Điểm đơn vị = 50% điểm TB cá nhân + 30% tỷ lệ tham gia + 20% tỷ lệ đạt (trên thang 100). */
+export const LEGAL_EXAM_UNIT_SCORE_WEIGHTS = {
+  averagePercent: 0.5,
+  participationPercent: 0.3,
+  passPercent: 0.2
+} as const;
+
 export interface LegalEducationMaterialDto {
   id: string;
   campaignId: string;
@@ -54,7 +63,13 @@ export interface LegalExamSettingsDto {
   isOpen: boolean;
   startAt: string | null;
   endAt: string | null;
+  /** Số câu trong ngân hàng (toàn bộ câu đã nhập). */
   questionCount: number;
+  /** Null = mỗi lượt dùng hết ngân hàng. */
+  questionsPerAttempt: number | null;
+  practiceStartAt: string | null;
+  practiceEndAt: string | null;
+  practiceMaxAttempts: number;
 }
 
 export interface UpdateLegalExamRequest {
@@ -69,6 +84,10 @@ export interface UpdateLegalExamRequest {
   isOpen?: boolean;
   startAt?: string;
   endAt?: string;
+  questionsPerAttempt?: number | null;
+  practiceStartAt?: string;
+  practiceEndAt?: string;
+  practiceMaxAttempts?: number;
 }
 
 export interface LegalExamQuestionDto {
@@ -129,6 +148,10 @@ export interface CreateLegalEducationCampaignRequest {
   examIsOpen?: boolean;
   examStartAt?: string;
   examEndAt?: string;
+  questionsPerAttempt?: number | null;
+  practiceStartAt?: string;
+  practiceEndAt?: string;
+  practiceMaxAttempts?: number;
 }
 
 export interface UpdateLegalEducationCampaignRequest extends Partial<CreateLegalEducationCampaignRequest> {}
@@ -142,6 +165,7 @@ export interface PublicLegalCampaignListItemDto {
   periodLabel: string | null;
   materialCount: number;
   examIsOpen: boolean;
+  examPracticeIsOpen: boolean;
 }
 
 /** Chi tiết đợt công khai: tài liệu + metadata bài thi (KHÔNG câu hỏi). */
@@ -162,7 +186,14 @@ export interface PublicLegalCampaignDetailDto {
     passingScorePercent: number;
     maxAttempts: number;
     isOpen: boolean;
+    practiceIsOpen: boolean;
+    /** Số câu trên mỗi đề (đã lấy từ ngân hàng). */
     questionCount: number;
+    questionBankCount: number;
+    practiceStartAt: string | null;
+    practiceEndAt: string | null;
+    startAt: string | null;
+    endAt: string | null;
   } | null;
 }
 
@@ -196,6 +227,7 @@ export interface LegalExamAttemptDto {
   id: string;
   examId: string;
   status: LegalExamAttemptStatus;
+  isPractice: boolean;
   startedAt: string;
   submittedAt: string | null;
   durationMinutes: number;
@@ -217,6 +249,7 @@ export interface SaveLegalExamAnswersRequest {
 export interface LegalExamSubmitResultDto {
   id: string;
   status: LegalExamAttemptStatus;
+  isPractice: boolean;
   score: number;
   total: number;
   passed: boolean;
@@ -240,6 +273,7 @@ export interface MyLegalExamAttemptListItemDto {
   campaignSlug: string;
   campaignTitle: string;
   status: LegalExamAttemptStatus;
+  isPractice: boolean;
   startedAt: string;
   submittedAt: string | null;
   score: number | null;
@@ -253,12 +287,33 @@ export interface LegalExamResultRowDto {
   fullName: string;
   email: string;
   staffCode: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  isPractice: boolean;
   status: LegalExamAttemptStatus;
   startedAt: string;
   submittedAt: string | null;
   score: number | null;
   total: number | null;
+  percent: number | null;
   passed: boolean | null;
+}
+
+export interface LegalExamIndividualRankDto extends LegalExamResultRowDto {
+  rank: number;
+}
+
+export interface LegalExamUnitStatDto {
+  rank: number;
+  departmentId: string;
+  departmentName: string;
+  eligibleCount: number;
+  submittedCount: number;
+  passedCount: number;
+  participationPercent: number;
+  averagePercent: number;
+  passPercent: number;
+  unitScore: number;
 }
 
 export interface LegalExamResultsDto {
@@ -269,5 +324,9 @@ export interface LegalExamResultsDto {
   attemptCount: number;
   submittedCount: number;
   passedCount: number;
+  officialSubmittedCount: number;
+  officialPassedCount: number;
   rows: LegalExamResultRowDto[];
+  individuals: LegalExamIndividualRankDto[];
+  units: LegalExamUnitStatDto[];
 }

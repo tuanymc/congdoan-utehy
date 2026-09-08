@@ -156,6 +156,21 @@ export class AdminLegalEducationController {
   }
 
   @RequirePermissions("legaleducation:view")
+  @Get("exams/:examId/results-units.csv")
+  async exportUnitResultsCsv(
+    @Param("examId") examId: string,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<StreamableFile> {
+    const { fileName, csv } = await this.legalEducation.getUnitResultsCsv(examId);
+    const buffer = Buffer.from(csv, "utf8");
+    res.set({
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${fileName}"`
+    });
+    return new StreamableFile(buffer);
+  }
+
+  @RequirePermissions("legaleducation:view")
   @Get("exams/:examId/results")
   getResults(@Param("examId") examId: string): Promise<LegalExamResultsDto> {
     return this.legalEducation.getResults(examId);

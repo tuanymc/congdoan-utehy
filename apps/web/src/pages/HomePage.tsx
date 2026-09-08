@@ -283,7 +283,15 @@ export function HomePage() {
                               className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                             >
                               <PencilLine className="size-3.5" />
-                              Thi trắc nghiệm pháp luật
+                              Thi chính thức
+                            </Link>
+                          ) : campaign.examPracticeIsOpen ? (
+                            <Link
+                              to={`${LEGAL_EDUCATION_PATH}/${campaign.slug}/thi-thu`}
+                              className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                            >
+                              <PencilLine className="size-3.5" />
+                              Thi thử
                             </Link>
                           ) : (
                             <p className="mt-2 text-xs text-muted-foreground">Thi trắc nghiệm chưa mở</p>

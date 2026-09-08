@@ -133,7 +133,13 @@ export function LegalEducationQuestionsPage() {
             Quay lại danh sách
           </Button>
           <h1 className="text-2xl font-semibold">Câu hỏi — {campaign.title}</h1>
-          <p className="text-muted-foreground">{campaign.questions.length} câu hỏi. Đáp án đánh dấu chỉ hiện ở trang quản trị.</p>
+          <p className="text-muted-foreground">
+            Ngân hàng {campaign.questions.length} câu
+            {campaign.exam?.questionsPerAttempt
+              ? ` · mỗi đề lấy ngẫu nhiên ${campaign.exam.questionsPerAttempt} câu`
+              : " · mỗi đề dùng toàn bộ ngân hàng"}
+            . Đáp án đánh dấu chỉ hiện ở trang quản trị.
+          </p>
         </div>
         <Button className="w-fit shrink-0" onClick={() => setFormState({ mode: "create" })}>
           <Plus className="size-4" />

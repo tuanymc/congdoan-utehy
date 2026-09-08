@@ -11,9 +11,13 @@ import type {
   LegalEducationCampaignDto,
   LegalEducationMaterialDto,
   LegalExamAttemptDto,
+  LegalExamAttemptKind,
   LegalExamAttemptStatus,
+  LegalExamIndividualRankDto,
   LegalExamQuestionDto,
+  LegalExamResultRowDto,
   LegalExamResultsDto,
+  LegalExamUnitStatDto,
   LegalExamSettingsDto,
   LegalExamSubmitResultDto,
   LegalExamTakerQuestionDto,
@@ -22,6 +26,7 @@ import type {
   PublicLegalCampaignListItemDto,
   PublicLegalMaterialDetailDto
 } from "@congdoan/types";
+import { LEGAL_EXAM_UNIT_SCORE_WEIGHTS } from "@congdoan/types";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
 import { slugify } from "../../common/utils/slugify";
@@ -115,6 +120,10 @@ function toExamSettingsDto(
     isOpen: boolean;
     startAt: Date | null;
     endAt: Date | null;
+    questionsPerAttempt: number | null;
+    practiceStartAt: Date | null;
+    practiceEndAt: Date | null;
+    practiceMaxAttempts: number;
     _count: { questions: number };
   }
 ): LegalExamSettingsDto {
@@ -132,8 +141,79 @@ function toExamSettingsDto(
     isOpen: exam.isOpen,
     startAt: toIso(exam.startAt),
     endAt: toIso(exam.endAt),
-    questionCount: exam._count.questions
+    questionCount: exam._count.questions,
+    questionsPerAttempt: exam.questionsPerAttempt,
+    practiceStartAt: toIso(exam.practiceStartAt),
+    practiceEndAt: toIso(exam.practiceEndAt),
+    practiceMaxAttempts: exam.practiceMaxAttempts
   };
+}
+
+function officialWindowOpen(exam: { isOpen: boolean; startAt: Date | null; endAt: Date | null }, now: Date): boolean {
+  return examWindowOpen(exam, now);
+}
+
+function practiceWindowOpen(exam: { practiceStartAt: Date | null; practiceEndAt: Date | null }, now: Date): boolean {
+  if (!exam.practiceStartAt || !exam.practiceEndAt) return false;
+  return now >= exam.practiceStartAt && now <= exam.practiceEndAt;
+}
+
+function resolveAttemptKind(
+  exam: {
+    isOpen: boolean;
+    startAt: Date | null;
+    endAt: Date | null;
+    practiceStartAt: Date | null;
+    practiceEndAt: Date | null;
+  },
+  now: Date,
+  requested?: LegalExamAttemptKind
+): LegalExamAttemptKind {
+  const official = officialWindowOpen(exam, now);
+  const practice = practiceWindowOpen(exam, now);
+  if (requested === "PRACTICE") {
+    if (!practice) throw new BadRequestException("Chưa đến hoặc đã hết thời gian thi thử.");
+    return "PRACTICE";
+  }
+  if (requested === "OFFICIAL") {
+    if (!official) throw new BadRequestException("Cuộc thi chính thức chưa mở hoặc đã khóa.");
+    return "OFFICIAL";
+  }
+  if (official) return "OFFICIAL";
+  if (practice) return "PRACTICE";
+  throw new BadRequestException("Bài thi này chưa mở hoặc đã kết thúc.");
+}
+
+function pickQuestionIds(
+  questions: { id: string; sortOrder: number }[],
+  questionsPerAttempt: number | null,
+  shuffleQuestions: boolean
+): string[] {
+  let pool = [...questions];
+  const take =
+    questionsPerAttempt && questionsPerAttempt > 0 ? Math.min(questionsPerAttempt, pool.length) : pool.length;
+
+  if (take < pool.length) {
+    shuffleInPlace(pool);
+    pool = pool.slice(0, take);
+    if (!shuffleQuestions) {
+      pool.sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+  } else if (shuffleQuestions) {
+    shuffleInPlace(pool);
+  }
+
+  return pool.map((q) => q.id);
+}
+
+function attemptPercent(score: number | null, total: number | null): number | null {
+  if (score === null || total === null || total === 0) return null;
+  return (score / total) * 100;
+}
+
+function resolvedQuestionsPerAttempt(questionsPerAttempt: number | null, bankCount: number): number {
+  if (questionsPerAttempt && questionsPerAttempt > 0) return Math.min(questionsPerAttempt, bankCount);
+  return bankCount;
 }
 
 function toQuestionDto(q: {
@@ -293,7 +373,11 @@ export class LegalEducationService {
             shuffleOptions: dto.shuffleOptions ?? true,
             isOpen: dto.examIsOpen ?? false,
             startAt: dto.examStartAt ? new Date(dto.examStartAt) : undefined,
-            endAt: dto.examEndAt ? new Date(dto.examEndAt) : undefined
+            endAt: dto.examEndAt ? new Date(dto.examEndAt) : undefined,
+            questionsPerAttempt: dto.questionsPerAttempt ?? undefined,
+            practiceStartAt: dto.practiceStartAt ? new Date(dto.practiceStartAt) : undefined,
+            practiceEndAt: dto.practiceEndAt ? new Date(dto.practiceEndAt) : undefined,
+            practiceMaxAttempts: dto.practiceMaxAttempts ?? 5
           }
         }
       },
@@ -326,6 +410,10 @@ export class LegalEducationService {
     if (dto.examIsOpen !== undefined) examPatch.isOpen = dto.examIsOpen;
     if (dto.examStartAt !== undefined) examPatch.startAt = dto.examStartAt ? new Date(dto.examStartAt) : null;
     if (dto.examEndAt !== undefined) examPatch.endAt = dto.examEndAt ? new Date(dto.examEndAt) : null;
+    if (dto.questionsPerAttempt !== undefined) examPatch.questionsPerAttempt = dto.questionsPerAttempt;
+    if (dto.practiceStartAt !== undefined) examPatch.practiceStartAt = dto.practiceStartAt ? new Date(dto.practiceStartAt) : null;
+    if (dto.practiceEndAt !== undefined) examPatch.practiceEndAt = dto.practiceEndAt ? new Date(dto.practiceEndAt) : null;
+    if (dto.practiceMaxAttempts !== undefined) examPatch.practiceMaxAttempts = dto.practiceMaxAttempts;
 
     const campaign = await this.prisma.legalEducationCampaign.update({
       where: { id },
@@ -436,7 +524,11 @@ export class LegalEducationService {
         shuffleOptions: dto.shuffleOptions,
         isOpen: dto.isOpen,
         startAt: dto.startAt !== undefined ? (dto.startAt ? new Date(dto.startAt) : null) : undefined,
-        endAt: dto.endAt !== undefined ? (dto.endAt ? new Date(dto.endAt) : null) : undefined
+        endAt: dto.endAt !== undefined ? (dto.endAt ? new Date(dto.endAt) : null) : undefined,
+        questionsPerAttempt: dto.questionsPerAttempt,
+        practiceStartAt: dto.practiceStartAt !== undefined ? (dto.practiceStartAt ? new Date(dto.practiceStartAt) : null) : undefined,
+        practiceEndAt: dto.practiceEndAt !== undefined ? (dto.practiceEndAt ? new Date(dto.practiceEndAt) : null) : undefined,
+        practiceMaxAttempts: dto.practiceMaxAttempts
       },
       include: { _count: { select: { questions: true } } }
     });
@@ -516,28 +608,110 @@ export class LegalEducationService {
             id: true,
             fullName: true,
             email: true,
-            linkedUnionMembers: { select: { legacyCode: true }, take: 1 }
+            linkedUnionMembers: {
+              select: {
+                legacyCode: true,
+                department: { select: { id: true, name: true } }
+              },
+              take: 1
+            }
           }
         }
       },
       orderBy: { startedAt: "desc" }
     });
 
-    const rows = attempts.map((a) => ({
-      attemptId: a.id,
-      userId: a.userId,
-      fullName: a.user.fullName,
-      email: a.user.email,
-      staffCode: a.user.linkedUnionMembers[0]?.legacyCode ?? null,
-      status: a.status as LegalExamAttemptStatus,
-      startedAt: a.startedAt.toISOString(),
-      submittedAt: toIso(a.submittedAt),
-      score: a.score,
-      total: a.total,
-      passed: a.passed
-    }));
+    const rows: LegalExamResultRowDto[] = attempts.map((a) => {
+      const member = a.user.linkedUnionMembers[0];
+      return {
+        attemptId: a.id,
+        userId: a.userId,
+        fullName: a.user.fullName,
+        email: a.user.email,
+        staffCode: member?.legacyCode ?? null,
+        departmentId: member?.department?.id ?? null,
+        departmentName: member?.department?.name ?? null,
+        isPractice: a.isPractice,
+        status: a.status as LegalExamAttemptStatus,
+        startedAt: a.startedAt.toISOString(),
+        submittedAt: toIso(a.submittedAt),
+        score: a.score,
+        total: a.total,
+        percent: attemptPercent(a.score, a.total),
+        passed: a.passed
+      };
+    });
 
     const submitted = rows.filter((r) => r.status === "SUBMITTED" || r.status === "EXPIRED");
+    const officialDone = submitted.filter((r) => !r.isPractice && r.percent !== null);
+    const bestByUser = new Map<string, LegalExamResultRowDto>();
+    for (const row of officialDone) {
+      const prev = bestByUser.get(row.userId);
+      if (
+        !prev ||
+        (row.percent ?? 0) > (prev.percent ?? 0) ||
+        (row.percent === prev.percent && (row.submittedAt ?? "") < (prev.submittedAt ?? ""))
+      ) {
+        bestByUser.set(row.userId, row);
+      }
+    }
+    const individuals: LegalExamIndividualRankDto[] = [...bestByUser.values()]
+      .sort((a, b) => {
+        if ((b.percent ?? 0) !== (a.percent ?? 0)) return (b.percent ?? 0) - (a.percent ?? 0);
+        return (a.submittedAt ?? "").localeCompare(b.submittedAt ?? "");
+      })
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+
+    const members = await this.prisma.unionMember.findMany({
+      where: { userId: { not: null } },
+      select: { userId: true, departmentId: true, department: { select: { id: true, name: true } } }
+    });
+    const deptMeta = new Map<string, { name: string; eligible: Set<string> }>();
+    for (const member of members) {
+      if (!member.departmentId || !member.userId) continue;
+      const existing = deptMeta.get(member.departmentId);
+      if (existing) {
+        existing.eligible.add(member.userId);
+      } else {
+        deptMeta.set(member.departmentId, {
+          name: member.department?.name ?? "—",
+          eligible: new Set([member.userId])
+        });
+      }
+    }
+
+    const units: LegalExamUnitStatDto[] = [];
+    for (const [departmentId, meta] of deptMeta) {
+      const takers = individuals.filter((row) => row.departmentId === departmentId);
+      const eligibleCount = meta.eligible.size;
+      const submittedCount = takers.length;
+      const passedCount = takers.filter((row) => row.passed).length;
+      const averagePercent =
+        submittedCount === 0 ? 0 : takers.reduce((sum, row) => sum + (row.percent ?? 0), 0) / submittedCount;
+      const participationPercent = eligibleCount === 0 ? 0 : (submittedCount / eligibleCount) * 100;
+      const passPercent = submittedCount === 0 ? 0 : (passedCount / submittedCount) * 100;
+      const unitScore =
+        LEGAL_EXAM_UNIT_SCORE_WEIGHTS.averagePercent * averagePercent +
+        LEGAL_EXAM_UNIT_SCORE_WEIGHTS.participationPercent * participationPercent +
+        LEGAL_EXAM_UNIT_SCORE_WEIGHTS.passPercent * passPercent;
+      units.push({
+        rank: 0,
+        departmentId,
+        departmentName: meta.name,
+        eligibleCount,
+        submittedCount,
+        passedCount,
+        participationPercent,
+        averagePercent,
+        passPercent,
+        unitScore
+      });
+    }
+    units.sort((a, b) => b.unitScore - a.unitScore || b.participationPercent - a.participationPercent);
+    units.forEach((unit, index) => {
+      unit.rank = index + 1;
+    });
+
     return {
       examId: exam.id,
       examTitle: exam.title,
@@ -546,25 +720,45 @@ export class LegalEducationService {
       attemptCount: rows.length,
       submittedCount: submitted.length,
       passedCount: submitted.filter((r) => r.passed).length,
-      rows
+      officialSubmittedCount: individuals.length,
+      officialPassedCount: individuals.filter((r) => r.passed).length,
+      rows,
+      individuals,
+      units
     };
   }
 
   async getResultsCsv(examId: string): Promise<{ fileName: string; csv: string }> {
     const results = await this.getResults(examId);
-    const header = ["Họ tên", "Email", "Mã cán bộ", "Trạng thái", "Bắt đầu", "Nộp bài", "Điểm", "Tổng câu", "Đạt"];
+    const header = [
+      "Loại",
+      "Họ tên",
+      "Email",
+      "Mã cán bộ",
+      "Công đoàn bộ phận",
+      "Trạng thái",
+      "Bắt đầu",
+      "Nộp bài",
+      "Điểm",
+      "Tổng câu",
+      "%",
+      "Đạt"
+    ];
     const lines = [
       header.join(","),
       ...results.rows.map((r) =>
         [
+          csvCell(r.isPractice ? "Thi thử" : "Chính thức"),
           csvCell(r.fullName),
           csvCell(r.email),
           csvCell(r.staffCode ?? ""),
+          csvCell(r.departmentName ?? ""),
           csvCell(statusLabel(r.status)),
           csvCell(r.startedAt),
           csvCell(r.submittedAt ?? ""),
           r.score ?? "",
           r.total ?? "",
+          r.percent === null ? "" : r.percent.toFixed(1),
           r.passed === null ? "" : r.passed ? "Đạt" : "Không đạt"
         ].join(",")
       )
@@ -573,13 +767,46 @@ export class LegalEducationService {
     return { fileName: `${slug}.csv`, csv: `\uFEFF${lines.join("\r\n")}` };
   }
 
+  async getUnitResultsCsv(examId: string): Promise<{ fileName: string; csv: string }> {
+    const results = await this.getResults(examId);
+    const header = [
+      "Hạng",
+      "Công đoàn bộ phận",
+      "Đoàn viên có tài khoản",
+      "Đã nộp (chính thức)",
+      "Đạt",
+      "Tỷ lệ tham gia (%)",
+      "Điểm TB (%)",
+      "Tỷ lệ đạt (%)",
+      "Điểm đơn vị"
+    ];
+    const lines = [
+      header.join(","),
+      ...results.units.map((u) =>
+        [
+          u.rank,
+          csvCell(u.departmentName),
+          u.eligibleCount,
+          u.submittedCount,
+          u.passedCount,
+          u.participationPercent.toFixed(1),
+          u.averagePercent.toFixed(1),
+          u.passPercent.toFixed(1),
+          u.unitScore.toFixed(2)
+        ].join(",")
+      )
+    ];
+    const slug = slugify(results.examTitle) || "ket-qua-thi";
+    return { fileName: `${slug}-don-vi.csv`, csv: `\uFEFF${lines.join("\r\n")}` };
+  }
+
   // ---------- Public ----------
 
   async listPublicCampaigns(): Promise<PublicLegalCampaignListItemDto[]> {
     const items = await this.prisma.legalEducationCampaign.findMany({
       where: { isPublished: true },
       include: {
-        exam: { select: { isOpen: true, startAt: true, endAt: true } },
+        exam: { select: { isOpen: true, startAt: true, endAt: true, practiceStartAt: true, practiceEndAt: true } },
         materials: { where: { isPublished: true }, select: { id: true } }
       },
       orderBy: { createdAt: "desc" }
@@ -592,7 +819,8 @@ export class LegalEducationService {
       summary: c.summary,
       periodLabel: c.periodLabel,
       materialCount: c.materials.length,
-      examIsOpen: c.exam ? examWindowOpen(c.exam, now) : false
+      examIsOpen: c.exam ? officialWindowOpen(c.exam, now) : false,
+      examPracticeIsOpen: c.exam ? practiceWindowOpen(c.exam, now) : false
     }));
   }
 
@@ -630,8 +858,14 @@ export class LegalEducationService {
             durationMinutes: campaign.exam.durationMinutes,
             passingScorePercent: campaign.exam.passingScorePercent,
             maxAttempts: campaign.exam.maxAttempts,
-            isOpen: examWindowOpen(campaign.exam, now),
-            questionCount: campaign.exam._count.questions
+            isOpen: officialWindowOpen(campaign.exam, now),
+            practiceIsOpen: practiceWindowOpen(campaign.exam, now),
+            questionCount: resolvedQuestionsPerAttempt(campaign.exam.questionsPerAttempt, campaign.exam._count.questions),
+            questionBankCount: campaign.exam._count.questions,
+            practiceStartAt: toIso(campaign.exam.practiceStartAt),
+            practiceEndAt: toIso(campaign.exam.practiceEndAt),
+            startAt: toIso(campaign.exam.startAt),
+            endAt: toIso(campaign.exam.endAt)
           }
         : null
     };
@@ -673,18 +907,17 @@ export class LegalEducationService {
     return exam;
   }
 
-  async startOrResumeAttempt(examId: string, userId: string): Promise<LegalExamAttemptDto> {
+  async startOrResumeAttempt(examId: string, userId: string, requestedKind?: LegalExamAttemptKind): Promise<LegalExamAttemptDto> {
     const exam = await this.loadExamForTaker(examId);
     const now = new Date();
-    if (!examWindowOpen(exam, now)) {
-      throw new BadRequestException("Bài thi này chưa mở hoặc đã kết thúc.");
-    }
+    const kind = resolveAttemptKind(exam, now, requestedKind);
+    const isPractice = kind === "PRACTICE";
     if (exam.questions.length === 0) {
       throw new BadRequestException("Bài thi chưa có câu hỏi.");
     }
 
     const existingInProgress = await this.prisma.legalExamAttempt.findFirst({
-      where: { examId, userId, status: "IN_PROGRESS" },
+      where: { examId, userId, status: "IN_PROGRESS", isPractice },
       include: { answers: true }
     });
     if (existingInProgress) {
@@ -696,16 +929,22 @@ export class LegalEducationService {
       }
     }
 
-    const usedCount = await this.prisma.legalExamAttempt.count({ where: { examId, userId } });
-    if (usedCount >= exam.maxAttempts) {
-      throw new ConflictException("Đồng chí đã hết số lần thi cho phép của đợt này.");
+    const usedCount = await this.prisma.legalExamAttempt.count({ where: { examId, userId, isPractice } });
+    const maxAttempts = isPractice ? exam.practiceMaxAttempts : exam.maxAttempts;
+    if (usedCount >= maxAttempts) {
+      throw new ConflictException(
+        isPractice
+          ? "Đồng chí đã hết số lần thi thử cho phép của đợt này."
+          : "Đồng chí đã hết số lần thi chính thức cho phép của đợt này."
+      );
     }
 
-    const questionIds = exam.questions.map((q) => q.id);
-    if (exam.shuffleQuestions) shuffleInPlace(questionIds);
+    const questionIds = pickQuestionIds(exam.questions, exam.questionsPerAttempt, exam.shuffleQuestions);
+    const selected = new Set(questionIds);
 
     const optionOrder: Record<string, number[]> = {};
     for (const q of exam.questions) {
+      if (!selected.has(q.id)) continue;
       const options = parseOptions(q.optionsJson);
       const indices = options.map((_, i) => i);
       if (exam.shuffleOptions) shuffleInPlace(indices);
@@ -717,6 +956,7 @@ export class LegalEducationService {
         examId,
         userId,
         status: "IN_PROGRESS",
+        isPractice,
         questionOrderJson: JSON.stringify(questionIds),
         optionOrderJson: JSON.stringify(optionOrder)
       }
@@ -755,6 +995,7 @@ export class LegalEducationService {
       campaignSlug: a.exam.campaign.slug,
       campaignTitle: a.exam.campaign.title,
       status: a.status as LegalExamAttemptStatus,
+      isPractice: a.isPractice,
       startedAt: a.startedAt.toISOString(),
       submittedAt: toIso(a.submittedAt),
       score: a.score,
@@ -782,7 +1023,8 @@ export class LegalEducationService {
       include: { exam: { include: { questions: true } } }
     });
     if (!attempt) throw new NotFoundException("Không tìm thấy lượt thi này.");
-    const validIds = new Set(attempt.exam.questions.map((q) => q.id));
+    const orderedIds = parseStringArray(attempt.questionOrderJson);
+    const validIds = new Set(orderedIds.length > 0 ? orderedIds : attempt.exam.questions.map((q) => q.id));
     const optionCounts = new Map(attempt.exam.questions.map((q) => [q.id, parseOptions(q.optionsJson).length]));
 
     for (const item of dto.answers) {
@@ -816,8 +1058,12 @@ export class LegalEducationService {
     const answerByQuestion = new Map(attempt.answers.map((a) => [a.questionId, a.selectedOptionIndex]));
     let score = 0;
     const review: NonNullable<LegalExamSubmitResultDto["review"]> = [];
+    const questionById = new Map(attempt.exam.questions.map((q) => [q.id, q]));
+    const orderedIds = parseStringArray(attempt.questionOrderJson);
+    const scoredIds = orderedIds.length > 0 ? orderedIds.filter((id) => questionById.has(id)) : attempt.exam.questions.map((q) => q.id);
 
-    for (const q of attempt.exam.questions) {
+    for (const id of scoredIds) {
+      const q = questionById.get(id)!;
       const selected = answerByQuestion.get(q.id) ?? null;
       const isCorrect = selected !== null && selected === q.correctOptionIndex;
       if (isCorrect) score += 1;
@@ -836,7 +1082,7 @@ export class LegalEducationService {
       });
     }
 
-    const total = attempt.exam.questions.length;
+    const total = scoredIds.length;
     const percent = total === 0 ? 0 : (score / total) * 100;
     const passed = percent >= attempt.exam.passingScorePercent;
     const submittedAt = new Date();
@@ -849,12 +1095,13 @@ export class LegalEducationService {
     return {
       id: attemptId,
       status,
+      isPractice: attempt.isPractice,
       score,
       total,
       passed,
       passingScorePercent: attempt.exam.passingScorePercent,
       submittedAt: submittedAt.toISOString(),
-      review: attempt.exam.revealAnswers ? review : undefined
+      review: attempt.isPractice || attempt.exam.revealAnswers ? review : undefined
     };
   }
 
@@ -889,6 +1136,7 @@ export class LegalEducationService {
       id: attempt.id,
       examId: attempt.examId,
       status: attempt.status as LegalExamAttemptStatus,
+      isPractice: attempt.isPractice,
       startedAt: attempt.startedAt.toISOString(),
       submittedAt: toIso(attempt.submittedAt),
       durationMinutes: attempt.exam.durationMinutes,
