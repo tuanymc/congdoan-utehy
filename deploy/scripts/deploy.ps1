@@ -1,31 +1,29 @@
 # deploy/scripts/deploy.ps1
-# Chạy bởi self-hosted GitHub Actions runner cài trên chính Windows Server, SAU KHI build xong
-# (pnpm build ở bước trước trong workflow .github/workflows/ci.yml).
-# Copy bản build mới nhất vào đúng path IIS đang trỏ tới, rồi pm2 reload API — không downtime.
+# Run by the self-hosted GitHub Actions runner on Windows Server AFTER pnpm build.
+# Copies the latest build into the IIS site paths, then reloads the API via PM2.
 #
-# Chạy thử thủ công: powershell -File deploy/scripts/deploy.ps1 -Environment staging
+# Windows PowerShell 5.1 reads .ps1 as ANSI unless this file is ASCII-only.
+#
+# Manual: powershell -File deploy/scripts/deploy.ps1 -Environment production
 
 param(
   [ValidateSet("staging", "production")]
   [string]$Environment = "staging",
 
-  # Đổi các path dưới đây theo đúng cấu trúc thật trên server của bạn (mục README gốc gợi ý
-  # C:\inetpub\congdoan\{api,web,admin}\ — chỉnh lại nếu server dùng cấu trúc khác).
   [string]$ApiSitePath = "C:\inetpub\congdoan\api",
   [string]$WebSitePath = "C:\inetpub\congdoan\web",
   [string]$AdminSitePath = "C:\inetpub\congdoan\admin",
 
-  # File .env thật KHÔNG nằm trong repo — đặt sẵn 1 lần trên server, script chỉ tham chiếu tới,
-  # không ghi đè mỗi lần deploy.
+  # Real .env is NOT in the repo. Keep it on the server; this script only copies it.
   [string]$ApiEnvFile = "C:\inetpub\congdoan\shared\.env"
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path "$PSScriptRoot\..\.."
 
-Write-Host "== Deploy Website Công đoàn HYUTE — môi trường: $Environment ==" -ForegroundColor Cyan
+Write-Host "== Deploy union site HYUTE - env: $Environment ==" -ForegroundColor Cyan
 
-# 1) API: copy dist + node_modules (production only) + package.json, giữ nguyên .env trên server
+# 1) API: copy dist + package.json + prisma, keep the server .env
 Write-Host "-- Deploy apps/api --"
 New-Item -ItemType Directory -Force -Path $ApiSitePath | Out-Null
 Copy-Item "$RepoRoot\apps\api\dist\*" -Destination $ApiSitePath -Recurse -Force
@@ -37,14 +35,14 @@ Push-Location $ApiSitePath
 if (Test-Path $ApiEnvFile) {
   Copy-Item $ApiEnvFile -Destination ".\.env" -Force
 } else {
-  Write-Warning "Không tìm thấy $ApiEnvFile — đảm bảo đã tạo file .env thật trên server trước khi deploy lần đầu."
+  Write-Warning "Missing $ApiEnvFile - create the real .env on the server before the first deploy."
 }
 pnpm install --prod --frozen-lockfile
 npx prisma generate --schema=.\prisma\schema.prisma
 npx prisma migrate deploy --schema=.\prisma\schema.prisma
 Pop-Location
 
-# 2) Web & Admin: copy file tĩnh build từ Vite + web.config tương ứng
+# 2) Web and Admin: copy Vite static files + matching web.config
 Write-Host "-- Deploy apps/web --"
 New-Item -ItemType Directory -Force -Path $WebSitePath | Out-Null
 Copy-Item "$RepoRoot\apps\web\dist\*" -Destination $WebSitePath -Recurse -Force
@@ -55,7 +53,7 @@ New-Item -ItemType Directory -Force -Path $AdminSitePath | Out-Null
 Copy-Item "$RepoRoot\apps\admin\dist\*" -Destination $AdminSitePath -Recurse -Force
 Copy-Item "$RepoRoot\deploy\iis\web.config.admin" -Destination "$AdminSitePath\web.config" -Force
 
-# 3) Reload PM2 cho API — không downtime (PM2 khởi động tiến trình mới rồi mới tắt tiến trình cũ)
+# 3) Reload PM2 for the API - no downtime
 Write-Host "-- Reload PM2 (congdoan-api) --"
 Push-Location $RepoRoot
 $pm2List = pm2 jlist | ConvertFrom-Json
@@ -67,4 +65,4 @@ if ($pm2List | Where-Object { $_.name -eq "congdoan-api" }) {
 }
 Pop-Location
 
-Write-Host "== Deploy hoàn tất ==" -ForegroundColor Green
+Write-Host "== Deploy done ==" -ForegroundColor Green
