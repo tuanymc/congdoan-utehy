@@ -181,9 +181,14 @@ export interface PublicLegalCampaignListItemDto {
   summary: string | null;
   periodLabel: string | null;
   materialCount: number;
+  /** Cửa sổ thi chính thức đang mở (isOpen + trong khoảng start/end). */
   examIsOpen: boolean;
   examPracticeIsOpen: boolean;
+  /** Cờ admin mở thi chính thức — vẫn true khi chưa tới giờ startAt. */
+  examEnabled: boolean;
+  examStartAt: string | null;
   examEndAt: string | null;
+  examPracticeStartAt: string | null;
   examPracticeEndAt: string | null;
 }
 

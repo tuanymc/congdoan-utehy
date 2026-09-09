@@ -954,7 +954,10 @@ export class LegalEducationService {
       materialCount: c.materials.length,
       examIsOpen: c.exam ? officialWindowOpen(c.exam, now) : false,
       examPracticeIsOpen: c.exam ? practiceWindowOpen(c.exam, now) : false,
+      examEnabled: c.exam?.isOpen ?? false,
+      examStartAt: toIso(c.exam?.startAt ?? null),
       examEndAt: toIso(c.exam?.endAt ?? null),
+      examPracticeStartAt: toIso(c.exam?.practiceStartAt ?? null),
       examPracticeEndAt: toIso(c.exam?.practiceEndAt ?? null)
     }));
   }
