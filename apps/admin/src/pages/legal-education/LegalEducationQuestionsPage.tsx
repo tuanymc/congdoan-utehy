@@ -1,9 +1,15 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useOne } from "@refinedev/core";
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
-import type { CreateLegalExamQuestionRequest, LegalEducationCampaignDetailDto, LegalExamQuestionDto } from "@congdoan/types";
-import { apiFetch, ApiError } from "../../lib/api-client";
+import { ArrowLeft, Download, FileUp, Pencil, Plus, Trash2 } from "lucide-react";
+import type {
+  CreateLegalExamQuestionRequest,
+  LegalEducationCampaignDetailDto,
+  LegalExamQuestionDto,
+  LegalExamQuestionImportResultDto
+} from "@congdoan/types";
+import { apiFetch, apiFetchUpload, ApiError } from "../../lib/api-client";
+import { pushToast } from "../../components/common/toast-store";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -47,6 +53,11 @@ export function LegalEducationQuestionsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LegalExamQuestionDto | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<LegalExamQuestionImportResultDto | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (formState?.mode === "edit") {
@@ -112,6 +123,7 @@ export function LegalEducationQuestionsPage() {
     setIsDeleting(true);
     try {
       await apiFetch(`/admin/legal-education/campaigns/${campaignId}/exam/questions/${deleteTarget.id}`, { method: "DELETE" });
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
       setDeleteTarget(null);
       await refetch();
     } finally {
@@ -119,9 +131,96 @@ export function LegalEducationQuestionsPage() {
     }
   }
 
+  async function handleConfirmBulkDelete() {
+    if (!campaignId || selectedIds.length === 0) return;
+    setIsDeleting(true);
+    try {
+      await apiFetch(`/admin/legal-education/campaigns/${campaignId}/exam/questions/bulk-delete`, {
+        method: "POST",
+        body: { ids: selectedIds }
+      });
+      setSelectedIds([]);
+      setBulkDeleteOpen(false);
+      await refetch();
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  function handleDownloadTemplate() {
+    const content = [
+      "Câu 1. Nội dung câu hỏi thứ nhất?",
+      "",
+      "A. Lựa chọn A",
+      "B. Lựa chọn B",
+      "C. Lựa chọn C",
+      "D. Lựa chọn D",
+      "",
+      "Đáp án đúng: B",
+      "",
+      "Câu 2. Nội dung câu hỏi thứ hai?",
+      "",
+      "A. Lựa chọn A",
+      "B. Lựa chọn B",
+      "C. Lựa chọn C",
+      "D. Lựa chọn D",
+      "",
+      "Đáp án đúng: A",
+      ""
+    ].join("\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = "mau-ngan-hang-cau-hoi-phap-luat.txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImportFileSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !campaignId) return;
+    setIsImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await apiFetchUpload<LegalExamQuestionImportResultDto>(
+        `/admin/legal-education/campaigns/${campaignId}/exam/questions/import`,
+        formData
+      );
+      setImportResult(result);
+      pushToast({
+        variant: result.skipped > 0 ? "info" : "success",
+        message: `Đã nhập ${result.created} câu hỏi`,
+        description: result.skipped > 0 ? `Bỏ qua ${result.skipped} câu không đủ đáp án hoặc lựa chọn.` : undefined
+      });
+      await refetch();
+    } catch (error) {
+      pushToast({
+        variant: "error",
+        message: "Nhập câu hỏi thất bại",
+        description: error instanceof ApiError ? error.message : "Vui lòng dùng file .docx hoặc .txt theo mẫu."
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   if (isLoading) return <PageLoading />;
   if (!campaign) {
     return <p className="text-sm text-destructive">Không tìm thấy đợt phổ biến này.</p>;
+  }
+
+  const questionIds = campaign.questions.map((q) => q.id);
+  const allSelected = questionIds.length > 0 && questionIds.every((id) => selectedIds.includes(id));
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? questionIds : []);
+  }
+
+  function toggleSelect(id: string, checked: boolean) {
+    setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((item) => item !== id)));
   }
 
   return (
@@ -138,20 +237,74 @@ export function LegalEducationQuestionsPage() {
             {campaign.exam?.questionsPerAttempt
               ? ` · mỗi đề lấy ngẫu nhiên ${campaign.exam.questionsPerAttempt} câu`
               : " · mỗi đề dùng toàn bộ ngân hàng"}
-            . Đáp án đánh dấu chỉ hiện ở trang quản trị.
+            . Đáp án đánh dấu chỉ hiện ở trang quản trị. Nhập hàng loạt từ file Word/txt theo mẫu: mỗi câu bắt đầu
+            bằng &quot;Câu 1.&quot;, các lựa chọn A–D, kết thúc bằng &quot;Đáp án đúng: B&quot;.
           </p>
         </div>
-        <Button className="w-fit shrink-0" onClick={() => setFormState({ mode: "create" })}>
-          <Plus className="size-4" />
-          Thêm câu hỏi
-        </Button>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <Button variant="outline" className="w-fit" onClick={handleDownloadTemplate}>
+            <Download className="size-4" />
+            Tải file mẫu
+          </Button>
+          <Button
+            variant="outline"
+            className="w-fit"
+            disabled={isImporting}
+            onClick={() => importInputRef.current?.click()}
+          >
+            <FileUp className="size-4" />
+            {isImporting ? "Đang nhập..." : "Nhập từ Word"}
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            className="hidden"
+            onChange={(event) => void handleImportFileSelected(event)}
+          />
+          <Button className="w-fit" onClick={() => setFormState({ mode: "create" })}>
+            <Plus className="size-4" />
+            Thêm câu hỏi
+          </Button>
+        </div>
       </div>
+
+      {campaign.questions.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              aria-label="Chọn tất cả câu hỏi"
+              checked={allSelected}
+              onChange={(event) => toggleSelectAll(event.target.checked)}
+            />
+            Chọn tất cả
+          </label>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={selectedIds.length === 0}
+            onClick={() => setBulkDeleteOpen(true)}
+          >
+            <Trash2 className="size-4" />
+            Xoá đã chọn{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3">
         {campaign.questions.map((q, index) => (
           <Card key={q.id}>
             <CardContent className="flex items-start justify-between gap-3 py-4">
-              <div className="min-w-0">
+              <label className="mt-1 flex shrink-0 items-center">
+                <input
+                  type="checkbox"
+                  aria-label={`Chọn câu hỏi ${index + 1}`}
+                  checked={selectedIds.includes(q.id)}
+                  onChange={(event) => toggleSelect(q.id, event.target.checked)}
+                />
+              </label>
+              <div className="min-w-0 flex-1">
                 <p className="font-medium">
                   {index + 1}. {q.text}
                 </p>
@@ -242,6 +395,41 @@ export function LegalEducationQuestionsPage() {
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onConfirm={() => void handleConfirmDelete()}
       />
+
+      <ConfirmDeleteDialog
+        open={bulkDeleteOpen}
+        title="Xoá nhiều câu hỏi"
+        description={`Bạn có chắc chắn muốn xoá ${selectedIds.length} câu hỏi đã chọn? Các câu trả lời đã ghi nhận cũng sẽ bị xoá.`}
+        isPending={isDeleting}
+        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
+        onConfirm={() => void handleConfirmBulkDelete()}
+      />
+
+      <Dialog open={importResult !== null} onOpenChange={(open) => !open && setImportResult(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Kết quả nhập câu hỏi</DialogTitle>
+            <DialogDescription>
+              Đã đọc {importResult?.parsed ?? 0} câu — nhập {importResult?.created ?? 0} câu
+              {importResult && importResult.skipped > 0 ? `, bỏ qua ${importResult.skipped} câu` : ""}.
+            </DialogDescription>
+          </DialogHeader>
+          {importResult && importResult.errors.length > 0 ? (
+            <div className="flex flex-col gap-1 rounded-md border p-3 text-sm">
+              {importResult.errors.map((err, index) => (
+                <p key={`${err.questionNumber ?? "x"}-${index}`} className="text-destructive">
+                  {err.message}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Mọi câu hỏi hợp lệ đã được thêm vào ngân hàng.</p>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setImportResult(null)}>Đóng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

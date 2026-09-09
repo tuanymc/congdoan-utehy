@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
@@ -29,6 +28,9 @@ import type { UploadImageResponseDto } from "@congdoan/types";
 import { apiFetchUpload, ApiError } from "../../lib/api-client";
 import { cn } from "../ui/utils";
 import { pushToast } from "../common/toast-store";
+import { clampImagePercent, ContentImage } from "./rich-text-content-image";
+
+const IMAGE_WIDTH_PRESETS = [25, 50, 75, 100] as const;
 
 interface RichTextEditorProps {
   value: string;
@@ -208,6 +210,68 @@ function EditorToolbar({
   );
 }
 
+function ImageSizeToolbar({ editor }: { editor: Editor }) {
+  const isImage = editor.isActive("image");
+  const stored = clampImagePercent(editor.getAttributes("image").widthPercent);
+  const [draft, setDraft] = useState(String(stored));
+
+  useEffect(() => {
+    setDraft(String(stored));
+  }, [stored, isImage]);
+
+  if (!isImage) return null;
+
+  function applyWidth(percent: number) {
+    const next = clampImagePercent(percent);
+    setDraft(String(next));
+    editor.chain().focus().updateAttributes("image", { widthPercent: next }).run();
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-muted/20 px-2 py-1.5">
+      <span className="mr-1 text-xs font-medium text-muted-foreground">Kích thước ảnh</span>
+      {IMAGE_WIDTH_PRESETS.map((preset) => (
+        <button
+          key={preset}
+          type="button"
+          title={`Hiển thị ${preset}% chiều rộng`}
+          onClick={() => applyWidth(preset)}
+          className={cn(
+            "h-7 rounded-md px-2 text-xs tabular-nums transition-colors",
+            "hover:bg-muted",
+            stored === preset ? "bg-primary/10 font-medium text-primary" : "text-foreground"
+          )}
+        >
+          {preset}%
+        </button>
+      ))}
+      <label className="ml-1 flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="sr-only">Phần trăm tuỳ chọn</span>
+        <input
+          type="number"
+          min={10}
+          max={100}
+          step={5}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => applyWidth(Number(draft) || stored)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              applyWidth(Number(draft) || stored);
+            }
+          }}
+          className="h-7 w-16 rounded-md border border-input bg-background px-2 text-xs tabular-nums outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+        />
+        %
+      </label>
+      <ToolbarButton title="Căn giữa ảnh" active onClick={() => applyWidth(stored)}>
+        <AlignCenter className="size-4" />
+      </ToolbarButton>
+    </div>
+  );
+}
+
 /**
  * TipTap rich text editor — lưu HTML vào content bài viết (apps/web render bằng dangerouslySetInnerHTML).
  * Nút ảnh gọi POST /admin/uploads/images rồi chèn <img src="/upload/images/..."> vào nội dung.
@@ -225,6 +289,7 @@ export function RichTextEditor({
 
   const editor = useEditor({
     immediatelyRender: false,
+    shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] }
@@ -235,7 +300,7 @@ export function RichTextEditor({
         openOnClick: false,
         HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" }
       }),
-      Image.configure({
+      ContentImage.configure({
         allowBase64: false,
         HTMLAttributes: { class: "max-w-full rounded-lg" }
       }),
@@ -254,7 +319,8 @@ export function RichTextEditor({
           "[&_a]:text-primary [&_a]:underline",
           "[&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6",
           "[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6",
-          "[&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-lg",
+          "[&_img]:my-3 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg",
+          "[&_img.ProseMirror-selectednode]:outline [&_img.ProseMirror-selectednode]:outline-2 [&_img.ProseMirror-selectednode]:outline-offset-2 [&_img.ProseMirror-selectednode]:outline-primary",
           "[&_blockquote]:my-3 [&_blockquote]:border-l-4 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:italic",
           "[&_.is-empty:first-child::before]:pointer-events-none [&_.is-empty:first-child::before]:float-left [&_.is-empty:first-child::before]:h-0 [&_.is-empty:first-child::before]:text-muted-foreground [&_.is-empty:first-child::before]:content-[attr(data-placeholder)]"
         ].join(" ")
@@ -307,6 +373,7 @@ export function RichTextEditor({
         isUploading={isUploading}
         onUploadImage={() => fileInputRef.current?.click()}
       />
+      <ImageSizeToolbar editor={editor} />
       <input
         ref={fileInputRef}
         type="file"
@@ -319,6 +386,11 @@ export function RichTextEditor({
         }}
       />
       <EditorContent editor={editor} />
+      {!editor.isActive("image") ? (
+        <p className="border-t border-border px-3 py-1.5 text-xs text-muted-foreground">
+          Bấm vào ảnh trong nội dung để đổi kích thước hiển thị (%). Ảnh được căn giữa trong khung soạn thảo.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -109,6 +109,23 @@ export interface CreateLegalExamQuestionRequest {
 
 export interface UpdateLegalExamQuestionRequest extends Partial<CreateLegalExamQuestionRequest> {}
 
+export interface BulkDeleteLegalExamQuestionsRequest {
+  ids: string[];
+}
+
+export interface LegalExamQuestionImportError {
+  questionNumber: number | null;
+  message: string;
+}
+
+/** Kết quả POST /admin/legal-education/campaigns/:id/exam/questions/import (.docx hoặc .txt). */
+export interface LegalExamQuestionImportResultDto {
+  parsed: number;
+  created: number;
+  skipped: number;
+  errors: LegalExamQuestionImportError[];
+}
+
 export interface LegalEducationCampaignDto {
   id: string;
   slug: string;

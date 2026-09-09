@@ -15,6 +15,7 @@ import type {
   LegalExamAttemptStatus,
   LegalExamIndividualRankDto,
   LegalExamQuestionDto,
+  LegalExamQuestionImportResultDto,
   LegalExamResultRowDto,
   LegalExamResultsDto,
   LegalExamUnitStatDto,
@@ -38,8 +39,21 @@ import { UpdateLegalExamDto } from "./dto/update-exam.dto";
 import { CreateLegalExamQuestionDto } from "./dto/create-question.dto";
 import { UpdateLegalExamQuestionDto } from "./dto/update-question.dto";
 import { SaveLegalExamAnswersDto } from "./dto/save-answers.dto";
+import {
+  extractQuestionBankText,
+  parseLegalExamQuestionsFromText
+} from "./parse-legal-exam-questions";
 
 const SUBMIT_GRACE_MS = 60_000;
+const MAX_QUESTION_BANK_FILE_BYTES = 10 * 1024 * 1024;
+
+/** Tối thiểu field multer — cùng khuôn UploadedExcelFile, không thêm @types/multer. */
+export interface UploadedQuestionBankFile {
+  originalname: string;
+  buffer: Buffer;
+  size: number;
+  mimetype: string;
+}
 
 const campaignAdminInclude = Prisma.validator<Prisma.LegalEducationCampaignDefaultArgs>()({
   include: {
@@ -553,6 +567,64 @@ export class LegalEducationService {
     return toQuestionDto(question);
   }
 
+  async importQuestions(
+    campaignId: string,
+    file: UploadedQuestionBankFile | undefined,
+    actorUserId: string
+  ): Promise<LegalExamQuestionImportResultDto> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException("Chưa chọn file Word (.docx) hoặc .txt để nhập câu hỏi.");
+    }
+    if (file.size > MAX_QUESTION_BANK_FILE_BYTES) {
+      throw new BadRequestException("File quá lớn (tối đa 10MB).");
+    }
+
+    let rawText: string;
+    try {
+      rawText = await extractQuestionBankText(file.buffer, file.originalname || "questions.docx");
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNSUPPORTED_QUESTION_BANK_FILE") {
+        throw new BadRequestException("Chỉ nhận file .docx hoặc .txt theo mẫu ngân hàng câu hỏi.");
+      }
+      throw new BadRequestException("Không đọc được nội dung file. Hãy dùng Word .docx hoặc file .txt.");
+    }
+
+    const parsed = parseLegalExamQuestionsFromText(rawText);
+    const blockCount = parsed.questions.length + parsed.errors.length;
+    if (parsed.questions.length === 0) {
+      throw new BadRequestException(parsed.errors[0]?.message ?? "Không tìm thấy câu hỏi hợp lệ trong file.");
+    }
+
+    const campaign = await this.findCampaignOrThrow(campaignId);
+    if (!campaign.exam) throw new NotFoundException("Đợt này chưa có bài thi.");
+    const examId = campaign.exam.id;
+    const existingCount = campaign.exam.questions.length;
+
+    await this.prisma.legalExamQuestion.createMany({
+      data: parsed.questions.map((question, index) => ({
+        examId,
+        text: question.text,
+        optionsJson: JSON.stringify(question.options),
+        correctOptionIndex: question.correctOptionIndex,
+        sortOrder: existingCount * 10 + index * 10
+      }))
+    });
+    await this.auditLog.record({
+      actorUserId,
+      action: "import",
+      entityType: "LegalExamQuestion",
+      entityId: examId,
+      changes: { imported: { before: existingCount, after: existingCount + parsed.questions.length } }
+    });
+
+    return {
+      parsed: blockCount,
+      created: parsed.questions.length,
+      skipped: parsed.errors.length,
+      errors: parsed.errors
+    };
+  }
+
   private async findQuestionOrThrow(campaignId: string, questionId: string) {
     const campaign = await this.findCampaignOrThrow(campaignId);
     if (!campaign.exam) throw new NotFoundException("Đợt này chưa có bài thi.");
@@ -591,6 +663,28 @@ export class LegalEducationService {
     await this.prisma.legalExamAttemptAnswer.deleteMany({ where: { questionId } });
     await this.prisma.legalExamQuestion.delete({ where: { id: questionId } });
     await this.auditLog.record({ actorUserId, action: "delete", entityType: "LegalExamQuestion", entityId: questionId });
+  }
+
+  async removeQuestions(campaignId: string, questionIds: string[], actorUserId: string): Promise<void> {
+    const uniqueIds = [...new Set(questionIds)];
+    const campaign = await this.findCampaignOrThrow(campaignId);
+    if (!campaign.exam) throw new NotFoundException("Đợt này chưa có bài thi.");
+    const owned = await this.prisma.legalExamQuestion.findMany({
+      where: { examId: campaign.exam.id, id: { in: uniqueIds } },
+      select: { id: true }
+    });
+    if (owned.length !== uniqueIds.length) {
+      throw new NotFoundException("Có câu hỏi không thuộc bài thi này.");
+    }
+    await this.prisma.legalExamAttemptAnswer.deleteMany({ where: { questionId: { in: uniqueIds } } });
+    await this.prisma.legalExamQuestion.deleteMany({ where: { id: { in: uniqueIds }, examId: campaign.exam.id } });
+    await this.auditLog.record({
+      actorUserId,
+      action: "delete",
+      entityType: "LegalExamQuestion",
+      entityId: campaign.exam.id,
+      changes: { questionIds: { before: uniqueIds, after: [] } }
+    });
   }
 
   async getResults(examId: string): Promise<LegalExamResultsDto> {

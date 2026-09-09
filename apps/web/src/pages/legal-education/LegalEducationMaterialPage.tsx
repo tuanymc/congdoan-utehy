@@ -13,7 +13,8 @@ const CONTENT_CLASS = [
   "[&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-bold",
   "[&_a]:text-primary [&_a]:underline",
   "[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6",
-  "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6"
+  "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6",
+  "[&_img]:my-4 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg"
 ].join(" ");
 
 export function LegalEducationMaterialPage() {
