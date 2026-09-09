@@ -894,6 +894,45 @@ export class LegalEducationService {
     return { fileName: `${slug}-don-vi.csv`, csv: `\uFEFF${lines.join("\r\n")}` };
   }
 
+  async removeAttempt(examId: string, attemptId: string, actorUserId: string): Promise<void> {
+    const attempt = await this.prisma.legalExamAttempt.findFirst({
+      where: { id: attemptId, examId },
+      select: { id: true, userId: true }
+    });
+    if (!attempt) throw new NotFoundException("Không tìm thấy lượt thi này.");
+    await this.prisma.legalExamAttemptAnswer.deleteMany({ where: { attemptId: attempt.id } });
+    await this.prisma.legalExamAttempt.delete({ where: { id: attempt.id } });
+    await this.auditLog.record({
+      actorUserId,
+      action: "delete",
+      entityType: "LegalExamAttempt",
+      entityId: attempt.id,
+      changes: { userId: { before: attempt.userId, after: null } }
+    });
+  }
+
+  async removeParticipantAttempts(examId: string, userId: string, actorUserId: string): Promise<void> {
+    const exam = await this.prisma.legalExam.findUnique({ where: { id: examId }, select: { id: true } });
+    if (!exam) throw new NotFoundException("Không tìm thấy bài thi này.");
+    const attempts = await this.prisma.legalExamAttempt.findMany({
+      where: { examId, userId },
+      select: { id: true }
+    });
+    if (attempts.length === 0) {
+      throw new NotFoundException("Người này chưa có lượt thi nào trong bài thi.");
+    }
+    const attemptIds = attempts.map((item) => item.id);
+    await this.prisma.legalExamAttemptAnswer.deleteMany({ where: { attemptId: { in: attemptIds } } });
+    await this.prisma.legalExamAttempt.deleteMany({ where: { examId, userId } });
+    await this.auditLog.record({
+      actorUserId,
+      action: "delete",
+      entityType: "LegalExamAttempt",
+      entityId: examId,
+      changes: { participantAttempts: { before: attempts.map((item) => item.id), after: [] } }
+    });
+  }
+
   // ---------- Public ----------
 
   async listPublicCampaigns(): Promise<PublicLegalCampaignListItemDto[]> {

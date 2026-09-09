@@ -171,6 +171,26 @@ export class AdminLegalEducationController {
     return this.legalEducation.removeQuestion(id, questionId, actor.sub);
   }
 
+  @RequirePermissions("legaleducation:update")
+  @Delete("exams/:examId/attempts/:attemptId")
+  removeAttempt(
+    @Param("examId") examId: string,
+    @Param("attemptId") attemptId: string,
+    @CurrentUser() actor: JwtAccessPayload
+  ): Promise<void> {
+    return this.legalEducation.removeAttempt(examId, attemptId, actor.sub);
+  }
+
+  @RequirePermissions("legaleducation:update")
+  @Delete("exams/:examId/participants/:userId/attempts")
+  removeParticipantAttempts(
+    @Param("examId") examId: string,
+    @Param("userId") userId: string,
+    @CurrentUser() actor: JwtAccessPayload
+  ): Promise<void> {
+    return this.legalEducation.removeParticipantAttempts(examId, userId, actor.sub);
+  }
+
   // Đặt trước :id nếu sau này có route exams/:id — "results.csv" phải khai trước results để khỏi nuốt.
   @RequirePermissions("legaleducation:view")
   @Get("exams/:examId/results.csv")

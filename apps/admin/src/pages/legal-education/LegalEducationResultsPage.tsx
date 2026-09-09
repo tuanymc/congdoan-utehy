@@ -1,15 +1,20 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useOne } from "@refinedev/core";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Trash2 } from "lucide-react";
 import { LEGAL_EXAM_UNIT_SCORE_WEIGHTS, type LegalEducationCampaignDetailDto, type LegalExamResultsDto } from "@congdoan/types";
 import { apiFetch, apiFetchBlob, ApiError } from "../../lib/api-client";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
+import { pushToast } from "../../components/common/toast-store";
 
 type ResultTab = "individuals" | "units" | "attempts";
+type DeleteTarget =
+  | { kind: "participant"; userId: string; fullName: string }
+  | { kind: "attempt"; attemptId: string; fullName: string };
 
 function statusLabel(status: string): string {
   if (status === "SUBMITTED") return "Đã nộp";
@@ -36,22 +41,26 @@ export function LegalEducationResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<"individuals" | "units" | null>(null);
   const [tab, setTab] = useState<ResultTab>("individuals");
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const loadResults = useCallback(async () => {
+    if (!examId) return;
+    const data = await apiFetch<LegalExamResultsDto>(`/admin/legal-education/exams/${examId}/results`);
+    setResults(data);
+  }, [examId]);
 
   useEffect(() => {
     if (!examId) return;
     let cancelled = false;
     setError(null);
-    apiFetch<LegalExamResultsDto>(`/admin/legal-education/exams/${examId}/results`)
-      .then((data) => {
-        if (!cancelled) setResults(data);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : "Không thể tải kết quả.");
-      });
+    loadResults().catch((err: unknown) => {
+      if (!cancelled) setError(err instanceof ApiError ? err.message : "Không thể tải kết quả.");
+    });
     return () => {
       cancelled = true;
     };
-  }, [examId]);
+  }, [examId, loadResults]);
 
   async function handleExport(kind: "individuals" | "units") {
     if (!examId) return;
@@ -70,6 +79,34 @@ export function LegalEducationResultsPage() {
       URL.revokeObjectURL(url);
     } finally {
       setIsExporting(null);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!examId || !deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      if (deleteTarget.kind === "participant") {
+        await apiFetch(`/admin/legal-education/exams/${examId}/participants/${deleteTarget.userId}/attempts`, {
+          method: "DELETE"
+        });
+        pushToast({ variant: "success", message: `Đã xoá kết quả của ${deleteTarget.fullName}.` });
+      } else {
+        await apiFetch(`/admin/legal-education/exams/${examId}/attempts/${deleteTarget.attemptId}`, {
+          method: "DELETE"
+        });
+        pushToast({ variant: "success", message: `Đã xoá lượt thi của ${deleteTarget.fullName}.` });
+      }
+      setDeleteTarget(null);
+      await loadResults();
+    } catch (err: unknown) {
+      pushToast({
+        variant: "error",
+        message: "Không xoá được kết quả",
+        description: err instanceof ApiError ? err.message : "Vui lòng thử lại sau."
+      });
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -110,7 +147,7 @@ export function LegalEducationResultsPage() {
       <p className="text-xs text-muted-foreground">
         Điểm đơn vị = {LEGAL_EXAM_UNIT_SCORE_WEIGHTS.averagePercent * 100}% điểm trung bình cá nhân +{" "}
         {LEGAL_EXAM_UNIT_SCORE_WEIGHTS.participationPercent * 100}% tỷ lệ tham gia + {LEGAL_EXAM_UNIT_SCORE_WEIGHTS.passPercent * 100}% tỷ lệ
-        đạt. Chỉ tính lượt thi chính thức tốt nhất của mỗi người. Thi thử không cộng điểm.
+        đạt. Chỉ tính lượt thi chính thức tốt nhất của mỗi người. Thi thử không cộng điểm. Xoá kết quả để đoàn viên thi lại từ đầu.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -138,13 +175,14 @@ export function LegalEducationResultsPage() {
                 <TableHead>%</TableHead>
                 <TableHead>Kết quả</TableHead>
                 <TableHead>Nộp bài</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <TableRow key={`skeleton-${index}`}>
-                      <TableCell colSpan={8}>
+                      <TableCell colSpan={9}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
                     </TableRow>
@@ -152,7 +190,7 @@ export function LegalEducationResultsPage() {
                 : null}
               {results && results.individuals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                     Chưa có lượt thi chính thức nào.
                   </TableCell>
                 </TableRow>
@@ -169,6 +207,16 @@ export function LegalEducationResultsPage() {
                     {row.passed === null ? "—" : <Badge variant={row.passed ? "default" : "secondary"}>{row.passed ? "Đạt" : "Không đạt"}</Badge>}
                   </TableCell>
                   <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString("vi-VN") : "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteTarget({ kind: "participant", userId: row.userId, fullName: row.fullName })}
+                    >
+                      <Trash2 className="size-4" />
+                      Xoá kết quả
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -239,13 +287,14 @@ export function LegalEducationResultsPage() {
                 <TableHead>Điểm</TableHead>
                 <TableHead>Kết quả</TableHead>
                 <TableHead>Nộp bài</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <TableRow key={`attempt-skeleton-${index}`}>
-                      <TableCell colSpan={7}>
+                      <TableCell colSpan={8}>
                         <Skeleton className="h-6 w-full" />
                       </TableCell>
                     </TableRow>
@@ -253,7 +302,7 @@ export function LegalEducationResultsPage() {
                 : null}
               {results && results.rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     Chưa có lượt thi nào.
                   </TableCell>
                 </TableRow>
@@ -273,12 +322,35 @@ export function LegalEducationResultsPage() {
                     {row.passed === null ? "—" : <Badge variant={row.passed ? "default" : "secondary"}>{row.passed ? "Đạt" : "Không đạt"}</Badge>}
                   </TableCell>
                   <TableCell>{row.submittedAt ? new Date(row.submittedAt).toLocaleString("vi-VN") : "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteTarget({ kind: "attempt", attemptId: row.attemptId, fullName: row.fullName })}
+                    >
+                      <Trash2 className="size-4" />
+                      Xoá
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       ) : null}
+
+      <ConfirmDeleteDialog
+        open={deleteTarget !== null}
+        title={deleteTarget?.kind === "participant" ? "Xoá kết quả thí sinh" : "Xoá lượt thi"}
+        description={
+          deleteTarget?.kind === "participant"
+            ? `Xoá toàn bộ lượt thi (chính thức và thi thử) của ${deleteTarget.fullName}? Người này sẽ được thi lại từ đầu.`
+            : `Xoá lượt thi này của ${deleteTarget?.fullName ?? ""}?`
+        }
+        isPending={isDeleting}
+        onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}
+        onConfirm={() => void handleConfirmDelete()}
+      />
     </div>
   );
 }
