@@ -159,8 +159,9 @@ export class UsersService {
       changes: { passwordReset: { before: false, after: true } }
     });
 
-    const loginUrl = `${(process.env.PUBLIC_WEB_URL ?? "https://congdoan.utehy.edu.vn").replace(/\/$/, "")}/dang-nhap`;
-    const adminUrl = `${(process.env.PUBLIC_WEB_URL ?? "https://congdoan.utehy.edu.vn").replace(/\/$/, "")}/admin/login`;
+    const publicBase = (process.env.PUBLIC_WEB_URL ?? "https://congdoan.utehy.edu.vn").replace(/\/$/, "");
+    const loginUrl = `${publicBase}/dang-nhap`;
+    const adminUrl = `${publicBase}/admin/login`;
     const emailBody = [
       `Kính gửi ${user.fullName},`,
       "",
