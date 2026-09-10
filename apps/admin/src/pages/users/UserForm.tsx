@@ -9,6 +9,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { PageLoading } from "../../components/common/PageLoading";
+import { ResetUserPasswordDialog } from "./ResetUserPasswordDialog";
 
 interface UserFormProps {
   mode: "create" | "edit";
@@ -35,6 +36,7 @@ export function UserForm({ mode }: UserFormProps) {
   const [password, setPassword] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [resetOpen, setResetOpen] = useState(false);
 
   // GET /users/roles không phải một resource CRUD nên gọi thẳng qua api-client thay vì dataProvider.
   useEffect(() => {
@@ -123,6 +125,18 @@ export function UserForm({ mode }: UserFormProps) {
               </div>
             )}
 
+            {mode === "edit" && id && userResult?.data ? (
+              <div className="rounded-md border p-3">
+                <p className="mb-2 text-sm font-medium">Mật khẩu</p>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Cấp mật khẩu mới, thu hồi phiên đăng nhập cũ và gửi email tới {userResult.data.email}.
+                </p>
+                <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>
+                  Reset mật khẩu
+                </Button>
+              </div>
+            ) : null}
+
             {mode === "edit" && (
               <div className="grid gap-2">
                 <Label htmlFor="isActive">Trạng thái tài khoản</Label>
@@ -171,6 +185,14 @@ export function UserForm({ mode }: UserFormProps) {
           </form>
         </CardContent>
       </Card>
+
+      {mode === "edit" && userResult?.data ? (
+        <ResetUserPasswordDialog
+          open={resetOpen}
+          user={userResult.data}
+          onOpenChange={setResetOpen}
+        />
+      ) : null}
     </div>
   );
 }

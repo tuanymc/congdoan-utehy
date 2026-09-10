@@ -12,6 +12,8 @@ export interface ContactMessageDto {
   message: string;
   isRead: boolean;
   createdAt: string;
+  repliedAt?: string | null;
+  replySubject?: string | null;
 }
 
 export interface CreateContactMessageRequest {
@@ -19,4 +21,13 @@ export interface CreateContactMessageRequest {
   email: string;
   phone?: string;
   message: string;
+}
+
+export interface ReplyContactMessageRequest {
+  subject: string;
+  body: string;
+}
+
+export interface ReplyContactMessageResultDto {
+  emailSent: boolean;
 }

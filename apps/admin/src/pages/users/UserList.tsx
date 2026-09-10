@@ -8,6 +8,7 @@ import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { ResetUserPasswordDialog } from "./ResetUserPasswordDialog";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -18,6 +19,7 @@ export function UserList() {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [resetTarget, setResetTarget] = useState<UserListItemDto | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
@@ -109,9 +111,14 @@ export function UserList() {
                   </TableCell>
                   <TableCell>{formatDate(user.createdAt)}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/users/edit/${user.id}`)}>
-                      Sửa
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setResetTarget(user)}>
+                        Reset mật khẩu
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/users/edit/${user.id}`)}>
+                        Sửa
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -132,6 +139,12 @@ export function UserList() {
           </Button>
         </div>
       )}
+
+      <ResetUserPasswordDialog
+        open={resetTarget !== null}
+        user={resetTarget}
+        onOpenChange={(open) => !open && setResetTarget(null)}
+      />
     </div>
   );
 }

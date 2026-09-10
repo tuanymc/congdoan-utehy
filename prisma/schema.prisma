@@ -703,15 +703,20 @@ model UnionCommitteeMember {
 // ============================================================================
 
 model ContactMessage {
-  id        String   @id @default(uuid())
-  name      String
-  email     String
-  phone     String?
-  message   String   @db.NVarChar(Max)
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id           String    @id @default(uuid())
+  name         String
+  email        String
+  phone        String?
+  message      String    @db.NVarChar(Max)
+  isRead       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  /// Thời điểm admin gửi email phản hồi thành công (null = chưa phản hồi).
+  repliedAt    DateTime?
+  replySubject String?
+  replyBody    String?   @db.NVarChar(Max)
 
   @@index([isRead, createdAt])
+  @@index([repliedAt])
   @@map("contact_messages")
 }
 

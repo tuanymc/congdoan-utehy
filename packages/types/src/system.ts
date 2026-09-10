@@ -43,6 +43,13 @@ export interface UpdateUserRequest {
   roleIds?: string[];
 }
 
+/** Kết quả POST /users/:id/reset-password — mật khẩu mới chỉ trả về khi không gửi được email. */
+export interface ResetUserPasswordResponse {
+  emailSent: boolean;
+  mailConfigured: boolean;
+  temporaryPassword?: string;
+}
+
 export interface AuditLogDto {
   id: string;
   actorUserId: string;

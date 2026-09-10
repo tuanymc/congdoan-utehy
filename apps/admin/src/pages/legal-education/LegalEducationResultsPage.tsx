@@ -10,6 +10,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
 import { pushToast } from "../../components/common/toast-store";
+import { LegalEducationResultsCharts } from "./LegalEducationResultsCharts";
 
 type ResultTab = "individuals" | "units" | "attempts";
 type DeleteTarget =
@@ -149,6 +150,8 @@ export function LegalEducationResultsPage() {
         {LEGAL_EXAM_UNIT_SCORE_WEIGHTS.participationPercent * 100}% tỷ lệ tham gia + {LEGAL_EXAM_UNIT_SCORE_WEIGHTS.passPercent * 100}% tỷ lệ
         đạt. Chỉ tính lượt thi chính thức tốt nhất của mỗi người. Thi thử không cộng điểm. Xoá kết quả để đoàn viên thi lại từ đầu.
       </p>
+
+      {results ? <LegalEducationResultsCharts results={results} /> : null}
 
       <div className="flex flex-wrap gap-2">
         <Button variant={tab === "individuals" ? "default" : "outline"} size="sm" onClick={() => setTab("individuals")}>

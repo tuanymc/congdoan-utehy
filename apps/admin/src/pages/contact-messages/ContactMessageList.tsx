@@ -8,19 +8,20 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
+import { ReplyContactMessageDialog } from "./ReplyContactMessageDialog";
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
 }
 
-/** Hộp thư "Liên hệ" — tin nhắn chỉ được tạo qua form công khai apps/web (xem contact-messages.controller.ts),
- * trang này chỉ đọc/đánh dấu đã đọc/xoá — không có form tạo/sửa. */
+/** Hộp thư "Liên hệ" — tin nhắn chỉ được tạo qua form công khai apps/web (xem contact-messages.controller.ts). */
 export function ContactMessageList() {
   const { mutate: updateMessage } = useUpdate();
   const { mutate: deleteMessage, isLoading: isDeleting } = useDelete();
 
   const [readFilter, setReadFilter] = useState<"ALL" | "true" | "false">("ALL");
   const [deleteTarget, setDeleteTarget] = useState<ContactMessageDto | null>(null);
+  const [replyTarget, setReplyTarget] = useState<ContactMessageDto | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { tableQueryResult, current, setCurrent, pageCount, setFilters } = useTable<ContactMessageDto>({
@@ -113,10 +114,18 @@ export function ContactMessageList() {
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(message.createdAt)}</TableCell>
                   <TableCell>
-                    <Badge variant={message.isRead ? "secondary" : "default"}>{message.isRead ? "Đã đọc" : "Chưa đọc"}</Badge>
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge variant={message.isRead ? "secondary" : "default"}>{message.isRead ? "Đã đọc" : "Chưa đọc"}</Badge>
+                      {message.repliedAt ? (
+                        <Badge variant="outline">Đã phản hồi {formatDateTime(message.repliedAt)}</Badge>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setReplyTarget(message)}>
+                        {message.repliedAt ? "Gửi lại" : "Phản hồi"}
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => toggleRead(message)}>
                         {message.isRead ? "Đánh dấu chưa đọc" : "Đánh dấu đã đọc"}
                       </Button>
@@ -144,6 +153,13 @@ export function ContactMessageList() {
           </Button>
         </div>
       )}
+
+      <ReplyContactMessageDialog
+        open={replyTarget !== null}
+        message={replyTarget}
+        onOpenChange={(open) => !open && setReplyTarget(null)}
+        onSuccess={() => void tableQueryResult.refetch()}
+      />
 
       <ConfirmDeleteDialog
         open={deleteTarget !== null}
