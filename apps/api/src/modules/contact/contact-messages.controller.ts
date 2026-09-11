@@ -11,7 +11,7 @@ import { CreateContactMessageDto } from "./dto/create-contact-message.dto";
 export class ContactMessagesController {
   constructor(private readonly contactMessagesService: ContactMessagesService) {}
 
-  // Siết riêng endpoint này chặt hơn giới hạn chung toàn API (100 request/phút, xem app.module.ts) —
+  // Siết riêng endpoint này chặt hơn giới hạn chung toàn API (xem app.module.ts) —
   // form công khai không cần đăng nhập nên dễ bị spam/bot hơn các endpoint khác, 5 request/phút/IP là
   // đủ cho người dùng thật (kể cả gửi lại sau khi sửa lỗi validate) mà vẫn cản được spam thô sơ.
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

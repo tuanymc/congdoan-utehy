@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type {
   JwtAccessPayload,
@@ -14,7 +15,10 @@ import { SaveLegalExamAnswersDto } from "./dto/save-answers.dto";
 
 /**
  * Thi trắc nghiệm — bắt buộc đăng nhập (mọi vai trò), KHÔNG cần permission admin. Giống PublicAiToolsController.
+ * SkipThrottle: trang thi tự lưu đáp án mỗi lần chọn; không được dính hạn mức chung (đặc biệt khi
+ * nhiều đoàn viên cùng thi qua 1 IP NAT / IIS proxy).
  */
+@SkipThrottle()
 @ApiBearerAuth()
 @ApiTags("member-legal-exams")
 @UseGuards(JwtAuthGuard)

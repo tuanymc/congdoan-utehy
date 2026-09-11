@@ -108,7 +108,7 @@ export function LegalExamPage() {
           }))
         }
       }).catch(() => undefined);
-    }, 800);
+    }, 3_000);
     return () => window.clearTimeout(handle);
   }, [answers, attempt, result]);
 

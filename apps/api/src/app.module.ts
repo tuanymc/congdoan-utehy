@@ -23,6 +23,7 @@ import { SurveysModule } from "./modules/surveys/surveys.module";
 import { PublicServicesModule } from "./modules/public-services/public-services.module";
 import { LegalEducationModule } from "./modules/legal-education/legal-education.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
+import { clientIp } from "./common/utils/client-ip";
 
 /** PM2 cwd = apps/api — nếu .env cạnh API thiếu DOCUMENT_FILES_DIR thì lấy thêm .env gốc repo. */
 function configEnvFilePaths(): string[] {
@@ -38,7 +39,13 @@ function configEnvFilePaths(): string[] {
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: configEnvFilePaths() }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // giới hạn chung; auth.controller có thể siết thêm sau
+    // IIS ARR proxy mọi request vào 127.0.0.1:3000 — phải lấy IP từ X-Forwarded-For,
+    // nếu không cả trường bị chung 100 req/phút và bài thi (tự lưu đáp án) bị 429.
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: "default", ttl: 60_000, limit: 300 }],
+      errorMessage: "Bạn đang thao tác quá nhanh. Vui lòng đợi giây lát rồi thử lại.",
+      getTracker: (req) => clientIp(req)
+    }),
     PrismaModule,
     HealthModule,
     DashboardModule,

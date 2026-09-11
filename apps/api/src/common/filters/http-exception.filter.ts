@@ -24,7 +24,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const body = exception.getResponse();
       errorCode = HttpStatus[status] ?? "HTTP_ERROR";
-      if (typeof body === "string") {
+      if (status === HttpStatus.TOO_MANY_REQUESTS) {
+        message = "Bạn đang thao tác quá nhanh. Vui lòng đợi giây lát rồi thử lại.";
+        errorCode = "TOO_MANY_REQUESTS";
+      } else if (typeof body === "string") {
         message = body;
       } else if (typeof body === "object" && body !== null) {
         const b = body as Record<string, unknown>;

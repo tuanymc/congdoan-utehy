@@ -25,6 +25,8 @@ function allowedCorsOrigins(): string[] {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // IIS ARR đứng trước Node: tin 1 hop proxy để req.ip / throttle lấy IP trình duyệt, không phải 127.0.0.1.
+  app.getHttpAdapter().getInstance().set("trust proxy", 1);
 
   // Không ép HTTP → HTTPS: IIS có binding http://congdoan.hyute.edu.vn cùng site với
   // https://congdoan.utehy.edu.vn; upgrade-insecure-requests làm hỏng host chưa có chứng chỉ SSL.
