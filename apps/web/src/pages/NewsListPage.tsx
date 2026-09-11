@@ -16,6 +16,8 @@ import { cn } from "@/components/ui/utils";
 const PAGE_SIZE = 9;
 /** Chuyên mục này đã chuyển sang Kho biểu mẫu — không còn lọc trên trang tin tức. */
 const FORMS_MOVED_SLUG = "van-ban";
+/** Mục menu cấp 1 "Văn hóa đọc" — không hiện hàng tag chuyên mục dưới tiêu đề. */
+const READING_CATEGORY_SLUG = "van-hoa-doc";
 const HIDDEN_NEWS_FILTER_SLUGS = new Set([FORMS_MOVED_SLUG, DIGITAL_HANDBOOK_CATEGORY_SLUG]);
 
 export function NewsListPage() {
@@ -95,7 +97,7 @@ export function NewsListPage() {
         Hưng Yên.
       </p>
 
-      {newsCategories.length > 0 ? (
+      {newsCategories.length > 0 && categorySlug !== READING_CATEGORY_SLUG ? (
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             type="button"
