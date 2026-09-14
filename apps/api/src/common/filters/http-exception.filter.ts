@@ -27,6 +27,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (status === HttpStatus.TOO_MANY_REQUESTS) {
         message = "Bạn đang thao tác quá nhanh. Vui lòng đợi giây lát rồi thử lại.";
         errorCode = "TOO_MANY_REQUESTS";
+      } else if (status === HttpStatus.UNAUTHORIZED && (body === "Unauthorized" || (typeof body === "object" && body !== null && (body as { message?: unknown }).message === "Unauthorized"))) {
+        message = "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+        errorCode = "UNAUTHORIZED";
       } else if (typeof body === "string") {
         message = body;
       } else if (typeof body === "object" && body !== null) {

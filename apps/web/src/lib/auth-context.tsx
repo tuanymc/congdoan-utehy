@@ -17,9 +17,12 @@ import {
   type ReactNode
 } from "react";
 import type { AuthUser, LoginResponse, TokenPair } from "@congdoan/types";
-import { apiFetch, setAccessToken as setApiClientAccessToken } from "./api-client";
-
-const REFRESH_TOKEN_STORAGE_KEY = "congdoan_refresh_token";
+import {
+  apiFetch,
+  applyTokenPair,
+  clearSessionTokens,
+  getStoredRefreshToken
+} from "./api-client";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -33,14 +36,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function persistRefreshToken(refreshToken: string | null): void {
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
-  } else {
-    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessTokenState] = useState<string | null>(null);
@@ -48,22 +43,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Áp dụng cặp token mới: cập nhật api-client (dùng ngay cho request tiếp theo), state, localStorage. */
   const applySession = useCallback((tokens: TokenPair, nextUser: AuthUser) => {
-    setApiClientAccessToken(tokens.accessToken);
+    applyTokenPair(tokens);
     setAccessTokenState(tokens.accessToken);
     setUser(nextUser);
-    persistRefreshToken(tokens.refreshToken);
   }, []);
 
   const clearSession = useCallback(() => {
-    setApiClientAccessToken(null);
+    clearSessionTokens();
     setAccessTokenState(null);
     setUser(null);
-    persistRefreshToken(null);
   }, []);
 
   // Khôi phục phiên khi tải lại trang: nếu có refreshToken lưu sẵn, thử refresh rồi lấy /auth/me.
   useEffect(() => {
-    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+    const storedRefreshToken = getStoredRefreshToken();
     if (!storedRefreshToken) {
       setIsInitializing(false);
       return;
@@ -75,10 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const tokens = await apiFetch<TokenPair>("/auth/refresh", {
           method: "POST",
+          skipAuth: true,
           body: { refreshToken: storedRefreshToken }
         });
-        // Gắn access token trước khi gọi /auth/me để apiFetch tự đính kèm Authorization header.
-        setApiClientAccessToken(tokens.accessToken);
+        // Rotation đã thu hồi refresh cũ — lưu cặp mới ngay, rồi gọi /auth/me.
+        applyTokenPair(tokens);
         const me = await apiFetch<AuthUser>("/auth/me");
         if (!cancelled) {
           applySession(tokens, me);
@@ -105,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       const response = await apiFetch<LoginResponse>("/auth/login", {
         method: "POST",
+        skipAuth: true,
         body: { email, password }
       });
       const { user: loggedInUser, ...tokens } = response;
@@ -114,10 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+    const storedRefreshToken = getStoredRefreshToken();
     if (storedRefreshToken) {
       try {
-        await apiFetch("/auth/logout", { method: "POST", body: { refreshToken: storedRefreshToken } });
+        await apiFetch("/auth/logout", {
+          method: "POST",
+          skipAuth: true,
+          body: { refreshToken: storedRefreshToken }
+        });
       } catch {
         // Best-effort: dù gọi API thất bại (mất mạng, token đã hết hạn...) vẫn xoá phiên ở FE.
       }

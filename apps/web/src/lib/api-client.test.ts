@@ -13,6 +13,7 @@ describe("apiFetch", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
     setAccessToken(null);
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -106,5 +107,47 @@ describe("apiFetch", () => {
     const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
     const headers = new Headers((init as RequestInit | undefined)?.headers);
     expect(headers.get("Authorization")).toBe("Bearer token-abc");
+  });
+
+  it("không gọi /auth/refresh khi đăng nhập sai mật khẩu (401)", async () => {
+    localStorage.setItem("congdoan_refresh_token", "refresh-old");
+    const errorBody: ApiErrorBody = {
+      statusCode: 401,
+      errorCode: "AUTH_INVALID_CREDENTIALS",
+      message: "Email hoặc mật khẩu không đúng.",
+      timestamp: new Date().toISOString(),
+      path: "/auth/login"
+    };
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(401, errorBody));
+
+    await expect(apiFetch("/auth/login", { method: "POST", body: {} })).rejects.toMatchObject({
+      message: "Email hoặc mật khẩu không đúng."
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("tự refresh rồi retry khi access token hết hạn giữa bài thi", async () => {
+    localStorage.setItem("congdoan_refresh_token", "refresh-old");
+    setAccessToken("expired-access");
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        jsonResponse(401, { statusCode: 401, errorCode: "UNAUTHORIZED", message: "Unauthorized" })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, { accessToken: "new-access", refreshToken: "refresh-new", expiresIn: 900 })
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+
+    const result = await apiFetch<{ ok: true }>("/legal-education/exams/1/attempts/2/submit", {
+      method: "POST",
+      body: { answers: [] }
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(localStorage.getItem("congdoan_refresh_token")).toBe("refresh-new");
+    expect(fetch).toHaveBeenCalledTimes(3);
+    const submitRetry = vi.mocked(fetch).mock.calls[2] ?? [];
+    const headers = new Headers((submitRetry[1] as RequestInit | undefined)?.headers);
+    expect(headers.get("Authorization")).toBe("Bearer new-access");
   });
 });
