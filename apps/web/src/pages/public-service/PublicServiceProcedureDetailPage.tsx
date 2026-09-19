@@ -94,7 +94,7 @@ export function PublicServiceProcedureDetailPage() {
               rel="noopener noreferrer"
               className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
-              Mở thủ tục trên Cổng Dịch vụ công Quốc gia
+              Mở cổng nộp hồ sơ chính thống
               <ExternalLink className="size-4" />
             </a>
           ) : null}

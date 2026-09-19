@@ -1,13 +1,10 @@
 /**
- * Nội dung "Dịch vụ công" đối chiếu Cổng DVC Quốc gia (dichvucong.gov.vn) — tháng 9/2026.
- * Chỉ chọn thủ tục thường gặp của viên chức/người lao động (không nhập cả catalog quốc gia).
- * Mỗi mục có mã TTHC + URL gốc để đoàn viên nộp hồ sơ trên cổng chính thống.
+ * Nội dung "Dịch vụ công" đối chiếu cổng chính thống (9/2026).
+ * Cổng DVCQG (dichvucong.gov.vn) đã đổi trang chi tiết: URL dạng
+ * /dvc-chi-tiet-thu-tuc-hanh-chinh.html?ma_thu_tuc=2.001195 trả "không tồn tại".
+ * officialUrl trỏ cổng chuyên ngành / địa phương còn mở được trên trình duyệt.
  */
 import type { PublicServiceProcedureCategory } from "../packages/types/src/public-service";
-
-export function dvcqgUrl(maThuTuc: string): string {
-  return `https://dichvucong.gov.vn/p/home/dvc-chi-tiet-thu-tuc-hanh-chinh.html?ma_thu_tuc=${encodeURIComponent(maThuTuc)}`;
-}
 
 export interface PublicServiceProcedureSeed {
   slug: string;
@@ -28,7 +25,7 @@ export interface PublicServiceProcedureSeed {
 }
 
 function withSource(whereToApply: string, item: Pick<PublicServiceProcedureSeed, "officialCode" | "officialUrl">): string {
-  return `${whereToApply}\n\nNguồn và nộp hồ sơ trực tuyến trên Cổng Dịch vụ công Quốc gia (mã ${item.officialCode}):\n${item.officialUrl}`;
+  return `${whereToApply}\n\nNộp hồ sơ / xem thủ tục gốc (${item.officialCode}):\n${item.officialUrl}`;
 }
 
 const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { whereToApply: string }[] = [
@@ -38,7 +35,7 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     category: "CAN_CUOC",
     sortOrder: 10,
     officialCode: "2.001195",
-    officialUrl: dvcqgUrl("2.001195"),
+    officialUrl: "https://dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?matt=26094",
     summary:
       "Đổi thẻ Căn cước khi hết hạn, hư hỏng, thay đổi thông tin hoặc theo quy định Luật Căn cước — thực hiện tại Công an cấp tỉnh, không phụ thuộc nơi cư trú.",
     conditions:
@@ -46,7 +43,7 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     requiredDocuments:
       "Thẻ Căn cước/CCCD cũ; cung cấp họ tên khai sinh, số định danh cá nhân, nơi cư trú để đối chiếu CSDL dân cư. Không phải mang sổ hộ khẩu giấy. Nếu thông tin dân cư chưa khớp, phải điều chỉnh dữ liệu dân cư trước.",
     whereToApply:
-      "Trực tiếp tại cơ quan quản lý căn cước Công an cấp tỉnh (Phòng Cảnh sát QLHC về TTXH) trên cả nước, không phụ thuộc nơi cư trú; hoặc đăng ký trước trên Cổng DVC Quốc gia / Cổng DVC Bộ Công an / VNeID rồi đến điểm thu nhận để chụp ảnh, vân tay, mống mắt. Giờ hành chính T2–T6 và sáng T7 (trừ lễ, tết).",
+      "Trực tiếp tại cơ quan quản lý căn cước Công an cấp tỉnh (Phòng Cảnh sát QLHC về TTXH) trên cả nước, không phụ thuộc nơi cư trú; hoặc đăng ký trước trên Cổng DVC Bộ Công an / ứng dụng VNeID rồi đến điểm thu nhận để chụp ảnh, vân tay, mống mắt. Giờ hành chính T2–T6 và sáng T7 (trừ lễ, tết).\nCổng DVC Bộ Công an (danh mục căn cước): https://dichvucong.bocongan.gov.vn/bocongan/bothutuc?linh_vuc=CAP_CCCD\nVNeID: https://vneid.gov.vn\nCổng DVC Quốc gia (đăng nhập VNeID, tìm «Cấp đổi thẻ căn cước»): https://dichvucong.gov.vn",
     steps:
       "1) Đặt lịch/nộp hồ sơ trên Cổng DVC Quốc gia hoặc VNeID (khuyến khích). 2) Đến điểm thu nhận, cung cấp họ tên – số định danh – nơi cư trú. 3) Cán bộ đối chiếu CSDL dân cư; nếu thông tin thay đổi thì điều chỉnh dân cư trước. 4) Thu nhận vân tay, ảnh khuôn mặt, mống mắt (từ đủ 6 tuổi). 5) Ký Phiếu thu nhận thông tin căn cước (mẫu theo Thông tư 17/2024/TT-BCA). 6) Nộp thẻ cũ, lệ phí (nếu có), nhận giấy hẹn CC02. 7) Nhận thẻ mới theo hình thức đã đăng ký.",
     fee: "Lệ phí cấp đổi: 50.000 đồng/thẻ (Luật Căn cước). Từ 01/7/2025 đến 31/12/2026 mức thu bằng 50% theo Thông tư 64/2025/TT-BTC (nộp trực tuyến thường được giảm thêm theo từng giai đoạn). Miễn/giảm với một số trường hợp do Bộ Tài chính quy định — kiểm tra mức hiện hành trên Cổng DVC khi nộp.",
@@ -61,8 +58,8 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     title: "Đăng ký thường trú / xác nhận thông tin cư trú",
     category: "CU_TRU",
     sortOrder: 20,
-    officialCode: "2.002621",
-    officialUrl: dvcqgUrl("2.002621"),
+    officialCode: "cư trú / VNeID",
+    officialUrl: "https://vneid.gov.vn",
     summary:
       "Đăng ký nơi thường trú, tạm trú trên VNeID hoặc xin xác nhận thông tin cư trú điện tử — không còn sổ hộ khẩu giấy.",
     conditions:
@@ -86,8 +83,8 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     title: "Đăng ký khai sinh liên thông (thường trú + thẻ BHYT trẻ em)",
     category: "HO_TICH",
     sortOrder: 30,
-    officialCode: "2.002621",
-    officialUrl: dvcqgUrl("2.002621"),
+    officialCode: "khai sinh liên thông",
+    officialUrl: "https://dichvucong.hungyen.gov.vn",
     summary:
       "Một lần nộp: đăng ký khai sinh, đăng ký thường trú và cấp thẻ BHYT cho trẻ dưới 6 tuổi trên Cổng DVC Quốc gia / VNeID.",
     conditions:
@@ -111,8 +108,8 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     title: "Cấp lại thẻ BHYT / tra cứu quá trình đóng BHXH",
     category: "BHXH_BHYT",
     sortOrder: 40,
-    officialCode: "2962",
-    officialUrl: dvcqgUrl("2962"),
+    officialCode: "BHXH / VssID",
+    officialUrl: "https://baohiemxahoi.gov.vn",
     summary:
       "Cấp lại thẻ BHYT khi mất, hỏng; tra cứu quá trình đóng BHXH, BHYT, BHTN trên VssID hoặc Cổng DVC BHXH / DVCQG.",
     conditions:
@@ -161,7 +158,7 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     category: "LY_LICH_TU_PHAP",
     sortOrder: 60,
     officialCode: "2.000488",
-    officialUrl: dvcqgUrl("2.000488"),
+    officialUrl: "https://dichvucong.hungyen.gov.vn",
     summary:
       "Cấp Phiếu LLTP số 1 cho công dân Việt Nam (xin việc, hồ sơ viên chức). Người thường trú Hưng Yên có thể nộp trên VNeID / Cổng DVC tỉnh.",
     conditions:
@@ -186,7 +183,7 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     category: "GPLX",
     sortOrder: 70,
     officialCode: "3.000347",
-    officialUrl: dvcqgUrl("3.000347"),
+    officialUrl: "https://dvc-gplx.csgt.bocongan.gov.vn",
     summary:
       "Đổi GPLX hết hạn, hỏng, hoặc sai lệch thông tin với thẻ Căn cước — nộp trực tuyến bằng VNeID, nhận kết quả sau 05 ngày làm việc nếu hồ sơ hợp lệ.",
     conditions:
@@ -209,7 +206,7 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     category: "DANG_KY_PHUONG_TIEN",
     sortOrder: 80,
     officialCode: "1.010914",
-    officialUrl: dvcqgUrl("1.010914"),
+    officialUrl: "https://dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?matt=64188",
     summary:
       "Đăng ký, cấp biển số xe mô tô, xe gắn máy tại Công an cấp xã được phân cấp — có thể khai trực tuyến trước trên Cổng DVC rồi đưa xe đến kiểm tra thực tế.",
     conditions:
@@ -232,7 +229,7 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     category: "KHAC",
     sortOrder: 90,
     officialCode: "1.011411",
-    officialUrl: dvcqgUrl("1.011411"),
+    officialUrl: "https://vneid.gov.vn",
     summary:
       "Cấp tài khoản định danh điện tử mức 2 và căn cước điện tử — điều kiện để nộp hầu hết dịch vụ công trực tuyến.",
     conditions:
@@ -255,8 +252,8 @@ const RAW_PROCEDURES: Omit<PublicServiceProcedureSeed, "whereToApply"> & { where
     title: "Đề nghị miễn, giảm học phí tại cơ sở giáo dục đại học công lập",
     category: "KHAC",
     sortOrder: 100,
-    officialCode: "1.005144",
-    officialUrl: dvcqgUrl("1.005144"),
+    officialCode: "NĐ 238/2025/NĐ-CP",
+    officialUrl: "https://dichvucong.gov.vn",
     summary:
       "Người học (con đoàn viên, bản thân đang học) thuộc đối tượng miễn/giảm học phí theo Nghị định 238/2025/NĐ-CP nộp đơn tại cơ sở giáo dục đại học công lập.",
     conditions:
@@ -328,8 +325,8 @@ export const PUBLIC_SERVICE_LINK_SEED = [
   },
   {
     title: "Đổi giấy phép lái xe trực tuyến",
-    url: dvcqgUrl("3.000347"),
-    description: "Thủ tục đổi GPLX trên Cổng DVC Quốc gia (mã 3.000347), đăng nhập VNeID.",
+    url: "https://dvc-gplx.csgt.bocongan.gov.vn",
+    description: "Cổng DVC cấp, đổi GPLX của Cục Cảnh sát giao thông — đăng nhập VNeID mức 2.",
     group: "Cổng chuyên ngành khác",
     sortOrder: 50
   }
