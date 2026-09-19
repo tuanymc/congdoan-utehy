@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { HandHeart } from "lucide-react";
+import { HandHeart, ExternalLink } from "lucide-react";
 import { PUBLIC_SERVICE_PROCEDURE_CATEGORY_LABELS } from "@congdoan/types";
 import type { PublicServiceProcedureDetailDto } from "@congdoan/types";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { LinkifiedText } from "@/lib/LinkifiedText";
+import { firstHttpUrl } from "@/lib/split-text-with-urls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,6 +71,7 @@ export function PublicServiceProcedureDetailPage() {
 
   const Icon = PUBLIC_SERVICE_CATEGORY_ICONS[item.category];
   const visibleSections = GUIDE_SECTIONS.filter((section) => Boolean(item[section.key]));
+  const officialUrl = firstHttpUrl(item.whereToApply) ?? firstHttpUrl(item.steps);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
@@ -84,6 +87,17 @@ export function PublicServiceProcedureDetailPage() {
           <Badge variant="outline">{PUBLIC_SERVICE_PROCEDURE_CATEGORY_LABELS[item.category]}</Badge>
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{item.title}</h1>
           {item.summary ? <p className="mt-1 text-muted-foreground">{item.summary}</p> : null}
+          {officialUrl ? (
+            <a
+              href={officialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              Mở thủ tục trên Cổng Dịch vụ công Quốc gia
+              <ExternalLink className="size-4" />
+            </a>
+          ) : null}
         </div>
       </div>
 
@@ -99,7 +113,10 @@ export function PublicServiceProcedureDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-line text-sm text-muted-foreground">{item[section.key]}</p>
+                <LinkifiedText
+                  className="whitespace-pre-line text-sm text-muted-foreground"
+                  text={String(item[section.key] ?? "")}
+                />
               </CardContent>
             </Card>
           ))}

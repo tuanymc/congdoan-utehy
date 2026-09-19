@@ -3,6 +3,7 @@ import { BellRing, Pin } from "lucide-react";
 import { PUBLIC_SERVICE_NOTICE_CATEGORY_LABELS } from "@congdoan/types";
 import type { PublicServiceNoticePublicDto } from "@congdoan/types";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { LinkifiedText } from "@/lib/LinkifiedText";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,7 +68,7 @@ export function PublicServiceNoticesPage() {
                     <p className="font-medium">{item.title}</p>
                     {item.category ? <Badge variant="outline">{PUBLIC_SERVICE_NOTICE_CATEGORY_LABELS[item.category]}</Badge> : null}
                   </div>
-                  <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{item.content}</p>
+                  <LinkifiedText className="mt-2 whitespace-pre-line text-sm text-muted-foreground" text={item.content} />
                   <p className="mt-2 text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</p>
                 </CardContent>
               </Card>
