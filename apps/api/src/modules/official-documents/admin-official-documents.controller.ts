@@ -7,15 +7,14 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Res,
-  StreamableFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors
 } from "@nestjs/common";
 import { FilesInterceptor } from "@nestjs/platform-express";
-import { createReadStream } from "node:fs";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import type { JwtAccessPayload, OfficialDocumentDetailDto, OfficialDocumentListItemDto, PaginatedResult } from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
@@ -23,7 +22,7 @@ import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { RequirePermissions } from "../../common/decorators/roles.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { OfficialDocumentsService, type UploadedAttachmentFile } from "./official-documents.service";
-import { contentDispositionHeader } from "../../common/utils/attachment-path";
+import { streamLocalFile } from "../../common/utils/stream-local-file";
 import { CreateOfficialDocumentDto } from "./dto/create-official-document.dto";
 import { UpdateOfficialDocumentDto } from "./dto/update-official-document.dto";
 import { QueryOfficialDocumentsDto } from "./dto/query-official-documents.dto";
@@ -81,14 +80,15 @@ export class AdminOfficialDocumentsController {
   async downloadAttachment(
     @Param("id") id: string,
     @Param("attachmentId") attachmentId: string,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<StreamableFile> {
+    @Req() req: Request,
+    @Res() res: Response
+  ): Promise<void> {
     const { fileName, physicalPath } = await this.officialDocumentsService.getAttachmentForDownload(id, attachmentId);
-    res.set({
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": contentDispositionHeader(fileName, "attachment")
+    streamLocalFile(req, res, physicalPath, {
+      fileName,
+      disposition: "attachment",
+      contentType: "application/octet-stream"
     });
-    return new StreamableFile(createReadStream(physicalPath));
   }
 
   // Cho phép chọn 1 hoặc nhiều file cùng lúc (field "files" lặp lại nhiều lần trong multipart/form-data

@@ -1,10 +1,9 @@
-import { Controller, Get, Param, Query, Res, StreamableFile } from "@nestjs/common";
-import { createReadStream } from "node:fs";
-import type { Response } from "express";
+import { Controller, Get, Param, Query, Req, Res } from "@nestjs/common";
+import type { Request, Response } from "express";
 import { ApiTags } from "@nestjs/swagger";
 import type { DocumentTypeDto, PaginatedResult, PublicOfficialDocumentDetailDto, PublicOfficialDocumentListItemDto } from "@congdoan/types";
 import { resolveViewableMimeType } from "../../common/utils/mime-type";
-import { contentDispositionHeader } from "../../common/utils/attachment-path";
+import { streamLocalFile } from "../../common/utils/stream-local-file";
 import { OfficialDocumentsService } from "./official-documents.service";
 import { QueryPublicOfficialDocumentsDto } from "./dto/query-public-official-documents.dto";
 
@@ -47,14 +46,15 @@ export class PublicOfficialDocumentsController {
   async downloadAttachment(
     @Param("id") id: string,
     @Param("attachmentId") attachmentId: string,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<StreamableFile> {
+    @Req() req: Request,
+    @Res() res: Response
+  ): Promise<void> {
     const { fileName, physicalPath } = await this.officialDocumentsService.getPublicAttachmentForDownload(id, attachmentId);
-    res.set({
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": contentDispositionHeader(fileName, "attachment")
+    streamLocalFile(req, res, physicalPath, {
+      fileName,
+      disposition: "attachment",
+      contentType: "application/octet-stream"
     });
-    return new StreamableFile(createReadStream(physicalPath));
   }
 
   // "Xem" (khác "download" ở trên): Content-Disposition inline + Content-Type đúng định dạng (PDF/ảnh)
@@ -66,13 +66,14 @@ export class PublicOfficialDocumentsController {
   async viewAttachment(
     @Param("id") id: string,
     @Param("attachmentId") attachmentId: string,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<StreamableFile> {
+    @Req() req: Request,
+    @Res() res: Response
+  ): Promise<void> {
     const { fileName, physicalPath } = await this.officialDocumentsService.getPublicAttachmentForDownload(id, attachmentId);
-    res.set({
-      "Content-Type": resolveViewableMimeType(fileName),
-      "Content-Disposition": contentDispositionHeader(fileName, "inline")
+    streamLocalFile(req, res, physicalPath, {
+      fileName,
+      disposition: "inline",
+      contentType: resolveViewableMimeType(fileName)
     });
-    return new StreamableFile(createReadStream(physicalPath));
   }
 }

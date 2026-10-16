@@ -20,10 +20,16 @@ export function findAttachmentPhysicalPath(
   // "/DocumentFiles/user/file.pdf"; làm ngược lại thì vẫn còn "DocumentFiles/..." và tìm sai chỗ.
   const strippedOriginal = stripDocumentFilesPrefix(stripLeadingSlash(relPath));
   const bases = uniqueResolvedDirs([baseDir, ...extraBaseDirs]);
+  const cacheKey = `${bases.join("|")}\n${strippedOriginal}`;
+  const cached = resolvedFileCache.get(cacheKey);
+  if (cached && existsSync(cached)) return cached;
 
   for (const base of bases) {
     const found = findInBase(base, strippedOriginal);
-    if (found) return found;
+    if (found) {
+      rememberResolvedFile(cacheKey, found);
+      return found;
+    }
   }
   return null;
 }
@@ -162,11 +168,41 @@ function extensionOf(name: string): string {
   return match ? match[0].toLowerCase() : "";
 }
 
+const DIR_LIST_TTL_MS = 5 * 60 * 1000;
+const DIR_LIST_MAX = 400;
+const dirListCache = new Map<string, { at: number; entries: string[] }>();
+const resolvedFileCache = new Map<string, string>();
+
+function rememberDir(key: string, entries: string[]): void {
+  if (dirListCache.has(key)) dirListCache.delete(key);
+  dirListCache.set(key, { at: Date.now(), entries });
+  while (dirListCache.size > DIR_LIST_MAX) {
+    const oldest = dirListCache.keys().next().value;
+    if (!oldest) break;
+    dirListCache.delete(oldest);
+  }
+}
+
 function listDir(dir: string): string[] {
+  const key = process.platform === "win32" ? dir.toLowerCase() : dir;
+  const hit = dirListCache.get(key);
+  if (hit && Date.now() - hit.at < DIR_LIST_TTL_MS) return hit.entries;
   try {
-    return readdirSync(dir);
+    const entries = readdirSync(dir);
+    rememberDir(key, entries);
+    return entries;
   } catch {
     return [];
+  }
+}
+
+function rememberResolvedFile(key: string, physicalPath: string): void {
+  if (resolvedFileCache.has(key)) resolvedFileCache.delete(key);
+  resolvedFileCache.set(key, physicalPath);
+  while (resolvedFileCache.size > 4000) {
+    const oldest = resolvedFileCache.keys().next().value;
+    if (!oldest) break;
+    resolvedFileCache.delete(oldest);
   }
 }
 
