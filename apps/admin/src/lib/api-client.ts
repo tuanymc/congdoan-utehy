@@ -125,6 +125,7 @@ async function doRefresh(): Promise<TokenPair> {
 
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken })
   });
@@ -179,6 +180,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
+    cache: "no-store",
     headers: finalHeaders,
     body: body !== undefined ? JSON.stringify(body) : undefined
   });
@@ -238,7 +240,7 @@ export async function apiFetchBlob(path: string, _isRetry = false): Promise<{ bl
     headers.Authorization = `Bearer ${currentAccessToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers, cache: "no-store" });
 
   if (response.status === 401) {
     if (_isRetry) {
@@ -287,7 +289,7 @@ export async function apiFetchUpload<T>(path: string, formData: FormData, _isRet
     headers.Authorization = `Bearer ${currentAccessToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: formData });
+  const response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: formData, cache: "no-store" });
 
   if (response.status === 401) {
     if (_isRetry) {

@@ -25,8 +25,16 @@ function allowedCorsOrigins(): string[] {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const expressApp = app.getHttpAdapter().getInstance();
   // IIS ARR đứng trước Node: tin 1 hop proxy để req.ip / throttle lấy IP trình duyệt, không phải 127.0.0.1.
-  app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  expressApp.set("trust proxy", 1);
+  // Express bật ETag sẵn. Trình duyệt tải lại GET /auth/me thì gửi If-None-Match và nhận 304
+  // (không có body). fetch() coi 304 là lỗi, trang quản trị báo lỗi dù phiên vẫn còn.
+  expressApp.set("etag", false);
+  expressApp.use((_req: unknown, res: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
 
   // Không ép HTTP → HTTPS: IIS có binding http://congdoan.hyute.edu.vn cùng site với
   // https://congdoan.utehy.edu.vn; upgrade-insecure-requests làm hỏng host chưa có chứng chỉ SSL.

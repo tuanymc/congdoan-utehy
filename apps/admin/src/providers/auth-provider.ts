@@ -63,10 +63,17 @@ export const authProvider: AuthProvider = {
       currentUser = await apiFetch<AuthUser>("/auth/me");
       return { authenticated: true };
     } catch (error) {
+      const expired = error instanceof ApiError && error.statusCode === 401;
+      if (!expired) {
+        return {
+          authenticated: false,
+          redirectTo: "/login",
+          error: error instanceof Error ? error : new Error("Không kiểm tra được phiên đăng nhập.")
+        };
+      }
       currentUser = null;
       clearTokens();
-      const message = error instanceof ApiError ? error.message : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
-      redirectToLogin(message);
+      redirectToLogin(error.message);
       return { authenticated: false, redirectTo: "/login" };
     }
   },
@@ -92,8 +99,9 @@ export const authProvider: AuthProvider = {
       currentUser = await apiFetch<AuthUser>("/auth/me");
       return currentUser;
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
-      redirectToLogin(message);
+      if (error instanceof ApiError && error.statusCode === 401) {
+        redirectToLogin(error.message);
+      }
       return null;
     }
   }
