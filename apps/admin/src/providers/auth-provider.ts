@@ -9,7 +9,7 @@
  */
 import type { AuthProvider } from "@refinedev/core";
 import type { AuthUser, LoginResponse } from "@congdoan/types";
-import { ApiError, apiFetch, clearTokens, getAccessToken, getStoredRefreshToken, setTokens } from "../lib/api-client";
+import { ApiError, apiFetch, clearTokens, getAccessToken, getStoredRefreshToken, redirectToLogin, setTokens } from "../lib/api-client";
 
 let currentUser: AuthUser | null = null;
 
@@ -54,6 +54,7 @@ export const authProvider: AuthProvider = {
 
   check: async () => {
     if (!getAccessToken() && !getStoredRefreshToken()) {
+      redirectToLogin("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
       return { authenticated: false, redirectTo: "/login" };
     }
     try {
@@ -61,9 +62,11 @@ export const authProvider: AuthProvider = {
       // nhận 401 từ request này — nhờ vậy phiên đăng nhập được khôi phục mà không cần code riêng.
       currentUser = await apiFetch<AuthUser>("/auth/me");
       return { authenticated: true };
-    } catch {
+    } catch (error) {
       currentUser = null;
       clearTokens();
+      const message = error instanceof ApiError ? error.message : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+      redirectToLogin(message);
       return { authenticated: false, redirectTo: "/login" };
     }
   },
@@ -88,7 +91,9 @@ export const authProvider: AuthProvider = {
     try {
       currentUser = await apiFetch<AuthUser>("/auth/me");
       return currentUser;
-    } catch {
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+      redirectToLogin(message);
       return null;
     }
   }

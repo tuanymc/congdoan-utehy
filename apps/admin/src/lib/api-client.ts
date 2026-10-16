@@ -48,6 +48,52 @@ export function clearTokens(): void {
   }
 }
 
+const SESSION_NOTICE_KEY = "congdoan_admin_session_notice";
+
+/** Chặn nhiều request 401 cùng lúc gọi replace() lặp lại. */
+let sessionRedirectStarted = false;
+
+function isOnLoginPage(): boolean {
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  return path === "/login" || path.endsWith("/admin/login");
+}
+
+/**
+ * Phiên đã chết: rời trang hiện tại bằng điều hướng đầy đủ, không đi qua react-router.
+ * Form sửa công văn đang mở có thể chặn navigate() của Refine (cảnh báo thay đổi chưa lưu)
+ * nên màn hình giữ nguyên và không báo gì. sessionStorage để trang đăng nhập hiện đúng câu thông báo.
+ */
+export function redirectToLogin(message?: string): void {
+  if (isOnLoginPage() || sessionRedirectStarted) return;
+  sessionRedirectStarted = true;
+  clearTokens();
+  if (message) {
+    try {
+      sessionStorage.setItem(SESSION_NOTICE_KEY, message);
+    } catch {
+      // ignore
+    }
+  }
+  const href = import.meta.env.PROD ? "/admin/login" : "/login";
+  window.location.replace(href);
+}
+
+export function readSessionNotice(): string | null {
+  try {
+    return sessionStorage.getItem(SESSION_NOTICE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearSessionNotice(): void {
+  try {
+    sessionStorage.removeItem(SESSION_NOTICE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export class ApiError extends Error {
   readonly statusCode: number;
   readonly errorCode: string;
@@ -140,24 +186,24 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   if (response.status === 401 && !skipAuth) {
     if (_isRetry) {
       // Đã refresh và retry một lần nhưng vẫn 401 -> phiên thực sự đã hết hạn, coi như đăng xuất.
-      clearTokens();
       const errorBody = await parseErrorBody(response);
-      throw new ApiError(
-        errorBody?.message ?? "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
-        401,
-        errorBody?.errorCode ?? "AUTH_SESSION_EXPIRED",
-        errorBody?.details
-      );
+      const message = errorBody?.message ?? "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+      redirectToLogin(message);
+      throw new ApiError(message, 401, errorBody?.errorCode ?? "AUTH_SESSION_EXPIRED", errorBody?.details);
     }
 
     try {
       await refreshAccessToken();
     } catch (refreshError) {
-      clearTokens();
+      const message =
+        refreshError instanceof ApiError
+          ? refreshError.message
+          : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+      redirectToLogin(message);
       if (refreshError instanceof ApiError) {
         throw refreshError;
       }
-      throw new ApiError("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.", 401, "AUTH_SESSION_EXPIRED");
+      throw new ApiError(message, 401, "AUTH_SESSION_EXPIRED");
     }
 
     return apiFetch<T>(path, { ...options, _isRetry: true });
@@ -183,17 +229,33 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 /**
  * Tải file nhị phân (vd file đính kèm công văn) kèm header Authorization — không dùng được apiFetch()
  * vì hàm đó luôn parse JSON. Đọc tên file gốc từ header Content-Disposition do server set (xem
- * admin-official-documents.controller.ts) để khỏi phải truyền tên riêng. Không tự refresh token khi
- * 401 (khác apiFetch) vì đây là hành động phụ, ít khi xảy ra đúng lúc access token vừa hết hạn — nếu
- * gặp 401 chỉ cần báo lỗi, người dùng thao tác lại là request khác sẽ tự refresh trước.
+ * admin-official-documents.controller.ts) để khỏi phải truyền tên riêng. 401 thì thử refresh một lần;
+ * nếu vẫn hết phiên thì chuyển về trang đăng nhập.
  */
-export async function apiFetchBlob(path: string): Promise<{ blob: Blob; fileName: string }> {
+export async function apiFetchBlob(path: string, _isRetry = false): Promise<{ blob: Blob; fileName: string }> {
   const headers: Record<string, string> = {};
   if (currentAccessToken) {
     headers.Authorization = `Bearer ${currentAccessToken}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+
+  if (response.status === 401) {
+    if (_isRetry) {
+      redirectToLogin("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+    } else {
+      try {
+        await refreshAccessToken();
+        return apiFetchBlob(path, true);
+      } catch (refreshError) {
+        const message =
+          refreshError instanceof ApiError
+            ? refreshError.message
+            : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+        redirectToLogin(message);
+      }
+    }
+  }
 
   if (!response.ok) {
     const errorBody = await parseErrorBody(response);
@@ -229,21 +291,21 @@ export async function apiFetchUpload<T>(path: string, formData: FormData, _isRet
 
   if (response.status === 401) {
     if (_isRetry) {
-      clearTokens();
       const errorBody = await parseErrorBody(response);
-      throw new ApiError(
-        errorBody?.message ?? "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
-        401,
-        errorBody?.errorCode ?? "AUTH_SESSION_EXPIRED",
-        errorBody?.details
-      );
+      const message = errorBody?.message ?? "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+      redirectToLogin(message);
+      throw new ApiError(message, 401, errorBody?.errorCode ?? "AUTH_SESSION_EXPIRED", errorBody?.details);
     }
     try {
       await refreshAccessToken();
     } catch (refreshError) {
-      clearTokens();
+      const message =
+        refreshError instanceof ApiError
+          ? refreshError.message
+          : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+      redirectToLogin(message);
       if (refreshError instanceof ApiError) throw refreshError;
-      throw new ApiError("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.", 401, "AUTH_SESSION_EXPIRED");
+      throw new ApiError(message, 401, "AUTH_SESSION_EXPIRED");
     }
     return apiFetchUpload<T>(path, formData, true);
   }

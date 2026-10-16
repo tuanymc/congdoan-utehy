@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useLogin } from "@refinedev/core";
 import type { LoginVariables } from "../../providers/auth-provider";
+import { clearSessionNotice, readSessionNotice } from "../../lib/api-client";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
@@ -10,6 +11,11 @@ export function LoginPage() {
   const { mutate: login, isLoading } = useLogin<LoginVariables>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [notice] = useState(() => readSessionNotice());
+
+  useEffect(() => {
+    if (notice) clearSessionNotice();
+  }, [notice]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,6 +31,11 @@ export function LoginPage() {
           <CardDescription>Đăng nhập trang quản trị</CardDescription>
         </CardHeader>
         <CardContent>
+          {notice && (
+            <p role="alert" className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {notice}
+            </p>
+          )}
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div className="flex flex-col gap-2">
               <Label htmlFor="email">Email</Label>
