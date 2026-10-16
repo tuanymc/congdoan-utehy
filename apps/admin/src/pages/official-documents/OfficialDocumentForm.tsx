@@ -22,30 +22,40 @@ import { apiFetch, apiFetchBlob, apiFetchUpload, type UploadProgress } from "../
 import { pushToast } from "../../components/common/toast-store";
 import { DIRECTION_OPTIONS, FORMS_DOCUMENT_TYPE_NAME, STATUS_OPTIONS, type OfficialDocumentPurpose } from "./constants";
 
-function UploadProgressPanel({ fileCount, progress }: { fileCount: number; progress: UploadProgress | null }) {
+function UploadProgressPanel({
+  active,
+  fileCount,
+  progress
+}: {
+  active: boolean;
+  fileCount: number;
+  progress: UploadProgress | null;
+}) {
   const total = progress?.total ?? 0;
   const loaded = progress?.loaded ?? 0;
-  const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
-  const waitingOnServer = percent === 100;
-  const label = waitingOnServer
-    ? "Đã gửi hết dữ liệu, đang lưu file trên máy chủ..."
-    : fileCount > 0
-      ? `Đang tải lên ${fileCount} file...`
-      : "Đang tải lên...";
+  const percent = active && total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : active ? 0 : 0;
+  const waitingOnServer = active && percent === 100;
+  const label = !active
+    ? fileCount > 0
+      ? `Đã chọn ${fileCount} file. Bấm Tải lên để bắt đầu.`
+      : "Chưa chọn file. Thanh này hiện tiến trình khi bấm Tải lên."
+    : waitingOnServer
+      ? "Đã gửi hết dữ liệu, đang lưu file trên máy chủ..."
+      : `Đang tải lên ${fileCount || ""} file...`.trim();
 
   return (
-    <div role="status" aria-live="polite" className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-3">
+    <div role="status" aria-live="polite" className="rounded-lg border-2 border-primary bg-primary/10 px-4 py-3">
       <div className="flex items-center justify-between gap-3 text-sm">
-        <p className="font-medium">{label}</p>
-        <p className="shrink-0 tabular-nums text-muted-foreground">
-          {percent === null ? "Đang gửi" : `${percent}%`}
-          {total > 0 ? ` · ${formatFileSize(loaded)} / ${formatFileSize(total)}` : ""}
+        <p className="font-semibold text-primary">{label}</p>
+        <p className="shrink-0 text-base font-semibold tabular-nums text-primary">
+          {active ? `${percent}%` : "0%"}
+          {active && total > 0 ? ` · ${formatFileSize(loaded)} / ${formatFileSize(total)}` : ""}
         </p>
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+      <div className="mt-2 h-4 overflow-hidden rounded-full bg-background">
         <div
           className="h-full rounded-full bg-primary transition-[width] duration-150"
-          style={{ width: percent === null ? "40%" : `${Math.max(percent, 4)}%` }}
+          style={{ width: `${active ? Math.max(percent, 6) : 0}%` }}
         />
       </div>
     </div>
@@ -313,14 +323,6 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
         {mode === "create" ? (isForms ? "Thêm biểu mẫu" : "Thêm công văn") : isForms ? "Sửa biểu mẫu" : "Sửa công văn"}
       </h1>
 
-      {isUploading && (
-        <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center p-3">
-          <div className="pointer-events-auto w-full max-w-xl shadow-lg">
-            <UploadProgressPanel fileCount={pendingFiles.length} progress={uploadProgress} />
-          </div>
-        </div>
-      )}
-
       <Card>
         <CardContent className="pt-6">
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
@@ -530,6 +532,8 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
             </p>
           </div>
 
+          <UploadProgressPanel active={isUploading} fileCount={pendingFiles.length} progress={uploadProgress} />
+
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input type="file" multiple disabled={isUploading} onChange={handleFilesSelected} className="sm:max-w-sm" />
             {mode === "edit" && (
@@ -546,8 +550,6 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
               </Button>
             )}
           </div>
-
-          {isUploading && <UploadProgressPanel fileCount={pendingFiles.length} progress={uploadProgress} />}
 
           {pendingFiles.length > 0 && (
             <ul className="flex flex-col divide-y rounded-md border">
