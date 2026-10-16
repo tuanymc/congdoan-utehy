@@ -131,6 +131,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+  const [remindPendingUpload, setRemindPendingUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -179,6 +180,12 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (mode === "edit" && pendingFiles.length > 0) {
+      setRemindPendingUpload(true);
+      document.getElementById("attachment-queue")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     const payload: CreateOfficialDocumentRequest = {
       title,
@@ -269,6 +276,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
       }
       return next;
     });
+    setRemindPendingUpload(false);
   }
 
   function removePendingFile(index: number) {
@@ -492,6 +500,12 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
               )}
             </div>
 
+            {remindPendingUpload && pendingFiles.length > 0 && (
+              <p role="alert" className="text-sm text-destructive">
+                Còn {pendingFiles.length} file trong hàng đợi chưa tải lên. Bấm Tải lên ở mục File đính kèm trước khi lưu.
+              </p>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => navigate(listUrl)}>
                 Huỷ
@@ -537,7 +551,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
         </Card>
       )}
 
-      <Card>
+      <Card id="attachment-queue">
         <CardContent className="flex flex-col gap-3 pt-6">
           <div>
             <h2 className="text-lg font-semibold">
@@ -549,6 +563,12 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
                 : 'Chọn thêm file rồi bấm "Tải lên", hoặc tải xuống/xoá file đã có bên dưới.'}
             </p>
           </div>
+
+          {remindPendingUpload && pendingFiles.length > 0 && (
+            <p role="alert" className="text-sm text-destructive">
+              Các file này chưa được tải lên. Bấm Tải lên rồi mới lưu công văn.
+            </p>
+          )}
 
           {(pendingFiles.length > 0 || isUploading) && (
             <UploadProgressPanel
