@@ -153,6 +153,31 @@ function refreshAccessToken(): Promise<TokenPair> {
   return refreshInFlight;
 }
 
+/**
+ * Access token chỉ nằm trong bộ nhớ tab, mất khi tải lại trang. Nếu còn refresh token thì lấy
+ * access token mới TRƯỚC khi gọi API — tránh GET /auth/me không kèm token rồi nhận 401 đỏ trên
+ * Network trong khi phiên vẫn còn hạn.
+ */
+async function ensureAccessToken(): Promise<void> {
+  if (currentAccessToken) return;
+  if (!getStoredRefreshToken()) {
+    const message = "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+    redirectToLogin(message);
+    throw new ApiError(message, 401, "AUTH_NO_REFRESH_TOKEN");
+  }
+  try {
+    await refreshAccessToken();
+  } catch (refreshError) {
+    const message =
+      refreshError instanceof ApiError
+        ? refreshError.message
+        : "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+    redirectToLogin(message);
+    if (refreshError instanceof ApiError) throw refreshError;
+    throw new ApiError(message, 401, "AUTH_SESSION_EXPIRED");
+  }
+}
+
 export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
   /** Payload sẽ được JSON.stringify tự động (bỏ qua nếu không truyền). */
   body?: unknown;
@@ -164,6 +189,10 @@ export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { body, skipAuth, _isRetry, headers, ...rest } = options;
+
+  if (!skipAuth && !currentAccessToken) {
+    await ensureAccessToken();
+  }
 
   const finalHeaders: Record<string, string> = {
     Accept: "application/json",
@@ -235,6 +264,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
  * nếu vẫn hết phiên thì chuyển về trang đăng nhập.
  */
 export async function apiFetchBlob(path: string, _isRetry = false): Promise<{ blob: Blob; fileName: string }> {
+  if (!currentAccessToken) {
+    await ensureAccessToken();
+  }
   const headers: Record<string, string> = {};
   if (currentAccessToken) {
     headers.Authorization = `Bearer ${currentAccessToken}`;
@@ -284,6 +316,9 @@ export async function apiFetchBlob(path: string, _isRetry = false): Promise<{ bl
  * apiFetch() (khác apiFetchBlob) vì upload là thao tác ghi dữ liệu, đáng để retry hơn là báo lỗi ngay.
  */
 export async function apiFetchUpload<T>(path: string, formData: FormData, _isRetry = false): Promise<T> {
+  if (!currentAccessToken) {
+    await ensureAccessToken();
+  }
   const headers: Record<string, string> = { Accept: "application/json" };
   if (currentAccessToken) {
     headers.Authorization = `Bearer ${currentAccessToken}`;
