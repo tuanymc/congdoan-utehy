@@ -25,39 +25,45 @@ import { DIRECTION_OPTIONS, FORMS_DOCUMENT_TYPE_NAME, STATUS_OPTIONS, type Offic
 function UploadProgressPanel({
   active,
   fileCount,
+  totalBytes,
   progress
 }: {
   active: boolean;
   fileCount: number;
+  totalBytes: number;
   progress: UploadProgress | null;
 }) {
-  const total = progress?.total ?? 0;
+  const total = progress?.total || totalBytes;
   const loaded = progress?.loaded ?? 0;
-  const percent = active && total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : active ? 0 : 0;
-  const waitingOnServer = active && percent === 100;
+  const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+  const hasByteProgress = active && loaded > 0 && percent < 100;
+  const waitingOnServer = active && percent >= 100;
   const label = !active
-    ? fileCount > 0
-      ? `Đã chọn ${fileCount} file. Bấm Tải lên để bắt đầu.`
-      : "Chưa chọn file. Thanh này hiện tiến trình khi bấm Tải lên."
+    ? `${fileCount} file đã chọn · ${formatFileSize(totalBytes)} · bấm Tải lên`
     : waitingOnServer
-      ? "Đã gửi hết dữ liệu, đang lưu file trên máy chủ..."
-      : `Đang tải lên ${fileCount || ""} file...`.trim();
+      ? "Đang lưu trên máy chủ..."
+      : hasByteProgress
+        ? `Đang gửi ${formatFileSize(loaded)} / ${formatFileSize(total)}`
+        : "Đang gửi file...";
 
   return (
-    <div role="status" aria-live="polite" className="rounded-lg border-2 border-primary bg-primary/10 px-4 py-3">
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <p className="font-semibold text-primary">{label}</p>
-        <p className="shrink-0 text-base font-semibold tabular-nums text-primary">
-          {active ? `${percent}%` : "0%"}
-          {active && total > 0 ? ` · ${formatFileSize(loaded)} / ${formatFileSize(total)}` : ""}
-        </p>
+    <div role="status" aria-live="polite" className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>{label}</span>
+        {active && <span className="tabular-nums text-foreground">{waitingOnServer ? "100%" : hasByteProgress ? `${percent}%` : ""}</span>}
       </div>
-      <div className="mt-2 h-4 overflow-hidden rounded-full bg-background">
-        <div
-          className="h-full rounded-full bg-primary transition-[width] duration-150"
-          style={{ width: `${active ? Math.max(percent, 6) : 0}%` }}
-        />
-      </div>
+      {active && (
+        <div className="h-1 overflow-hidden rounded-full bg-muted">
+          {!hasByteProgress && !waitingOnServer ? (
+            <div className="h-full w-1/4 rounded-full bg-primary" style={{ animation: "upload-slide 1.1s ease-in-out infinite" }} />
+          ) : (
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-200"
+              style={{ width: `${waitingOnServer ? 100 : percent}%` }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -532,7 +538,14 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
             </p>
           </div>
 
-          <UploadProgressPanel active={isUploading} fileCount={pendingFiles.length} progress={uploadProgress} />
+          {(pendingFiles.length > 0 || isUploading) && (
+            <UploadProgressPanel
+              active={isUploading}
+              fileCount={pendingFiles.length}
+              totalBytes={pendingFiles.reduce((sum, file) => sum + file.size, 0)}
+              progress={uploadProgress}
+            />
+          )}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input type="file" multiple disabled={isUploading} onChange={handleFilesSelected} className="sm:max-w-sm" />

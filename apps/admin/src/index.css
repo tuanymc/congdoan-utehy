@@ -144,3 +144,12 @@
 html {
   font-size: var(--font-size);
 }
+
+@keyframes upload-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(380%);
+  }
+}
