@@ -309,13 +309,52 @@ export async function apiFetchBlob(path: string, _isRetry = false): Promise<{ bl
   return { blob, fileName };
 }
 
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+}
+
+/**
+ * fetch() không báo tiến trình gửi body. XHR upload.onprogress cho biết đã đẩy bao nhiêu byte
+ * lên mạng — UI dùng số này để vẽ thanh %, kể cả khi request còn chờ máy chủ ghi file.
+ */
+function postFormData(
+  url: string,
+  formData: FormData,
+  headers: Record<string, string>,
+  onProgress?: (progress: UploadProgress) => void
+): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    for (const [key, value] of Object.entries(headers)) {
+      xhr.setRequestHeader(key, value);
+    }
+    xhr.upload.onprogress = (event) => {
+      onProgress?.({
+        loaded: event.loaded,
+        total: event.lengthComputable ? event.total : 0
+      });
+    };
+    xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
+    xhr.onerror = () => reject(new ApiError("Không kết nối được máy chủ khi tải file lên.", 0, "NETWORK_ERROR"));
+    xhr.onabort = () => reject(new ApiError("Đã huỷ tải file lên.", 0, "ABORTED"));
+    xhr.send(formData);
+  });
+}
+
 /**
  * Upload multipart/form-data (vd chọn 1 hoặc nhiều file đính kèm công văn/biểu mẫu) — không dùng được
  * apiFetch() vì hàm đó luôn JSON.stringify body và set Content-Type: application/json, trong khi
  * FormData cần trình duyệt tự set Content-Type kèm boundary. Có tự refresh token khi 401 giống
- * apiFetch() (khác apiFetchBlob) vì upload là thao tác ghi dữ liệu, đáng để retry hơn là báo lỗi ngay.
+ * apiFetch() vì upload là thao tác ghi dữ liệu, đáng để retry hơn là báo lỗi ngay.
  */
-export async function apiFetchUpload<T>(path: string, formData: FormData, _isRetry = false): Promise<T> {
+export async function apiFetchUpload<T>(
+  path: string,
+  formData: FormData,
+  options: { onProgress?: (progress: UploadProgress) => void; _isRetry?: boolean } = {}
+): Promise<T> {
+  const { onProgress, _isRetry = false } = options;
   if (!currentAccessToken) {
     await ensureAccessToken();
   }
@@ -324,11 +363,11 @@ export async function apiFetchUpload<T>(path: string, formData: FormData, _isRet
     headers.Authorization = `Bearer ${currentAccessToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: formData, cache: "no-store" });
+  const response = await postFormData(`${API_BASE_URL}${path}`, formData, headers, onProgress);
 
   if (response.status === 401) {
     if (_isRetry) {
-      const errorBody = await parseErrorBody(response);
+      const errorBody = parseJsonBody(response.text);
       const message = errorBody?.message ?? "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
       redirectToLogin(message);
       throw new ApiError(message, 401, errorBody?.errorCode ?? "AUTH_SESSION_EXPIRED", errorBody?.details);
@@ -344,11 +383,11 @@ export async function apiFetchUpload<T>(path: string, formData: FormData, _isRet
       if (refreshError instanceof ApiError) throw refreshError;
       throw new ApiError(message, 401, "AUTH_SESSION_EXPIRED");
     }
-    return apiFetchUpload<T>(path, formData, true);
+    return apiFetchUpload<T>(path, formData, { ...options, _isRetry: true });
   }
 
-  if (!response.ok) {
-    const errorBody = await parseErrorBody(response);
+  if (response.status < 200 || response.status >= 300) {
+    const errorBody = parseJsonBody(response.text);
     throw new ApiError(
       errorBody?.message ?? "Tải file lên thất bại, vui lòng thử lại sau.",
       response.status,
@@ -357,6 +396,14 @@ export async function apiFetchUpload<T>(path: string, formData: FormData, _isRet
     );
   }
 
-  const text = await response.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return (response.text ? JSON.parse(response.text) : undefined) as T;
+}
+
+function parseJsonBody(text: string): ApiErrorBody | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as ApiErrorBody;
+  } catch {
+    return null;
+  }
 }

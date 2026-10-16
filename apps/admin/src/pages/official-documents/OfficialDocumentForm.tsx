@@ -18,9 +18,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { PageLoading } from "../../components/common/PageLoading";
 import { RichTextEditor } from "../../components/common/RichTextEditor";
 import { ImageUploadField } from "../../components/common/ImageUploadField";
-import { apiFetch, apiFetchBlob, apiFetchUpload } from "../../lib/api-client";
+import { apiFetch, apiFetchBlob, apiFetchUpload, type UploadProgress } from "../../lib/api-client";
 import { pushToast } from "../../components/common/toast-store";
 import { DIRECTION_OPTIONS, FORMS_DOCUMENT_TYPE_NAME, STATUS_OPTIONS, type OfficialDocumentPurpose } from "./constants";
+
+function UploadProgressPanel({ fileCount, progress }: { fileCount: number; progress: UploadProgress | null }) {
+  const total = progress?.total ?? 0;
+  const loaded = progress?.loaded ?? 0;
+  const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+  const waitingOnServer = percent === 100;
+  const label = waitingOnServer
+    ? "Đã gửi hết dữ liệu, đang lưu file trên máy chủ..."
+    : fileCount > 0
+      ? `Đang tải lên ${fileCount} file...`
+      : "Đang tải lên...";
+
+  return (
+    <div role="status" aria-live="polite" className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <p className="font-medium">{label}</p>
+        <p className="shrink-0 tabular-nums text-muted-foreground">
+          {percent === null ? "Đang gửi" : `${percent}%`}
+          {total > 0 ? ` · ${formatFileSize(loaded)} / ${formatFileSize(total)}` : ""}
+        </p>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-150"
+          style={{ width: percent === null ? "40%" : `${Math.max(percent, 4)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 /** vd "2.4 MB" — chỉ dùng để hiển thị cho người chọn file xem trước khi tải lên. */
 function formatFileSize(bytes: number): string {
@@ -83,6 +113,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -183,8 +214,13 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   async function uploadFilesToDocument(documentId: string, files: File[]): Promise<boolean> {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    setIsUploading(true);
+    setUploadProgress({ loaded: 0, total: totalBytes });
     try {
-      await apiFetchUpload(`/admin/official-documents/${documentId}/attachments`, formData);
+      await apiFetchUpload(`/admin/official-documents/${documentId}/attachments`, formData, {
+        onProgress: (progress) => setUploadProgress(progress.total > 0 ? progress : { loaded: progress.loaded, total: totalBytes })
+      });
       return true;
     } catch (error) {
       pushToast({
@@ -193,6 +229,9 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
         description: error instanceof Error ? error.message : "Vui lòng thử lại sau."
       });
       return false;
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -218,15 +257,10 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
       pushToast({ variant: "error", message: "Chưa chọn file nào để tải lên" });
       return;
     }
-    setIsUploading(true);
-    try {
-      const ok = await uploadFilesToDocument(id, pendingFiles);
-      if (ok) {
-        setPendingFiles([]);
-        await refetchDocument();
-      }
-    } finally {
-      setIsUploading(false);
+    const ok = await uploadFilesToDocument(id, pendingFiles);
+    if (ok) {
+      setPendingFiles([]);
+      await refetchDocument();
     }
   }
 
@@ -278,6 +312,14 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
       <h1 className="text-2xl font-semibold">
         {mode === "create" ? (isForms ? "Thêm biểu mẫu" : "Thêm công văn") : isForms ? "Sửa biểu mẫu" : "Sửa công văn"}
       </h1>
+
+      {isUploading && (
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center p-3">
+          <div className="pointer-events-auto w-full max-w-xl shadow-lg">
+            <UploadProgressPanel fileCount={pendingFiles.length} progress={uploadProgress} />
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardContent className="pt-6">
@@ -489,7 +531,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input type="file" multiple onChange={handleFilesSelected} className="sm:max-w-sm" />
+            <Input type="file" multiple disabled={isUploading} onChange={handleFilesSelected} className="sm:max-w-sm" />
             {mode === "edit" && (
               <Button
                 type="button"
@@ -505,6 +547,8 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
             )}
           </div>
 
+          {isUploading && <UploadProgressPanel fileCount={pendingFiles.length} progress={uploadProgress} />}
+
           {pendingFiles.length > 0 && (
             <ul className="flex flex-col divide-y rounded-md border">
               {pendingFiles.map((file, index) => (
@@ -513,7 +557,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
                     <p className="truncate text-sm font-medium">{file.name}</p>
                     <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                   </div>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removePendingFile(index)}>
+                  <Button type="button" variant="ghost" size="sm" disabled={isUploading} onClick={() => removePendingFile(index)}>
                     <Trash2 className="size-4" />
                   </Button>
                 </li>
