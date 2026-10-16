@@ -31,8 +31,10 @@
         </rule>
       </rules>
     </rewrite>
+    <!-- index.html (và mọi URL SPA rewrite về nó) không được cache lâu: nếu max-age 7 ngày,
+         trình duyệt giữ file JS cũ dù đã copy dist mới. File trong /assets có hash nên cache riêng bên dưới. -->
     <staticContent>
-      <clientCache cacheControlMode="UseMaxAge" cacheControlMaxAge="7.00:00:00" />
+      <clientCache cacheControlMode="DisableCache" />
     </staticContent>
     <httpProtocol>
       <customHeaders>
@@ -46,4 +48,11 @@
       </customHeaders>
     </httpProtocol>
   </system.webServer>
+  <location path="assets">
+    <system.webServer>
+      <staticContent>
+        <clientCache cacheControlMode="UseMaxAge" cacheControlMaxAge="30.00:00:00" />
+      </staticContent>
+    </system.webServer>
+  </location>
 </configuration>
