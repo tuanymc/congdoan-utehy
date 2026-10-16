@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useCreate, useList, useOne, useUpdate } from "@refinedev/core";
 import { Download, Trash2, Upload } from "lucide-react";
@@ -131,6 +131,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (mode === "edit" && docResult?.data) {
@@ -252,11 +253,22 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
   }
 
   function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
-    const list = event.target.files;
-    if (!list || list.length === 0) return;
-    setPendingFiles((prev) => [...prev, ...Array.from(list)]);
-    // Reset value để chọn lại đúng file vừa gỡ (bấm Xoá) vẫn kích hoạt lại được sự kiện change.
-    event.target.value = "";
+    const input = event.currentTarget;
+    // Sao chép FileList ngay. FileList là danh sách sống: gán input.value = "" sẽ làm rỗng nó,
+    // và nếu Array.from nằm trong hàm setState thì lần chọn sau có thể không còn file để thêm.
+    const picked = Array.from(input.files ?? []);
+    input.value = "";
+    if (picked.length === 0) return;
+    setPendingFiles((prev) => {
+      const next = [...prev];
+      for (const file of picked) {
+        const exists = next.some(
+          (item) => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
+        );
+        if (!exists) next.push(file);
+      }
+      return next;
+    });
   }
 
   function removePendingFile(index: number) {
@@ -548,7 +560,23 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
           )}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input type="file" multiple disabled={isUploading} onChange={handleFilesSelected} className="sm:max-w-sm" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              disabled={isUploading}
+              onChange={handleFilesSelected}
+              className="sr-only"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Thêm file
+            </Button>
             {mode === "edit" && (
               <Button
                 type="button"
