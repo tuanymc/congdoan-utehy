@@ -20,11 +20,13 @@
 -->
 <configuration>
   <system.webServer>
-    <!-- File đính kèm stream qua Node. responseBufferLimit=0 để ARR không gom cả file rồi mới
-         trả; timeout dài hơn mặc định 2 phút để file lớn không bị cắt (Premature close).
-         Nếu IIS trả 500.19 vì section bị khóa:
+    <!-- enabled="true" bắt buộc: thuộc tính này mặc định là false, ghi thẻ <proxy> mà quên
+         enabled sẽ tắt reverse proxy của riêng /api. Không đặt responseBufferLimit="0" —
+         ARR 3.0 với mức 0 làm multipart upload (file công văn) không tới được Node.
+         Tải xuống đã gửi Content-Length + Range nên không cần tắt buffer. Timeout dài hơn
+         2 phút mặc định để file lớn không bị cắt. Nếu IIS trả 500.19:
          appcmd unlock config -section:system.webServer/proxy -->
-    <proxy timeout="00:10:00" responseBufferLimit="0" />
+    <proxy enabled="true" timeout="00:10:00" />
     <rewrite>
       <rules>
         <!-- <clear /> bắt buộc: Application nested mặc định KẾ THỪA <rules> của web.config site cha
