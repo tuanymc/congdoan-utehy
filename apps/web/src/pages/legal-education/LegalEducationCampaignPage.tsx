@@ -132,11 +132,18 @@ export function LegalEducationCampaignPage() {
                   <p className="mt-1 text-sm text-muted-foreground">{item.exam.description}</p>
                 ) : null}
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Mỗi đề {item.exam.questionCount} câu
-                  {item.exam.questionBankCount > item.exam.questionCount
-                    ? ` (lấy ngẫu nhiên từ ngân hàng ${item.exam.questionBankCount} câu)`
-                    : ""}
-                  , trộn thứ tự câu và đáp án · {item.exam.durationMinutes} phút · đạt từ {item.exam.passingScorePercent}% · tối đa{" "}
+                  {item.exam.questionBankCount > 0 ? (
+                    <>
+                      Mỗi đề {item.exam.questionCount} câu
+                      {item.exam.questionBankCount > item.exam.questionCount
+                        ? ` (lấy ngẫu nhiên từ ngân hàng ${item.exam.questionBankCount} câu)`
+                        : ""}
+                      , trộn thứ tự câu và đáp án ·{" "}
+                    </>
+                  ) : (
+                    <>Ngân hàng câu hỏi sẽ được cập nhật trước khi mở thi. </>
+                  )}
+                  {item.exam.durationMinutes} phút · đạt từ {item.exam.passingScorePercent}% · tối đa{" "}
                   {item.exam.maxAttempts} lần thi chính thức. Dành cho công đoàn viên đã đăng nhập.
                 </p>
                 {formatWindow(item.exam.practiceStartAt, item.exam.practiceEndAt) ? (

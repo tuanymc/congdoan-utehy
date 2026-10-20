@@ -13,6 +13,7 @@ import { SYSTEM_ROLES } from "../packages/types/src/common";
 import { PUBLIC_SERVICE_LINK_SEED, PUBLIC_SERVICE_PROCEDURE_SEED, toProcedureRecord } from "./public-service-dvcqg-data";
 import { seedUnionSatisfactionSurvey } from "./seed-survey-content";
 import { seedLegalEducationQ3_2026 } from "./seed-legal-education-q3-2026";
+import { seedLegalEducationQ4_2026 } from "./seed-legal-education-q4-2026";
 
 const prisma = new PrismaClient();
 
@@ -416,6 +417,9 @@ async function main() {
 
   console.log("Seeding phổ biến pháp luật Quý III/2026 (tài liệu công khai, bài thi chờ rà soát đáp án)...");
   await seedLegalEducationQ3_2026(prisma);
+
+  console.log("Seeding phổ biến pháp luật Quý IV/2026 (tài liệu công khai, ngân hàng câu hỏi nhập sau)...");
+  await seedLegalEducationQ4_2026(prisma);
 
   console.log("Done. Tài khoản admin mặc định:", adminEmail, "(đổi mật khẩu ngay sau lần đăng nhập đầu tiên)");
 }
