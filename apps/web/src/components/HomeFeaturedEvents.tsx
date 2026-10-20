@@ -66,14 +66,12 @@ function FeaturedEventCard({ item, now }: { item: FeaturedCard; now: Date }) {
     <Link
       to={href}
       className={cn(
-        "group relative block overflow-hidden rounded-xl text-primary-foreground shadow-sm ring-1 transition hover:shadow-md",
-        isWaiting
-          ? "bg-gradient-to-br from-[#1e3a5f] to-[#0f2a6b] ring-amber-400/35"
-          : "bg-gradient-to-br from-primary to-[#0f2a6b] ring-primary/20"
+        "group relative block overflow-hidden rounded-xl text-white shadow-sm ring-1 ring-[#FFCC29]/45 transition hover:shadow-md",
+        "bg-gradient-to-br from-[#00824A] to-[#045C34]"
       )}
     >
-      <div className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute -bottom-12 right-10 size-32 rounded-full bg-secondary/20" />
+      <div className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full bg-[#FFCC29]/20" />
+      <div className="pointer-events-none absolute -bottom-12 right-10 size-32 rounded-full bg-white/10" />
       <div className="relative flex min-h-[9.5rem] flex-col justify-between gap-4 p-5 sm:min-h-[11rem] sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           {isWaiting ? <WaitingBadge /> : <LiveBadge />}
@@ -81,13 +79,13 @@ function FeaturedEventCard({ item, now }: { item: FeaturedCard; now: Date }) {
             {isOfficial ? "Thi chính thức" : "Thi thử"}
           </span>
           {campaign.periodLabel ? (
-            <span className="text-xs text-primary-foreground/80">{campaign.periodLabel}</span>
+            <span className="text-xs text-white/80">{campaign.periodLabel}</span>
           ) : null}
         </div>
         <div>
           <h3 className="line-clamp-2 text-lg font-bold leading-snug sm:text-xl">{campaign.title}</h3>
           {campaign.summary ? (
-            <p className="mt-1 line-clamp-2 text-sm text-primary-foreground/85">{campaign.summary}</p>
+            <p className="mt-1 line-clamp-2 text-sm text-white/85">{campaign.summary}</p>
           ) : null}
           {isWaiting ? (
             <>
@@ -95,17 +93,16 @@ function FeaturedEventCard({ item, now }: { item: FeaturedCard; now: Date }) {
                 Bắt đầu sau {formatCountdown(remainingMs)}
               </p>
               {startLabel ? (
-                <p className="mt-1 text-xs text-primary-foreground/75">Mở lúc {startLabel}</p>
+                <p className="mt-1 text-xs text-white/75">Mở lúc {startLabel}</p>
               ) : null}
             </>
           ) : endLabel ? (
-            <p className="mt-2 text-xs text-primary-foreground/75">Kết thúc lúc {endLabel}</p>
+            <p className="mt-2 text-xs text-white/75">Kết thúc lúc {endLabel}</p>
           ) : null}
         </div>
         <span
           className={cn(
-            "inline-flex w-fit items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition group-hover:brightness-110",
-            isWaiting ? "bg-amber-400 text-slate-900" : "bg-secondary text-secondary-foreground"
+            "inline-flex w-fit items-center gap-1.5 rounded-md bg-[#FFCC29] px-3 py-1.5 text-sm font-semibold text-[#14532d] transition group-hover:brightness-105"
           )}
         >
           {isWaiting ? <Clock className="size-4" /> : <PencilLine className="size-4" />}
