@@ -1,7 +1,7 @@
 /**
  * Seed đợt phổ biến giáo dục pháp luật Quý IV/2026 — an toàn chạy lại (upsert theo slug).
  *
- * Tài liệu nguồn: Tim_Hieu_Phap_Luat_Quy_IV/ (tóm tắt + Thông báo 1005 + PDF NĐ 328, TT 49, TT 83).
+ * Tài liệu nguồn: Tim_Hieu_Phap_Luat_Quy_IV/ (tóm tắt + Thông báo 1005 + PDF NĐ 328, TT 49, TT 83, Luật 93/2025/QH15, Nghị quyết 66-NQ/TW).
  * Không seed ngân hàng câu hỏi — cán bộ nhập sau trên trang quản trị. Bài thi tạo sẵn, isOpen=false.
  * Chạy lại không xóa câu hỏi đã nhập và không đóng bài thi nếu cán bộ đã mở.
  *
@@ -28,7 +28,7 @@ export const LEGAL_EDUCATION_Q4_2026_SLUG = "quy-iv-2026";
 const CAMPAIGN_TITLE = "Phổ biến giáo dục pháp luật quý IV năm 2026";
 const PERIOD_LABEL = "Quý IV năm 2026";
 const SUMMARY =
-  "Nội dung phổ biến tập trung 3 văn bản: Nghị định 328/2026/NĐ-CP (phòng, chống tin giả, tin sai sự thật), Thông tư 49/2026/TT-BGDĐT (ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp) và Thông tư 83/2026/TT-BGDĐT (Chuẩn cơ sở giáo dục đại học). Theo Thông báo số 1005 ngày 12/10/2026, các đơn vị phổ biến từ ngày 12/10/2026 đến ngày 30/11/2026. Đoàn viên đọc tài liệu tóm tắt và tải văn bản gốc; ngân hàng câu hỏi trắc nghiệm sẽ được cập nhật sau.";
+  "Nội dung phổ biến gồm Nghị định 328/2026/NĐ-CP (phòng, chống tin giả, tin sai sự thật), Thông tư 49/2026/TT-BGDĐT (ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp), Thông tư 83/2026/TT-BGDĐT (Chuẩn cơ sở giáo dục đại học), Luật số 93/2025/QH15 (khoa học, công nghệ và đổi mới sáng tạo) và Nghị quyết số 66-NQ/TW ngày 30/4/2025 của Bộ Chính trị (đổi mới công tác xây dựng và thi hành pháp luật). Theo Thông báo số 1005 ngày 12/10/2026, các đơn vị phổ biến từ ngày 12/10/2026 đến ngày 30/11/2026. Đoàn viên đọc tài liệu tóm tắt và tải văn bản gốc; ngân hàng câu hỏi trắc nghiệm sẽ được cập nhật sau.";
 
 /** Theo Thông báo 1005: thời gian các đơn vị thực hiện. */
 const CAMPAIGN_START = new Date("2026-10-12T00:00:00.000+07:00");
@@ -253,8 +253,104 @@ const MATERIAL_TT83 = {
   ].join("")
 };
 
+const MATERIAL_LUAT93 = {
+  slug: "luat-93-2025-qh15",
+  title: "Luật số 93/2025/QH15 — Khoa học, công nghệ và đổi mới sáng tạo",
+  excerpt:
+    "Nguyên tắc phát triển khoa học và đổi mới sáng tạo, chấp nhận rủi ro, thử nghiệm có kiểm soát, doanh nghiệp, nhân tài và hợp tác quốc tế.",
+  fileUrl: "/tai-lieu/phap-luat/luat_93_2025_qh15.pdf",
+  sortOrder: 40,
+  content: [
+    h2("Phạm vi và hiệu lực"),
+    p("Quốc hội khóa XV thông qua Luật ngày 27/6/2025. Luật quy định hoạt động khoa học, công nghệ và đổi mới sáng tạo; chính sách, biện pháp bảo đảm phát triển các hoạt động này. Áp dụng với cơ quan, tổ chức, cá nhân tham gia hoặc liên quan tại Việt Nam, và với chủ thể ngoài lãnh thổ Việt Nam khi có quyền, nghĩa vụ theo pháp luật Việt Nam hoặc điều ước quốc tế mà Việt Nam là thành viên."),
+    p("Luật có hiệu lực từ ngày 01/10/2025. Các điều 15, 61, 62, 63, 64, 65 và 66 có hiệu lực từ ngày 01/7/2025. Luật Khoa học và công nghệ số 29/2013/QH13 (đã được sửa đổi, bổ sung) hết hiệu lực kể từ ngày Luật này có hiệu lực, trừ các trường hợp chuyển tiếp tại khoản 1, 2, 3, 6, 8 và 9 Điều 73."),
+    p("Luật này được ưu tiên áp dụng khi có quy định khác với luật, nghị quyết khác của Quốc hội về khoa học, công nghệ và đổi mới sáng tạo, trừ điều ước quốc tế và nghị quyết của Quốc hội có cơ chế, chính sách ưu đãi thuận lợi hơn."),
+    h2("Một số khái niệm"),
+    ul([
+      "Khoa học là hệ thống tri thức về bản chất, quy luật của sự vật, hiện tượng tự nhiên, xã hội và tư duy.",
+      "Công nghệ là tập hợp giải pháp kỹ thuật, quy trình, công cụ, kể cả bí quyết, được tạo ra từ tri thức khoa học và kinh nghiệm để biến nguồn lực thành sản phẩm.",
+      "Đổi mới sáng tạo là tạo ra sản phẩm, dịch vụ, quy trình, mô hình kinh doanh mới hoặc cải tiến đáng kể so với cái đã có.",
+      "Hoạt động khoa học, công nghệ và đổi mới sáng tạo gồm nghiên cứu cơ bản, nghiên cứu ứng dụng, phát triển công nghệ, phát triển giải pháp xã hội, sản xuất thử nghiệm, ứng dụng và chuyển giao công nghệ, đổi mới sáng tạo dựa trên đổi mới công nghệ, khởi nghiệp sáng tạo, cung cấp dịch vụ và hoạt động liên quan."
+    ]),
+    h2("Nguyên tắc và định hướng"),
+    ul([
+      "Xuất phát từ thực tiễn và dự báo xu hướng phát triển; phục vụ phát triển kinh tế - xã hội, quốc phòng, an ninh, chất lượng cuộc sống, môi trường và phát triển bền vững; lấy con người làm trung tâm.",
+      "Nghiên cứu, ứng dụng trong y tế, công nghệ sinh học, trí tuệ nhân tạo và lĩnh vực liên quan trực tiếp đến con người phải đặt dưới sự giám sát, kiểm soát của con người.",
+      "Bảo đảm quyền tự do nghiên cứu, sáng tạo; đề cao đạo đức nghề nghiệp, tính trung thực, khách quan và trách nhiệm.",
+      "Nhà nước quản lý theo nguyên tắc hậu kiểm, đánh giá kết quả thực hiện, không can thiệp vào phương pháp và quy trình của tổ chức, doanh nghiệp, cá nhân, trừ trường hợp cần thiết.",
+      "Doanh nghiệp là trung tâm của hệ thống đổi mới sáng tạo. Nhà nước ưu tiên làm chủ và thương mại hóa công nghệ trong nước, chấp nhận rủi ro, chia sẻ rủi ro và dùng thử nghiệm có kiểm soát.",
+      "Ưu tiên hạ tầng nghiên cứu dùng chung, gắn viện nghiên cứu, cơ sở giáo dục đại học và doanh nghiệp; thu hút, trọng dụng nhân tài trong nước và nước ngoài."
+    ]),
+    h2("Chấp nhận rủi ro và thử nghiệm có kiểm soát"),
+    ul([
+      "Kinh phí của doanh nghiệp nhà nước đã sử dụng đúng mục tiêu, phạm vi và tuân thủ đầy đủ quy định quản lý nhiệm vụ, quy trình, nội dung nghiên cứu và biện pháp phòng ngừa rủi ro thì không phải hoàn trả chỉ vì nhiệm vụ không đạt mục tiêu đề ra.",
+      "Người được giao phê duyệt, quản lý ngân sách khoa học, công nghệ và đổi mới sáng tạo được xem xét miễn trách nhiệm hành chính và bồi thường dân sự khi đã tuân thủ quy định, không cố ý vi phạm pháp luật, nhưng kết quả nhiệm vụ không đạt mục tiêu.",
+      "Thử nghiệm có kiểm soát được cấp theo đề xuất của tổ chức, doanh nghiệp, thời hạn không quá 03 năm và có thể gia hạn một lần không quá 03 năm.",
+      "Trong thử nghiệm có kiểm soát, cơ quan, tổ chức, cá nhân đã thực hiện đúng quy định được xem xét miễn, loại trừ trách nhiệm đối với thiệt hại, rủi ro đã được dự liệu, trừ trường hợp đã biết hoặc buộc phải biết nguy cơ mà vẫn không áp dụng biện pháp ngăn ngừa."
+    ]),
+    h2("Doanh nghiệp, nhân tài và phổ biến tri thức"),
+    ul([
+      "Tổ chức, cá nhân dùng ngân sách nhà nước hoặc được hưởng ưu đãi, hỗ trợ phải phổ biến, lan tỏa tri thức và công bố kết quả, kể cả cập nhật trên Hệ thống thông tin quốc gia về khoa học, công nghệ và đổi mới sáng tạo. Nội dung thuộc bí mật nhà nước hoặc ảnh hưởng quốc phòng, an ninh không thuộc phạm vi này.",
+      "Chi phí của doanh nghiệp cho nghiên cứu khoa học, phát triển công nghệ, đổi mới sáng tạo và khoản chi cho các hoạt động đó được tính vào chi phí được trừ theo pháp luật về thuế.",
+      "Nhà khoa học trẻ tài năng, kỹ sư trẻ tài năng được hỗ trợ nâng cao trình độ ở nước ngoài và chủ trì nhiệm vụ khoa học, công nghệ. Nhà khoa học xuất sắc được xem xét tài trợ để chủ trì nhóm nghiên cứu mạnh.",
+      "Nghiên cứu viên sau tiến sĩ, nghiên cứu sinh và học viên thạc sĩ được xem xét tài trợ hoạt động nghiên cứu từ ngân sách nhà nước.",
+      "Chuyên gia, nhà khoa học trong nước, người Việt Nam định cư ở nước ngoài và chuyên gia, nhà khoa học nước ngoài được hưởng ưu đãi về tiền lương, nhà ở, thuế và thủ tục xuất nhập cảnh theo quy định."
+    ]),
+    h2("Hội nhập quốc tế"),
+    p("Hội nhập, hợp tác trên cơ sở độc lập, chủ quyền, an ninh quốc gia, bình đẳng và cùng có lợi. Tiếp thu có chọn lọc thành tựu quốc tế, bảo đảm sở hữu trí tuệ, đa dạng hóa đối tác và ưu tiên công nghệ cao, công nghệ chiến lược. Kết quả nghiên cứu được thương mại hóa, chuyển giao theo thỏa thuận; Nhà nước có chính sách hỗ trợ thương mại hóa và truyền thông khoa học.")
+  ].join("")
+};
+
+const MATERIAL_NQ66 = {
+  slug: "nghi-quyet-66-nqtw-2025",
+  title: "Nghị quyết số 66-NQ/TW ngày 30/4/2025 của Bộ Chính trị — Đổi mới xây dựng và thi hành pháp luật",
+  excerpt:
+    "Quan điểm chỉ đạo, mục tiêu đến năm 2030 và 2045, nhiệm vụ về thể chế, thi hành pháp luật, nhân lực, chuyển đổi số và nguồn lực tài chính.",
+  fileUrl: "/tai-lieu/phap-luat/nq_66_nqtw_2025.pdf",
+  sortOrder: 50,
+  content: [
+    h2("Vị trí của nghị quyết"),
+    p("Ban Chấp hành Trung ương ban hành Nghị quyết số 66-NQ/TW ngày 30 tháng 4 năm 2025 của Bộ Chính trị về đổi mới công tác xây dựng và thi hành pháp luật, đáp ứng yêu cầu phát triển đất nước trong kỷ nguyên mới. Nghị quyết phổ biến đến chi bộ."),
+    h2("Quan điểm chỉ đạo"),
+    ul([
+      "Bảo đảm sự lãnh đạo toàn diện, trực tiếp của Đảng; tăng cường kiểm soát quyền lực, phòng chống tham nhũng, lãng phí, tiêu cực, lợi ích nhóm; phát huy giám sát, phản biện xã hội của Mặt trận Tổ quốc Việt Nam và sự tham gia của Nhân dân, tổ chức, doanh nghiệp.",
+      "Xây dựng và thi hành pháp luật là đột phá của đột phá trong hoàn thiện thể chế phát triển; là nhiệm vụ trọng tâm của tiến trình xây dựng và hoàn thiện Nhà nước pháp quyền xã hội chủ nghĩa.",
+      "Xây dựng pháp luật phải bám sát thực tiễn Việt Nam, tiếp thu có chọn lọc tinh hoa của nhân loại; thể chế, pháp luật trở thành lợi thế cạnh tranh và động lực tăng trưởng.",
+      "Nâng cao hiệu quả thi hành pháp luật, xây dựng văn hóa tuân thủ pháp luật, gắn kết chặt việc xây dựng với việc thi hành.",
+      "Đầu tư cho xây dựng chính sách, pháp luật là đầu tư cho phát triển; ưu tiên nguồn lực cho thể chế, hạ tầng kỹ thuật và chuyển đổi số."
+    ]),
+    h2("Mục tiêu"),
+    h3("Đến năm 2030"),
+    p("Việt Nam có hệ thống pháp luật dân chủ, công bằng, đồng bộ, thống nhất, công khai, minh bạch, khả thi, với cơ chế tổ chức thực hiện nghiêm minh, bảo đảm cơ sở pháp lý cho cạnh tranh lành mạnh, đổi mới sáng tạo. Các vướng mắc phát sinh từ thực tiễn được rà soát, tháo gỡ. Đến năm 2030, Việt Nam là nước đang phát triển, có công nghiệp hiện đại, thu nhập trung bình cao."),
+    ul([
+      "Năm 2025: cơ bản hoàn thành việc tháo gỡ những điểm nghẽn do quy định pháp luật.",
+      "Năm 2027: hoàn thành việc sửa đổi, bổ sung, ban hành mới văn bản bảo đảm cơ sở pháp lý cho bộ máy nhà nước theo mô hình chính quyền địa phương 3 cấp.",
+      "Năm 2028: hệ thống pháp luật về đầu tư, kinh doanh, góp phần đưa môi trường đầu tư của Việt Nam vào nhóm 3 nước dẫn đầu ASEAN."
+    ]),
+    h3("Tầm nhìn đến năm 2045"),
+    p("Hệ thống pháp luật chất lượng cao, hiện đại, tiệm cận chuẩn mực quốc tế, được thực hiện nghiêm minh; tôn trọng, bảo vệ quyền con người, quyền công dân; quản trị quốc gia hiện đại. Đến năm 2045, Việt Nam trở thành nước phát triển, thu nhập cao, theo định hướng xã hội chủ nghĩa."),
+    h2("Nhiệm vụ, giải pháp"),
+    ul([
+      "Các cấp ủy lãnh đạo toàn diện, trực tiếp công tác xây dựng và thi hành pháp luật. Người đứng đầu chịu trách nhiệm chính; gắn kết quả với đánh giá, khen thưởng, kỷ luật.",
+      "Xây dựng pháp luật vừa bảo đảm quản lý nhà nước, vừa giải phóng nguồn lực sản xuất, khởi thông mọi nguồn lực. Không để khoảng trống pháp luật cản trở đổi mới sáng tạo. Thể chế hóa thử nghiệm có kiểm soát, chấp nhận rủi ro và chia sẻ rủi ro đối với khoa học, công nghệ, đổi mới sáng tạo và chuyển đổi số.",
+      "Thi hành pháp luật công khai, minh bạch, kịp thời. Không hình sự hóa quan hệ kinh tế, dân sự; không dùng biện pháp hành chính để can thiệp, giải quyết tranh chấp dân sự, kinh tế. Xây dựng văn hóa tuân thủ pháp luật, tăng cường chuyển đổi số trong phổ biến, giáo dục pháp luật.",
+      "Nâng cao năng lực thực hiện nghĩa vụ pháp lý quốc tế; mở rộng hợp tác pháp luật và tư pháp, thu hút chuyên gia người Việt Nam ở nước ngoài.",
+      "Có chính sách đặc thù về tiền lương, phụ cấp, thuế đối với người làm công tác xây dựng, thi hành pháp luật. Hỗ trợ hằng tháng bằng 100% mức lương theo hệ số lương hiện hưởng đối với người trực tiếp, thường xuyên tham mưu nghiên cứu chiến lược, chính sách, xây dựng pháp luật tại một số cơ quan, đơn vị. Kiên quyết chấm dứt cơ sở đào tạo luật không bảo đảm tiêu chí, tiêu chuẩn.",
+      "Xây dựng hạ tầng công nghệ thông tin, dữ liệu lớn và trí tuệ nhân tạo phục vụ xây dựng, thi hành pháp luật, bảo đảm đúng, đủ, sạch, sống và liên thông. Lồng ghép phổ biến, giáo dục pháp luật vào phong trào học tập số.",
+      "Bảo đảm chi cho công tác xây dựng pháp luật không thấp hơn 0,5% tổng chi ngân sách nhà nước hằng năm và tăng dần theo yêu cầu. Ưu tiên nguồn lực phổ biến, giáo dục pháp luật cho đối tượng đặc thù, yếu thế, đồng bào dân tộc thiểu số."
+    ]),
+    h2("Tổ chức thực hiện"),
+    ul([
+      "Thành lập Ban Chỉ đạo Trung ương về hoàn thiện thể chế, pháp luật do Tổng Bí thư làm Trưởng ban.",
+      "Đảng ủy Quốc hội lãnh đạo, chỉ đạo hoàn thiện pháp luật và tăng cường giám sát. Đảng ủy Chính phủ lãnh đạo chương trình hành động; phối hợp để Bộ Tư pháp trình Quốc hội khóa XV, Kỳ họp thứ 9 nghị quyết về một số cơ chế, chính sách đặc biệt.",
+      "Mặt trận Tổ quốc Việt Nam xây dựng chương trình, kế hoạch vận động Nhân dân, phát huy giám sát, phản biện xã hội và tham gia xây dựng, thi hành pháp luật.",
+      "Đảng ủy Bộ Tư pháp là cơ quan thường trực, chủ trì theo dõi, kiểm tra, đánh giá; định kỳ 6 tháng báo cáo Ban Chỉ đạo Trung ương và Bộ Chính trị."
+    ])
+  ].join("")
+};
+
 const EXAM_DESCRIPTION =
-  "Bài trắc nghiệm kiến thức pháp luật Quý IV/2026 dựa trên Nghị định 328/2026/NĐ-CP, Thông tư 49/2026/TT-BGDĐT và Thông tư 83/2026/TT-BGDĐT. Ngân hàng câu hỏi do cán bộ nhập và rà soát trước khi mở thi. Thời gian 30 phút, 01 lần thi chính thức, đạt từ 70%. Có thể mở cửa sổ thi thử trước khi thi chính thức.";
+  "Bài trắc nghiệm kiến thức pháp luật Quý IV/2026 dựa trên Nghị định 328/2026/NĐ-CP, Thông tư 49 và 83/2026/TT-BGDĐT, Luật số 93/2025/QH15 và Nghị quyết số 66-NQ/TW. Ngân hàng câu hỏi do cán bộ nhập và rà soát trước khi mở thi. Thời gian 30 phút, 01 lần thi chính thức, đạt từ 70%. Có thể mở cửa sổ thi thử trước khi thi chính thức.";
 
 export async function seedLegalEducationQ4_2026(prisma: PrismaClient): Promise<void> {
   const campaign = await prisma.legalEducationCampaign.upsert({
@@ -278,7 +374,7 @@ export async function seedLegalEducationQ4_2026(prisma: PrismaClient): Promise<v
     }
   });
 
-  for (const material of [MATERIAL_ND328, MATERIAL_TT49, MATERIAL_TT83]) {
+  for (const material of [MATERIAL_ND328, MATERIAL_TT49, MATERIAL_TT83, MATERIAL_LUAT93, MATERIAL_NQ66]) {
     await prisma.legalEducationMaterial.upsert({
       where: { campaignId_slug: { campaignId: campaign.id, slug: material.slug } },
       update: {
