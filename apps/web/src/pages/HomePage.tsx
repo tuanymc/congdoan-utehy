@@ -131,10 +131,8 @@ export function HomePage() {
 
       <HomeBannerStrip banners={afterSlideBanners} className="py-4 sm:py-6" />
 
-      {/* Banner giới thiệu — gradient xanh dương đậm dần, khớp bảng màu mới (xem apps/web/src/index.css,
-       * --chart-5 cùng tông #0f2a6b). Trước là "to-[#78171b]" (đỏ) sót lại từ bảng màu cũ, gây lệch
-       * tông khi đổi sang xanh dương làm màu chủ đạo. pb lớn hơn để card truy cập nhanh gối lên mép. */}
-      <section className="bg-gradient-to-br from-primary to-[#0f2a6b] pb-16 text-primary-foreground sm:pb-20">
+      {/* Banner giới thiệu — gradient xanh lá logo HYUTE. pb lớn hơn để card truy cập nhanh gối lên mép. */}
+      <section className="bg-gradient-to-br from-primary to-[#045C34] pb-16 text-primary-foreground sm:pb-20">
         <div className="mx-auto max-w-6xl px-4 pt-16 sm:pt-20">
           <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
             Công đoàn Trường Đại học Công nghệ Kỹ thuật Hưng Yên

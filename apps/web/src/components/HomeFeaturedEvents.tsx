@@ -66,11 +66,11 @@ function FeaturedEventCard({ item, now }: { item: FeaturedCard; now: Date }) {
     <Link
       to={href}
       className={cn(
-        "group relative block overflow-hidden rounded-xl text-white shadow-sm ring-1 ring-[#FFCC29]/45 transition hover:shadow-md",
-        "bg-gradient-to-br from-[#00824A] to-[#045C34]"
+        "group relative block overflow-hidden rounded-xl text-white shadow-sm ring-1 ring-secondary/50 transition hover:shadow-md",
+        "bg-gradient-to-br from-primary to-[#045C34]"
       )}
     >
-      <div className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full bg-[#FFCC29]/20" />
+      <div className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full bg-secondary/25" />
       <div className="pointer-events-none absolute -bottom-12 right-10 size-32 rounded-full bg-white/10" />
       <div className="relative flex min-h-[9.5rem] flex-col justify-between gap-4 p-5 sm:min-h-[11rem] sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
@@ -102,7 +102,7 @@ function FeaturedEventCard({ item, now }: { item: FeaturedCard; now: Date }) {
         </div>
         <span
           className={cn(
-            "inline-flex w-fit items-center gap-1.5 rounded-md bg-[#FFCC29] px-3 py-1.5 text-sm font-semibold text-[#14532d] transition group-hover:brightness-105"
+            "inline-flex w-fit items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-sm font-semibold text-secondary-foreground transition group-hover:brightness-105"
           )}
         >
           {isWaiting ? <Clock className="size-4" /> : <PencilLine className="size-4" />}
@@ -143,7 +143,7 @@ export function HomeFeaturedEvents({ campaigns }: { campaigns: PublicLegalCampai
       <div className="mx-auto max-w-6xl px-4">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">{sectionKicker(featured)}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{sectionKicker(featured)}</p>
             <h2 className="text-xl font-bold sm:text-2xl">Sự kiện nổi bật</h2>
           </div>
           <Button asChild variant="link" className="h-auto shrink-0 p-0">

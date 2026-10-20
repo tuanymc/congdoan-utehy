@@ -2,9 +2,8 @@
 
 /**
  * Design tokens dùng chung cho apps/web và apps/admin — Tailwind CSS v4 (CSS-first config).
- * Bảng màu nhận diện: Xanh dương Công đoàn (chủ đạo, 60%) + Xanh lá HYUTE (điểm nhấn/CTA, 30%) +
- * trắng/xám nhạt (nền & phụ trợ, 10%) — theo phương án nhận diện đã chốt, thay bảng đỏ cờ/vàng sao
- * dùng tạm trước đó.
+ * Bảng màu nhận diện logo HYUTE mới: xanh lá #00A859 là màu chủ đạo, vàng #FFCC29 là điểm nhấn.
+ * Xanh dùng trên nút và chữ được hạ sáng một bậc (#00824A) để chữ trắng đạt độ tương phản.
  *
  * Cách dùng: copy nguyên khối này vào đầu src/index.css của từng app, ngay sau dòng
  * `@import "tailwindcss";`. Sửa màu ở ĐÂY rồi copy lại sang cả 2 app nếu cần đổi bảng màu chung.
@@ -20,14 +19,14 @@
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #1d4ed8;        /* xanh dương Công đoàn — chủ đạo (60%) */
+  --primary: #00824a;        /* xanh lá logo HYUTE — chủ đạo */
   --primary-foreground: #ffffff;
-  --secondary: #43b14b;      /* xanh lá HYUTE — điểm nhấn/CTA (30%) */
-  --secondary-foreground: #ffffff;
+  --secondary: #ffcc29;      /* vàng logo HYUTE — điểm nhấn */
+  --secondary-foreground: #14532d;
   --muted: #f8fafc;
   --muted-foreground: #64748b;
-  --accent: #43b14b;
-  --accent-foreground: #ffffff;
+  --accent: #e7f6ec;
+  --accent-foreground: #14532d;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
   --border: #e2e8f0;
@@ -36,21 +35,21 @@
   --switch-background: #cbd5e1;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #1d4ed8;
-  --chart-1: #1d4ed8;
-  --chart-2: #43b14b;
-  --chart-3: #1e3a8a;
-  --chart-4: #86d992;
-  --chart-5: #0f2a6b;
+  --ring: #00824a;
+  --chart-1: #00824a;
+  --chart-2: #ffcc29;
+  --chart-3: #045c34;
+  --chart-4: #00a859;
+  --chart-5: #14532d;
   --radius: 0.5rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #0f172a;
-  --sidebar-primary: #1d4ed8;
+  --sidebar-primary: #00824a;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
+  --sidebar-accent: #e7f6ec;
+  --sidebar-accent-foreground: #14532d;
   --sidebar-border: #e2e8f0;
-  --sidebar-ring: #1d4ed8;
+  --sidebar-ring: #00824a;
 }
 
 .dark {
@@ -60,8 +59,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #60a5fa;
-  --primary-foreground: oklch(0.145 0 0);
+  --primary: #3ddc84;
+  --primary-foreground: #052e16;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -72,22 +71,22 @@
   --destructive-foreground: oklch(0.637 0.237 25.331);
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
-  --ring: #60a5fa;
+  --ring: #3ddc84;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #60a5fa;
-  --chart-2: #6ee495;
-  --chart-3: #93c5fd;
+  --chart-1: #3ddc84;
+  --chart-2: #ffcc29;
+  --chart-3: #00a859;
   --chart-4: #86d992;
-  --chart-5: #1d4ed8;
+  --chart-5: #00824a;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: #60a5fa;
+  --sidebar-primary: #3ddc84;
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: #60a5fa;
+  --sidebar-ring: #3ddc84;
 }
 
 @theme inline {

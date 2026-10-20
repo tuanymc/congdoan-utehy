@@ -230,10 +230,10 @@ function IntroOverview({ posts }: { posts: PostListItemDto[] }) {
               className="absolute inset-0 size-full object-cover transition-transform duration-700 group-hover:scale-105"
               loading="lazy"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0f2a6b]/95 via-[#0f2a6b]/80 to-[#0f2a6b]/40" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#045C34]/95 via-[#045C34]/80 to-[#045C34]/40" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-primary to-[#0f2a6b]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary to-[#045C34]" />
         )}
         <div className="relative flex min-h-72 flex-col justify-end px-6 py-8 sm:min-h-80 sm:px-10 sm:py-12 lg:max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Tổng quan</p>
@@ -371,7 +371,7 @@ export function AboutPage() {
 
   return (
     <div>
-      <section className="bg-gradient-to-br from-primary to-[#0f2a6b] text-primary-foreground">
+      <section className="bg-gradient-to-br from-primary to-[#045C34] text-primary-foreground">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Công đoàn HYUTE</p>
           <h1 className="mt-3 max-w-3xl text-3xl font-bold leading-tight sm:text-5xl">Giới thiệu Công đoàn Trường</h1>
@@ -487,7 +487,7 @@ export function AboutPage() {
         })
       )}
 
-      <section className="bg-gradient-to-br from-primary to-[#0f2a6b] text-primary-foreground">
+      <section className="bg-gradient-to-br from-primary to-[#045C34] text-primary-foreground">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary">Kết nối</p>
           <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight">Đồng hành cùng đoàn viên Công đoàn HYUTE</h2>

@@ -49,8 +49,8 @@ const SHORTCUTS = [
 
 const TONE_CLASS: Record<(typeof SHORTCUTS)[number]["tone"], string> = {
   primary: "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground",
-  secondary: "bg-secondary/15 text-[#2d8a35] group-hover:bg-secondary group-hover:text-secondary-foreground",
-  navy: "bg-[#0f2a6b]/10 text-[#0f2a6b] group-hover:bg-[#0f2a6b] group-hover:text-white"
+  secondary: "bg-secondary/25 text-[#14532d] group-hover:bg-secondary group-hover:text-secondary-foreground",
+  navy: "bg-[#045C34]/10 text-[#045C34] group-hover:bg-[#045C34] group-hover:text-white"
 };
 
 /** Lối tắt 6 mục chính trên trang chủ — card nổi trên mép dưới hero, hover nâng nhẹ. */
