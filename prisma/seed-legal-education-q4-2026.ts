@@ -1,7 +1,7 @@
 /**
  * Seed đợt phổ biến giáo dục pháp luật Quý IV/2026 — an toàn chạy lại (upsert theo slug).
  *
- * Tài liệu nguồn: Tim_Hieu_Phap_Luat_Quy_IV/ (tóm tắt + Thông báo 1005 + PDF NĐ 328, TT 49, TT 83, Luật 93/2025/QH15, Nghị quyết 66-NQ/TW).
+ * Tài liệu nguồn: Tim_Hieu_Phap_Luat_Quy_IV/ và bản PDF Công báo của Bộ luật Lao động, Luật Công đoàn, Luật Bảo hiểm xã hội, Luật Bình đẳng giới, Luật Mặt trận Tổ quốc Việt Nam, Nghị định 105/2026/NĐ-CP, Nghị định 283/2026/NĐ-CP.
  * Ngân hàng câu hỏi lấy từ Bộ câu hỏi thi Quý 4; đáp án là phương án chữ đỏ.
  * Chạy lại không xóa câu hỏi nếu đợt đã có lượt thi, và không đóng bài thi nếu cán bộ đã mở.
  * Thi chính thức yêu cầu mã dự thi gửi vào email (requireEntryCode).
@@ -30,7 +30,7 @@ export const LEGAL_EDUCATION_Q4_2026_SLUG = "quy-iv-2026";
 const CAMPAIGN_TITLE = "Phổ biến giáo dục pháp luật quý IV năm 2026";
 const PERIOD_LABEL = "Quý IV năm 2026";
 const SUMMARY =
-  "Nội dung phổ biến gồm Nghị định 328/2026/NĐ-CP (phòng, chống tin giả, tin sai sự thật), Thông tư 49/2026/TT-BGDĐT (ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp), Thông tư 83/2026/TT-BGDĐT (Chuẩn cơ sở giáo dục đại học), Luật số 93/2025/QH15 (khoa học, công nghệ và đổi mới sáng tạo) và Nghị quyết số 66-NQ/TW ngày 30/4/2025 của Bộ Chính trị (đổi mới công tác xây dựng và thi hành pháp luật). Theo Thông báo số 1005 ngày 12/10/2026, các đơn vị phổ biến từ ngày 12/10/2026 đến ngày 30/11/2026. Đoàn viên đọc tài liệu tóm tắt và tải văn bản gốc; Bài thi chính thức yêu cầu mã dự thi được gửi vào email.";
+  "Nội dung phổ biến gồm Nghị định 328/2026/NĐ-CP (phòng, chống tin giả, tin sai sự thật), Thông tư 49/2026/TT-BGDĐT (ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp), Thông tư 83/2026/TT-BGDĐT (Chuẩn cơ sở giáo dục đại học), Luật số 93/2025/QH15 (khoa học, công nghệ và đổi mới sáng tạo) và Nghị quyết số 66-NQ/TW ngày 30/4/2025 của Bộ Chính trị (đổi mới công tác xây dựng và thi hành pháp luật). Đợt này bổ sung Bộ luật Lao động, Luật Công đoàn, Luật Bảo hiểm xã hội, Luật Bình đẳng giới, Luật Mặt trận Tổ quốc Việt Nam, Nghị định 105/2026/NĐ-CP về tài chính công đoàn và Nghị định 283/2026/NĐ-CP về xử phạt vi phạm hành chính trong lĩnh vực lao động, bảo hiểm xã hội. Theo Thông báo số 1005 ngày 12/10/2026, các đơn vị phổ biến từ ngày 12/10/2026 đến ngày 30/11/2026. Đoàn viên đọc tài liệu tóm tắt và tải văn bản gốc; Bài thi chính thức yêu cầu mã dự thi được gửi vào email.";
 
 /** Theo Thông báo 1005: thời gian các đơn vị thực hiện. */
 const CAMPAIGN_START = new Date("2026-10-12T00:00:00.000+07:00");
@@ -351,6 +351,211 @@ const MATERIAL_NQ66 = {
   ].join("")
 };
 
+const MATERIAL_BLLD = {
+  slug: "bo-luat-lao-dong-45-2019",
+  title: "Bộ luật Lao động số 45/2019/QH14",
+  excerpt:
+    "Tiêu chuẩn lao động, hợp đồng, thời giờ làm việc và nghỉ ngơi, quyền của người lao động. Văn bản hợp nhất số 18/VBHN-VPQH ngày 12/02/2026.",
+  fileUrl: "/tai-lieu/phap-luat/bo_luat_lao_dong_45_2019.pdf",
+  sortOrder: 60,
+  content: [
+    h2("Phạm vi và văn bản đang dùng"),
+    p("Bộ luật Lao động số 45/2019/QH14 do Quốc hội thông qua ngày 20/11/2019, có hiệu lực từ ngày 01/01/2021. Bản đưa lên trang này là Văn bản hợp nhất số 18/VBHN-VPQH ngày 12/02/2026, đã hợp nhất các sửa đổi, bổ sung của Luật Công nghiệp công nghệ số 71/2025/QH15, Luật Dân số số 113/2025/QH15 và Luật Giáo dục nghề nghiệp số 124/2025/QH15."),
+    p("Bộ luật quy định tiêu chuẩn lao động; quyền, nghĩa vụ, trách nhiệm của người lao động, người sử dụng lao động, tổ chức đại diện người lao động tại cơ sở và tổ chức đại diện người sử dụng lao động; cùng quan hệ khác liên quan trực tiếp đến quan hệ lao động."),
+    h2("Người lao động và một số quyền cơ bản"),
+    p("Người lao động là người làm việc cho người sử dụng lao động theo thỏa thuận, được trả lương và chịu sự quản lý, điều hành, giám sát của người sử dụng lao động. Độ tuổi lao động tối thiểu là đủ 15 tuổi, trừ trường hợp Bộ luật có quy định khác đối với người chưa thành niên."),
+    ul([
+      "Tự do lựa chọn việc làm, nơi làm việc, nghề nghiệp; không bị phân biệt đối xử, cưỡng bức lao động, quấy rối tình dục tại nơi làm việc.",
+      "Được trả lương theo thỏa thuận, phù hợp với trình độ và kỹ năng; được bảo hộ lao động, nghỉ theo chế độ và nghỉ hằng năm có hưởng lương.",
+      "Được thành lập, gia nhập tổ chức đại diện người lao động; đối thoại, thương lượng tập thể và tham gia quy chế dân chủ ở nơi làm việc.",
+      "Được từ chối làm việc nếu có nguy cơ rõ ràng đe dọa trực tiếp đến tính mạng, sức khỏe."
+    ]),
+    h2("Hợp đồng lao động"),
+    p("Khi giao kết hợp đồng, người sử dụng lao động phải cung cấp thông tin trung thực về công việc, địa điểm, điều kiện làm việc, thời giờ làm việc, thời giờ nghỉ ngơi, tiền lương và các nội dung khác liên quan."),
+    p("Người lao động đơn phương chấm dứt hợp đồng phải báo trước: ít nhất 45 ngày nếu hợp đồng không xác định thời hạn; ít nhất 30 ngày nếu hợp đồng xác định thời hạn từ 12 tháng đến 36 tháng; ít nhất 03 ngày làm việc nếu hợp đồng xác định thời hạn dưới 12 tháng. Bộ luật còn quy định các trường hợp được nghỉ việc ngay không cần báo trước."),
+    h2("Thời giờ làm việc và nghỉ ngơi"),
+    ul([
+      "Thời giờ làm việc bình thường không quá 08 giờ trong 01 ngày và không quá 48 giờ trong 01 tuần. Làm theo tuần thì không quá 10 giờ trong 01 ngày và không quá 48 giờ trong 01 tuần. Nhà nước khuyến khích tuần làm việc 40 giờ.",
+      "Giờ làm việc ban đêm tính từ 22 giờ đến 06 giờ sáng ngày hôm sau.",
+      "Người lao động làm từ 06 giờ trở lên trong một ngày được nghỉ giữa giờ ít nhất 30 phút liên tục; làm ban đêm thì ít nhất 45 phút liên tục.",
+      "Nghỉ lễ, tết hưởng nguyên lương gồm Tết Dương lịch 01 ngày, Tết Âm lịch 05 ngày, ngày Chiến thắng 30/4, ngày Quốc tế lao động 01/5, Quốc khánh 02 ngày và ngày Giỗ Tổ Hùng Vương.",
+      "Nghỉ hằng năm hưởng nguyên lương: 12 ngày làm việc đối với công việc bình thường; 14 ngày đối với người chưa thành niên, người khuyết tật và công việc nặng nhọc, độc hại, nguy hiểm; 16 ngày đối với công việc đặc biệt nặng nhọc, độc hại, nguy hiểm."
+    ])
+  ].join("")
+};
+
+const MATERIAL_LUATCD = {
+  slug: "luat-cong-doan-50-2024",
+  title: "Luật Công đoàn số 50/2024/QH15",
+  excerpt:
+    "Vị trí của Công đoàn Việt Nam, quyền gia nhập công đoàn, trách nhiệm của người sử dụng lao động và tài chính công đoàn. Có hiệu lực từ 01/7/2025.",
+  fileUrl: "/tai-lieu/phap-luat/luat_cong_doan_50_2024.pdf",
+  sortOrder: 70,
+  content: [
+    h2("Vị trí và hiệu lực"),
+    p("Quốc hội khóa XV thông qua Luật Công đoàn số 50/2024/QH15 ngày 27/11/2024. Luật có hiệu lực từ ngày 01/7/2025 và thay thế Luật Công đoàn số 12/2012/QH13. Luật số 97/2025/QH15, có hiệu lực cùng ngày 01/7/2025, sửa đổi, bổ sung một số điều của Luật này. Bản PDF là Luật số 50/2024/QH15."),
+    p("Công đoàn Việt Nam là tổ chức chính trị - xã hội rộng lớn của giai cấp công nhân và của người lao động, thành lập trên cơ sở tự nguyện, do Đảng Cộng sản Việt Nam lãnh đạo. Công đoàn đại diện, chăm lo và bảo vệ quyền, lợi ích hợp pháp, chính đáng của người lao động; tham gia quản lý nhà nước, quản lý kinh tế - xã hội; giám sát, phản biện xã hội."),
+    h2("Phạm vi"),
+    p("Luật quy định chức năng, nhiệm vụ, quyền và trách nhiệm của Công đoàn Việt Nam; quyền thành lập, gia nhập và hoạt động công đoàn; việc gia nhập Công đoàn Việt Nam của tổ chức của người lao động tại doanh nghiệp; quyền, trách nhiệm của đoàn viên; trách nhiệm của Nhà nước và người sử dụng lao động; bảo đảm hoạt động của Công đoàn; giải quyết tranh chấp và xử lý vi phạm."),
+    h2("Nhiệm vụ gắn với người lao động"),
+    ul([
+      "Tham gia xây dựng chính sách, pháp luật về kinh tế - xã hội, lao động, việc làm, tiền lương, bảo hiểm xã hội, bảo hiểm thất nghiệp, bảo hiểm y tế, an toàn vệ sinh lao động.",
+      "Hỗ trợ đối thoại, thương lượng tập thể, ký kết và thực hiện thỏa ước lao động tập thể; tham gia xây dựng quan hệ lao động tiến bộ, hài hòa và ổn định.",
+      "Tham gia, phối hợp kiểm tra, thanh tra việc thực hiện chế độ, chính sách, pháp luật liên quan đến quyền, nghĩa vụ của người lao động.",
+      "Tuyên truyền, vận động người lao động học tập, nâng cao kỹ năng nghề, chấp hành pháp luật và tham gia phong trào thi đua."
+    ]),
+    h2("Tài chính công đoàn"),
+    p("Kinh phí công đoàn do cơ quan, tổ chức, đơn vị, doanh nghiệp, hợp tác xã, liên hiệp hợp tác xã đóng bằng 2% quỹ tiền lương làm căn cứ đóng bảo hiểm xã hội bắt buộc cho người lao động. Người sử dụng lao động có trách nhiệm bảo đảm điều kiện hoạt động công đoàn và đóng kinh phí công đoàn đúng quy định."),
+    p("Doanh nghiệp, hợp tác xã, liên hiệp hợp tác xã gặp khó khăn có thể được xem xét miễn, giảm hoặc tạm dừng đóng kinh phí công đoàn. Việc đóng, miễn, giảm, tạm dừng và quản lý, sử dụng được quy định chi tiết tại Nghị định số 105/2026/NĐ-CP.")
+  ].join("")
+};
+
+const MATERIAL_BHXH = {
+  slug: "luat-bao-hiem-xa-hoi-41-2024",
+  title: "Luật Bảo hiểm xã hội số 41/2024/QH15",
+  excerpt:
+    "Bảo hiểm xã hội bắt buộc và tự nguyện, trợ cấp hưu trí xã hội, quyền của người tham gia và trách nhiệm của công đoàn. Văn bản hợp nhất đang áp dụng.",
+  fileUrl: "/tai-lieu/phap-luat/luat_bhxh_41_2024.pdf",
+  sortOrder: 80,
+  content: [
+    h2("Hiệu lực và phạm vi"),
+    p("Luật Bảo hiểm xã hội số 41/2024/QH15 được Quốc hội thông qua ngày 29/6/2024, có hiệu lực từ ngày 01/7/2025. Bản PDF là văn bản hợp nhất, đã đưa vào các sửa đổi, bổ sung của Luật Nhà giáo số 73/2025/QH15, Luật Thanh tra số 84/2025/QH15, Luật Dân số số 113/2025/QH15 và Luật Phục hồi, phá sản số 142/2025/QH15."),
+    p("Luật quy định quyền, trách nhiệm của cơ quan, tổ chức, cá nhân đối với bảo hiểm xã hội; trợ cấp hưu trí xã hội; đăng ký và quản lý thu, đóng; các chế độ bảo hiểm xã hội bắt buộc và tự nguyện; quỹ bảo hiểm xã hội; bảo hiểm hưu trí bổ sung; khiếu nại, tố cáo và xử lý vi phạm."),
+    h2("Bảo hiểm xã hội là gì"),
+    p("Bảo hiểm xã hội là sự bảo đảm thay thế hoặc bù đắp một phần thu nhập khi người tham gia bị giảm hoặc mất thu nhập do ốm đau, thai sản, tai nạn lao động, bệnh nghề nghiệp, khi nghỉ hưu hoặc chết, trên cơ sở đóng vào quỹ hoặc do ngân sách nhà nước bảo đảm."),
+    ul([
+      "Bảo hiểm xã hội bắt buộc là loại hình Nhà nước tổ chức, người lao động và người sử dụng lao động thuộc đối tượng phải tham gia.",
+      "Người làm việc theo hợp đồng lao động không xác định thời hạn hoặc xác định thời hạn từ đủ 01 tháng trở lên thuộc đối tượng tham gia bắt buộc, kể cả khi các bên đặt tên gọi khác nhưng nội dung vẫn là việc làm có trả công và có sự quản lý, điều hành, giám sát.",
+      "Cán bộ, công chức, viên chức thuộc đối tượng tham gia bảo hiểm xã hội bắt buộc.",
+      "Công dân Việt Nam không thuộc diện bắt buộc có thể tham gia bảo hiểm xã hội tự nguyện."
+    ]),
+    h2("Trợ cấp hưu trí xã hội và người chưa đủ điều kiện lương hưu"),
+    ul([
+      "Công dân Việt Nam từ đủ 75 tuổi trở lên, không hưởng lương hưu hoặc trợ cấp bảo hiểm xã hội hằng tháng và có văn bản đề nghị thì được hưởng trợ cấp hưu trí xã hội.",
+      "Người từ đủ 70 tuổi đến dưới 75 tuổi thuộc hộ nghèo, hộ cận nghèo, nếu đáp ứng điều kiện còn lại, cũng được hưởng trợ cấp hưu trí xã hội.",
+      "Người đủ tuổi nghỉ hưu, có thời gian đóng bảo hiểm xã hội nhưng chưa đủ điều kiện hưởng lương hưu và chưa đủ tuổi hưởng trợ cấp hưu trí xã hội, nếu không nhận bảo hiểm xã hội một lần và không bảo lưu, được hưởng trợ cấp hằng tháng từ khoản đóng của mình. Mức thấp nhất bằng mức trợ cấp hưu trí xã hội."
+    ]),
+    h2("Quyền của người tham gia và vai trò của công đoàn"),
+    p("Người tham gia được nhận chế độ đầy đủ, kịp thời; được cơ quan bảo hiểm xã hội cung cấp thông tin; được khiếu nại, tố cáo, khởi kiện. Người tham gia phải đóng theo quy định và kê khai thông tin chính xác, trung thực, đầy đủ."),
+    p("Công đoàn, trong phạm vi chức năng của mình, bảo vệ quyền và lợi ích hợp pháp của người lao động tham gia bảo hiểm xã hội; tuyên truyền, tư vấn chính sách; tham gia thanh tra, kiểm tra và xử lý hành vi vi phạm pháp luật về bảo hiểm xã hội.")
+  ].join("")
+};
+
+const MATERIAL_BDG = {
+  slug: "luat-binh-dang-gioi",
+  title: "Luật Bình đẳng giới số 73/2006/QH11",
+  excerpt:
+    "Mục tiêu xóa bỏ phân biệt đối xử về giới, bình đẳng trong lao động và các hành vi bị cấm. Văn bản hợp nhất số 45/VBHN-VPQH ngày 17/3/2026.",
+  fileUrl: "/tai-lieu/phap-luat/luat_binh_dang_gioi.pdf",
+  sortOrder: 90,
+  content: [
+    h2("Phạm vi và văn bản hợp nhất"),
+    p("Luật Bình đẳng giới số 73/2006/QH11 được Quốc hội khóa XI thông qua ngày 29/11/2006, có hiệu lực từ ngày 01/7/2007. Bản PDF là Văn bản hợp nhất số 45/VBHN-VPQH ngày 17/3/2026 của Văn phòng Quốc hội."),
+    p("Luật quy định nguyên tắc bình đẳng giới trong các lĩnh vực của đời sống xã hội và gia đình, biện pháp bảo đảm bình đẳng giới, trách nhiệm của cơ quan, tổ chức, gia đình và cá nhân."),
+    h2("Mục tiêu"),
+    p("Mục tiêu là xóa bỏ phân biệt đối xử về giới, tạo cơ hội như nhau cho nam và nữ trong phát triển kinh tế - xã hội và phát triển nguồn nhân lực, tiến tới bình đẳng giới thực chất và củng cố quan hệ hợp tác, hỗ trợ giữa nam và nữ trong mọi lĩnh vực của đời sống xã hội và gia đình."),
+    h2("Bình đẳng trong lao động"),
+    ul([
+      "Nam, nữ bình đẳng về tiêu chuẩn, độ tuổi khi tuyển dụng; được đối xử bình đẳng tại nơi làm việc về việc làm, tiền công, tiền thưởng, bảo hiểm xã hội, điều kiện lao động và các điều kiện làm việc khác.",
+      "Nam, nữ bình đẳng về tiêu chuẩn, độ tuổi khi được đề bạt, bổ nhiệm vào chức danh có tiêu chuẩn chức danh.",
+      "Biện pháp thúc đẩy gồm quy định tỷ lệ nam, nữ được tuyển dụng; đào tạo, bồi dưỡng lao động nữ; người sử dụng lao động tạo điều kiện an toàn, vệ sinh cho lao động nữ làm việc trong ngành, nghề nặng nhọc, nguy hiểm hoặc tiếp xúc với chất độc hại."
+    ]),
+    h2("Một số hành vi bị cấm trong lao động"),
+    ul([
+      "Áp dụng điều kiện tuyển dụng khác nhau giữa nam và nữ đối với cùng một công việc mà hai bên có trình độ, khả năng như nhau, trừ biện pháp thúc đẩy bình đẳng giới.",
+      "Từ chối tuyển dụng, tuyển dụng hạn chế, sa thải hoặc cho thôi việc vì lý do giới tính, hoặc vì mang thai, sinh con, nuôi con nhỏ.",
+      "Phân công công việc mang tính phân biệt đối xử dẫn đến chênh lệch thu nhập, hoặc trả lương khác nhau cho người có cùng trình độ, năng lực vì lý do giới tính.",
+      "Không thực hiện quy định của pháp luật lao động dành riêng cho lao động nữ."
+    ])
+  ].join("")
+};
+
+const MATERIAL_MTTQ = {
+  slug: "luat-mat-tran-to-quoc-viet-nam",
+  title: "Luật Mặt trận Tổ quốc Việt Nam số 75/2015/QH13",
+  excerpt:
+    "Vị trí, quyền và trách nhiệm của Mặt trận Tổ quốc Việt Nam trong đại đoàn kết, giám sát và phản biện xã hội. Văn bản hợp nhất số 89/VBHN-VPQH.",
+  fileUrl: "/tai-lieu/phap-luat/luat_mttqvn.pdf",
+  sortOrder: 100,
+  content: [
+    h2("Vị trí của Mặt trận"),
+    p("Luật Mặt trận Tổ quốc Việt Nam số 75/2015/QH13 được Quốc hội khóa XIII thông qua ngày 09/6/2015, có hiệu lực từ ngày 01/01/2016. Bản PDF là Văn bản hợp nhất số 89/VBHN-VPQH ngày 22/8/2025, đã hợp nhất nội dung sửa đổi, bổ sung, trong đó có Luật số 97/2025/QH15."),
+    p("Mặt trận Tổ quốc Việt Nam kế thừa vai trò lịch sử của Mặt trận Dân tộc thống nhất Việt Nam do Đảng Cộng sản Việt Nam và Chủ tịch Hồ Chí Minh sáng lập, lãnh đạo. Mặt trận là tổ chức liên minh chính trị, liên hiệp tự nguyện của tổ chức chính trị, các tổ chức chính trị - xã hội, tổ chức xã hội và các cá nhân tiêu biểu của các giai cấp, tầng lớp, dân tộc, tôn giáo và người Việt Nam định cư ở nước ngoài."),
+    p("Mặt trận là cơ sở chính trị của chính quyền nhân dân; đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của Nhân dân; tập hợp, phát huy sức mạnh đại đoàn kết toàn dân tộc."),
+    h2("Quyền và trách nhiệm"),
+    ul([
+      "Tập hợp, xây dựng khối đại đoàn kết toàn dân tộc; thực hiện dân chủ, tăng cường đồng thuận xã hội.",
+      "Tuyên truyền, vận động Nhân dân thực hiện quyền làm chủ, thực hiện đường lối, chủ trương của Đảng và chính sách, pháp luật của Nhà nước.",
+      "Đại diện, bảo vệ quyền và lợi ích hợp pháp, chính đáng của Nhân dân.",
+      "Tham gia xây dựng Đảng, Nhà nước; thực hiện giám sát và phản biện xã hội.",
+      "Tập hợp, tổng hợp ý kiến, kiến nghị của cử tri và Nhân dân để phản ánh với Đảng, Nhà nước.",
+      "Thực hiện hoạt động đối ngoại nhân dân, góp phần xây dựng và bảo vệ Tổ quốc."
+    ]),
+    p("Công đoàn Việt Nam là tổ chức thành viên của Mặt trận. Trong hoạt động của mình, công đoàn phối hợp với Mặt trận để chăm lo, bảo vệ quyền và lợi ích hợp pháp, chính đáng của đoàn viên, người lao động.")
+  ].join("")
+};
+
+const MATERIAL_ND105 = {
+  slug: "nghi-dinh-105-2026-nd-cp",
+  title: "Nghị định 105/2026/NĐ-CP — Tài chính công đoàn",
+  excerpt:
+    "Phương thức, thời hạn đóng kinh phí công đoàn; chậm đóng, không đóng; miễn, giảm, tạm dừng và phân phối kinh phí cho tổ chức của người lao động tại doanh nghiệp.",
+  fileUrl: "/tai-lieu/phap-luat/nd_105_2026.pdf",
+  sortOrder: 110,
+  content: [
+    h2("Hiệu lực"),
+    p("Chính phủ ban hành Nghị định số 105/2026/NĐ-CP ngày 31/3/2026, có hiệu lực từ ngày 16/5/2026. Nghị định quy định chi tiết và hướng dẫn thi hành một số điều của Luật Công đoàn về tài chính công đoàn, thay thế Nghị định số 191/2013/NĐ-CP."),
+    h2("Đóng kinh phí công đoàn"),
+    ul([
+      "Cơ quan, tổ chức, đơn vị sự nghiệp công lập không hưởng 100% lương từ ngân sách, doanh nghiệp, hợp tác xã và các đơn vị còn lại đóng mỗi tháng một lần, cùng thời điểm đóng bảo hiểm xã hội bắt buộc.",
+      "Tổ chức, doanh nghiệp nông nghiệp, lâm nghiệp, ngư nghiệp, diêm nghiệp trả lương theo chu kỳ sản xuất, kinh doanh được đăng ký đóng mỗi tháng một lần hoặc 03 tháng một lần.",
+      "Đóng theo tháng thì chậm nhất là ngày cuối cùng của tháng tiếp theo. Đóng theo chu kỳ 03 tháng thì chậm nhất là ngày cuối cùng của tháng tiếp theo ngay sau chu kỳ.",
+      "Nguồn đóng của doanh nghiệp, hợp tác xã được hạch toán vào chi phí hoạt động sản xuất, kinh doanh, dịch vụ."
+    ]),
+    h2("Chậm đóng và không đóng"),
+    p("Chậm đóng là chưa đóng hoặc đóng chưa đủ sau thời hạn đóng. Không đóng gồm không trích nộp, hoặc sau 60 ngày kể từ ngày hết thời hạn vẫn không đóng đủ số tiền hay không đóng đủ số người thuộc đối tượng phải đóng. Trường hợp được tạm dừng hoặc giảm mức đóng không bị coi là chậm đóng, không đóng."),
+    h2("Miễn, giảm, tạm dừng"),
+    ul([
+      "Miễn số tiền chưa đóng khi doanh nghiệp, hợp tác xã, liên hiệp hợp tác xã giải thể hoặc phá sản và công đoàn tham gia phương án xử lý nợ hoặc nộp đơn yêu cầu mở thủ tục phá sản.",
+      "Tạm dừng tối đa 12 tháng khi gặp khó khăn về kinh tế, thiên tai, hỏa hoạn, dịch bệnh, mất mùa, đồng thời phải dừng sản xuất, kinh doanh từ 30 ngày trở lên với ít nhất 50% lao động thuộc diện bảo hiểm xã hội bắt buộc phải nghỉ việc, hoặc thiệt hại trên 50% tổng giá trị tài sản (không kể đất).",
+      "Sau thời gian tạm dừng, nếu vẫn phải cắt giảm lao động theo ngưỡng Nghị định quy định thì được xem xét giảm mức đóng tối đa 20%, trong thời gian không quá 06 tháng.",
+      "Tổng Liên đoàn Lao động Việt Nam hoặc Liên đoàn Lao động cấp tỉnh trả lời bằng văn bản trong 15 ngày làm việc kể từ ngày nhận đủ hồ sơ."
+    ]),
+    h2("Tổ chức của người lao động tại doanh nghiệp"),
+    p("Ở nơi có tổ chức của người lao động tại doanh nghiệp đã được cấp đăng ký và doanh nghiệp có đóng kinh phí công đoàn, phần kinh phí dành cho cấp cơ sở được phân phối theo tỷ lệ quỹ tiền lương của thành viên tổ chức đó so với toàn bộ người lao động thuộc diện đóng. Tổ chức phải gửi thông báo số tiền chậm nhất vào ngày cuối cùng của tháng tiếp theo; không gửi mà không có lý do chính đáng thì tháng kế tiếp bị tạm dừng phân phối.")
+  ].join("")
+};
+
+const MATERIAL_ND283 = {
+  slug: "nghi-dinh-283-2026-nd-cp",
+  title: "Nghị định 283/2026/NĐ-CP — Xử phạt vi phạm hành chính về lao động, bảo hiểm xã hội",
+  excerpt:
+    "Hành vi, hình thức, mức phạt và biện pháp khắc phục hậu quả trong lao động, bảo hiểm xã hội và đưa người lao động Việt Nam đi làm việc ở nước ngoài. Có hiệu lực từ 10/9/2026.",
+  fileUrl: "/tai-lieu/phap-luat/nd_283_2026.pdf",
+  sortOrder: 120,
+  content: [
+    h2("Hiệu lực và phạm vi"),
+    p("Chính phủ ban hành Nghị định số 283/2026/NĐ-CP ngày 15/7/2026, có hiệu lực từ ngày 10/9/2026. Nghị định thay thế Nghị định số 12/2022/NĐ-CP. Nghị định gồm 6 chương, 68 điều, do Phó Thủ tướng Phạm Thị Thanh Trà ký."),
+    p("Phạm vi gồm lao động (việc làm, tuyển dụng và quản lý lao động, điều kiện lao động và quan hệ lao động, an toàn vệ sinh lao động, tổ chức đại diện người lao động tại cơ sở), bảo hiểm xã hội, và người lao động Việt Nam đi làm việc ở nước ngoài theo hợp đồng. Hành vi thuộc lĩnh vực này nhưng không được Nghị định quy định thì áp dụng nghị định xử phạt của lĩnh vực quản lý nhà nước liên quan."),
+    h2("Hình thức xử phạt và thời hiệu"),
+    ul([
+      "Hình thức xử phạt chính là cảnh cáo hoặc phạt tiền.",
+      "Tùy tính chất, mức độ, có thể tịch thu tang vật, tước quyền sử dụng chứng chỉ hành nghề có thời hạn, đình chỉ hoạt động có thời hạn, hoặc trục xuất người lao động nước ngoài.",
+      "Thời hiệu xử phạt là 01 năm đối với vi phạm về lao động, bảo hiểm xã hội và 02 năm đối với vi phạm về người lao động Việt Nam đi làm việc ở nước ngoài theo hợp đồng.",
+      "Vi phạm trên môi trường điện tử được xử lý theo Luật Xử lý vi phạm hành chính và các nghị định hướng dẫn."
+    ]),
+    h2("Một số nhóm vi phạm cần lưu ý"),
+    ul([
+      "Vi phạm về thời giờ làm việc, nghỉ ngơi, làm thêm giờ được phạt theo số người lao động bị vi phạm.",
+      "Không thông báo hoặc không niêm yết nội quy lao động, và xử lý kỷ luật xâm phạm danh dự, nhân phẩm người lao động, thuộc nhóm vi phạm về kỷ luật lao động.",
+      "Chậm đóng bảo hiểm xã hội bắt buộc có thể bị phạt tiền từ 12% đến 15% số tiền chậm đóng tại thời điểm lập biên bản, tối đa 75 triệu đồng, và phải đóng đủ số tiền còn thiếu.",
+      "Trốn đóng bảo hiểm xã hội bắt buộc có thể bị phạt từ 18% đến 20% số tiền trốn đóng, tối đa 75 triệu đồng. Tái phạm quy định về đóng bảo hiểm xã hội bắt buộc hoặc bảo hiểm thất nghiệp, nếu có dấu hiệu tội phạm, phải chuyển hồ sơ cho cơ quan tiến hành tố tụng hình sự."
+    ]),
+    h2("Chuyển tiếp"),
+    p("Hành vi đã xảy ra và kết thúc trước ngày Nghị định có hiệu lực thì áp dụng quy định có hiệu lực tại thời điểm thực hiện hành vi. Hành vi xảy ra trước ngày có hiệu lực nhưng vẫn đang diễn ra thì áp dụng Nghị định này. Quyết định xử phạt đã ban hành trước ngày có hiệu lực mà còn khiếu nại thì giải quyết theo quy định có hiệu lực lúc ban hành quyết định.")
+  ].join("")
+};
+
 const EXAM_DESCRIPTION =
   "Ngân hàng trắc nghiệm Quý IV/2026 (Nghị định 328/2026/NĐ-CP, Thông tư 49 và 83/2026/TT-BGDĐT, Luật số 93/2025/QH15, Nghị quyết số 66-NQ/TW và các văn bản liên quan trong bộ câu hỏi). Thời gian 30 phút, 01 lần thi chính thức, đạt từ 70%. Thi thử không cần mã. Thi chính thức phải nhập mã dự thi đã gửi vào email.";
 
@@ -371,7 +576,20 @@ export async function seedLegalEducationQ4_2026(prisma: PrismaClient): Promise<v
         data: { slug: LEGAL_EDUCATION_Q4_2026_SLUG, ...campaignData }
       });
 
-  for (const material of [MATERIAL_ND328, MATERIAL_TT49, MATERIAL_TT83, MATERIAL_LUAT93, MATERIAL_NQ66]) {
+  for (const material of [
+    MATERIAL_ND328,
+    MATERIAL_TT49,
+    MATERIAL_TT83,
+    MATERIAL_LUAT93,
+    MATERIAL_NQ66,
+    MATERIAL_BLLD,
+    MATERIAL_LUATCD,
+    MATERIAL_BHXH,
+    MATERIAL_BDG,
+    MATERIAL_MTTQ,
+    MATERIAL_ND105,
+    MATERIAL_ND283
+  ]) {
     await prisma.legalEducationMaterial.upsert({
       where: { campaignId_slug: { campaignId: campaign.id, slug: material.slug } },
       update: {
