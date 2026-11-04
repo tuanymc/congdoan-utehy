@@ -51,7 +51,35 @@ const documentWithRelations = Prisma.validator<Prisma.OfficialDocumentDefaultArg
 });
 type DocumentWithRelations = Prisma.OfficialDocumentGetPayload<typeof documentWithRelations>;
 
-function toListItem(d: DocumentWithRelations): OfficialDocumentListItemDto {
+/**
+ * Cột danh sách — KHÔNG lấy content/summary/processedByNames/sentToRaw (NVARCHAR(MAX)) và KHÔNG
+ * kèm attachments. SELECT những cột đó rồi ORDER BY issuedAt, documentNumber, createdAt khiến
+ * SQL Server xin memory grant rất lớn cho Sort (hay chờ RESOURCE_SEMAPHORE) dù UI chỉ cần 20 dòng.
+ * Chi tiết công văn vẫn dùng documentWithRelations ở findOne.
+ */
+const listItemSelect = Prisma.validator<Prisma.OfficialDocumentSelect>()({
+  id: true,
+  title: true,
+  documentNumber: true,
+  direction: true,
+  status: true,
+  issuingOfficeName: true,
+  isPublic: true,
+  coverImageUrl: true,
+  issuedAt: true,
+  createdAt: true,
+  documentType: { select: { id: true, name: true, description: true, parentId: true } }
+});
+type DocumentListRow = Prisma.OfficialDocumentGetPayload<{ select: typeof listItemSelect }>;
+
+/** Khớp orderBy của list() quản trị — index (direction, issuedAt, documentNumber, createdAt). */
+const adminListOrderBy: Prisma.OfficialDocumentOrderByWithRelationInput[] = [
+  { issuedAt: "desc" },
+  { documentNumber: "desc" },
+  { createdAt: "desc" }
+];
+
+function toListItem(d: DocumentListRow): OfficialDocumentListItemDto {
   return {
     id: d.id,
     title: d.title,
@@ -74,7 +102,7 @@ function toListItem(d: DocumentWithRelations): OfficialDocumentListItemDto {
 
 /** Biến thể công khai — CỐ Ý bỏ status/priority/createdByName/processedByNames/sentToRaw (xem
  * PublicOfficialDocumentListItemDto trong packages/types/src/official-document.ts). */
-function toPublicListItem(d: DocumentWithRelations): PublicOfficialDocumentListItemDto {
+function toPublicListItem(d: DocumentListRow): PublicOfficialDocumentListItemDto {
   return {
     id: d.id,
     title: d.title,
@@ -195,13 +223,13 @@ export class OfficialDocumentsService {
         : {})
     };
 
-    const [total, documents] = await this.prisma.$transaction([
+    const [total, documents] = await Promise.all([
       this.prisma.officialDocument.count({ where }),
       this.prisma.officialDocument.findMany({
         where,
-        ...documentWithRelations,
+        select: listItemSelect,
         // Quản trị: ngày ban hành giảm dần, rồi số công văn giảm dần (cùng ngày).
-        orderBy: [{ issuedAt: "desc" }, { documentNumber: "desc" }, { createdAt: "desc" }],
+        orderBy: adminListOrderBy,
         skip: (page - 1) * pageSize,
         take: pageSize
       })
@@ -247,11 +275,11 @@ export class OfficialDocumentsService {
         : {})
     };
 
-    const [total, documents] = await this.prisma.$transaction([
+    const [total, documents] = await Promise.all([
       this.prisma.officialDocument.count({ where }),
       this.prisma.officialDocument.findMany({
         where,
-        ...documentWithRelations,
+        select: listItemSelect,
         orderBy: { issuedAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize
@@ -298,11 +326,11 @@ export class OfficialDocumentsService {
       ...(query.search ? { OR: [{ title: { contains: query.search } }, { summary: { contains: query.search } }] } : {})
     };
 
-    const [total, documents] = await this.prisma.$transaction([
+    const [total, documents] = await Promise.all([
       this.prisma.officialDocument.count({ where }),
       this.prisma.officialDocument.findMany({
         where,
-        ...documentWithRelations,
+        select: listItemSelect,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize

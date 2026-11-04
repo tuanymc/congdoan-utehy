@@ -324,6 +324,11 @@ model OfficialDocument {
 
   @@index([documentTypeId])
   @@index([direction, status])
+  /// Danh sách quản trị lọc direction rồi xếp issuedAt/documentNumber/createdAt giảm dần.
+  /// Không có index này, SQL Server phải sort cả tập công văn đi (kèm cột NVARCHAR(MAX) nếu SELECT *).
+  @@index([direction, issuedAt(sort: Desc), documentNumber(sort: Desc), createdAt(sort: Desc)])
+  /// Trang Văn bản công khai: isPublic = true, xếp theo ngày ban hành.
+  @@index([isPublic, issuedAt(sort: Desc)])
   @@index([legacyCode])
   @@map("official_documents")
 }
