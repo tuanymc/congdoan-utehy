@@ -83,4 +83,9 @@ export class UpdateLegalExamDto implements UpdateLegalExamRequest {
   @IsInt()
   @Min(1)
   practiceMaxAttempts?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  requireEntryCode?: boolean;
 }

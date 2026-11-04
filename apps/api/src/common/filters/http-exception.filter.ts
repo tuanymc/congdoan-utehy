@@ -40,6 +40,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         } else if (typeof b.message === "string") {
           message = b.message;
         }
+        if (typeof b.errorCode === "string" && b.errorCode.trim()) {
+          errorCode = b.errorCode;
+        }
       }
     } else if (exception instanceof Error) {
       this.logger.error(exception.message, exception.stack);

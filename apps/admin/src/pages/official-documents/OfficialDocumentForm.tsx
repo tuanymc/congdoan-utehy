@@ -183,7 +183,7 @@ export function OfficialDocumentForm({ mode, purpose = "documents" }: OfficialDo
 
     if (mode === "edit" && pendingFiles.length > 0) {
       setRemindPendingUpload(true);
-      document.getElementById("attachment-queue")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.document.getElementById("attachment-queue")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 

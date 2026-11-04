@@ -1,3 +1,4 @@
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -30,6 +31,7 @@ import type {
 import { LEGAL_EXAM_UNIT_SCORE_WEIGHTS } from "@congdoan/types";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
+import { MailService } from "../../common/mail.service";
 import { slugify } from "../../common/utils/slugify";
 import { CreateLegalEducationCampaignDto } from "./dto/create-campaign.dto";
 import { UpdateLegalEducationCampaignDto } from "./dto/update-campaign.dto";
@@ -138,6 +140,7 @@ function toExamSettingsDto(
     practiceStartAt: Date | null;
     practiceEndAt: Date | null;
     practiceMaxAttempts: number;
+    requireEntryCode: boolean;
     _count: { questions: number };
   }
 ): LegalExamSettingsDto {
@@ -159,7 +162,8 @@ function toExamSettingsDto(
     questionsPerAttempt: exam.questionsPerAttempt,
     practiceStartAt: toIso(exam.practiceStartAt),
     practiceEndAt: toIso(exam.practiceEndAt),
-    practiceMaxAttempts: exam.practiceMaxAttempts
+    practiceMaxAttempts: exam.practiceMaxAttempts,
+    requireEntryCode: exam.requireEntryCode
   };
 }
 
@@ -300,11 +304,30 @@ function expiresAt(startedAt: Date, durationMinutes: number): Date {
   return new Date(startedAt.getTime() + durationMinutes * 60_000);
 }
 
+const ENTRY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const ENTRY_CODE_RESEND_MS = 60_000;
+
+function randomEntryCode(): string {
+  const bytes = randomBytes(8);
+  return Array.from(bytes, (b) => ENTRY_CODE_ALPHABET[b % ENTRY_CODE_ALPHABET.length]).join("");
+}
+
+function hashEntryCode(code: string): string {
+  return createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
+}
+
+function maskEmail(email: string): string {
+  const [name, domain] = email.split("@");
+  if (!name || !domain) return email;
+  return `${name.slice(0, 1)}***@${domain}`;
+}
+
 @Injectable()
 export class LegalEducationService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditLog: AuditLogService
+    private readonly auditLog: AuditLogService,
+    private readonly mail: MailService
   ) {}
 
   private async findCampaignOrThrow(id: string): Promise<CampaignAdmin> {
@@ -391,7 +414,8 @@ export class LegalEducationService {
             questionsPerAttempt: dto.questionsPerAttempt ?? undefined,
             practiceStartAt: dto.practiceStartAt ? new Date(dto.practiceStartAt) : undefined,
             practiceEndAt: dto.practiceEndAt ? new Date(dto.practiceEndAt) : undefined,
-            practiceMaxAttempts: dto.practiceMaxAttempts ?? 5
+            practiceMaxAttempts: dto.practiceMaxAttempts ?? 5,
+            requireEntryCode: dto.requireEntryCode ?? false
           }
         }
       },
@@ -428,6 +452,7 @@ export class LegalEducationService {
     if (dto.practiceStartAt !== undefined) examPatch.practiceStartAt = dto.practiceStartAt ? new Date(dto.practiceStartAt) : null;
     if (dto.practiceEndAt !== undefined) examPatch.practiceEndAt = dto.practiceEndAt ? new Date(dto.practiceEndAt) : null;
     if (dto.practiceMaxAttempts !== undefined) examPatch.practiceMaxAttempts = dto.practiceMaxAttempts;
+    if (dto.requireEntryCode !== undefined) examPatch.requireEntryCode = dto.requireEntryCode;
 
     const campaign = await this.prisma.legalEducationCampaign.update({
       where: { id },
@@ -542,7 +567,8 @@ export class LegalEducationService {
         questionsPerAttempt: dto.questionsPerAttempt,
         practiceStartAt: dto.practiceStartAt !== undefined ? (dto.practiceStartAt ? new Date(dto.practiceStartAt) : null) : undefined,
         practiceEndAt: dto.practiceEndAt !== undefined ? (dto.practiceEndAt ? new Date(dto.practiceEndAt) : null) : undefined,
-        practiceMaxAttempts: dto.practiceMaxAttempts
+        practiceMaxAttempts: dto.practiceMaxAttempts,
+        requireEntryCode: dto.requireEntryCode
       },
       include: { _count: { select: { questions: true } } }
     });
@@ -1003,7 +1029,8 @@ export class LegalEducationService {
             practiceStartAt: toIso(campaign.exam.practiceStartAt),
             practiceEndAt: toIso(campaign.exam.practiceEndAt),
             startAt: toIso(campaign.exam.startAt),
-            endAt: toIso(campaign.exam.endAt)
+            endAt: toIso(campaign.exam.endAt),
+            requireEntryCode: campaign.exam.requireEntryCode
           }
         : null
     };
@@ -1045,7 +1072,12 @@ export class LegalEducationService {
     return exam;
   }
 
-  async startOrResumeAttempt(examId: string, userId: string, requestedKind?: LegalExamAttemptKind): Promise<LegalExamAttemptDto> {
+  async startOrResumeAttempt(
+    examId: string,
+    userId: string,
+    requestedKind?: LegalExamAttemptKind,
+    entryCode?: string
+  ): Promise<LegalExamAttemptDto> {
     const exam = await this.loadExamForTaker(examId);
     const now = new Date();
     const kind = resolveAttemptKind(exam, now, requestedKind);
@@ -1065,6 +1097,10 @@ export class LegalEducationService {
       } else {
         return this.toAttemptDto(existingInProgress.id);
       }
+    }
+
+    if (!isPractice && exam.requireEntryCode) {
+      await this.assertOfficialEntryCode(exam.id, exam.title, userId, entryCode);
     }
 
     const usedCount = await this.prisma.legalExamAttempt.count({ where: { examId, userId, isPractice } });
@@ -1100,6 +1136,79 @@ export class LegalEducationService {
       }
     });
     return this.toAttemptDto(attempt.id);
+  }
+
+  async resendEntryCode(examId: string, userId: string): Promise<{ maskedEmail: string }> {
+    const exam = await this.loadExamForTaker(examId);
+    if (!exam.requireEntryCode) throw new BadRequestException("Bài thi này không yêu cầu mã dự thi.");
+    const existing = await this.prisma.legalExamEntryCode.findUnique({
+      where: { examId_userId: { examId, userId } }
+    });
+    if (existing && Date.now() - existing.sentAt.getTime() < ENTRY_CODE_RESEND_MS) {
+      throw new BadRequestException("Mã vừa được gửi. Vui lòng kiểm tra hộp thư, kể cả mục thư rác.");
+    }
+    return this.issueEntryCode(exam.id, exam.title, userId);
+  }
+
+  private async assertOfficialEntryCode(examId: string, examTitle: string, userId: string, entryCode?: string): Promise<void> {
+    const normalized = entryCode?.trim().toUpperCase() ?? "";
+    const existing = await this.prisma.legalExamEntryCode.findUnique({
+      where: { examId_userId: { examId, userId } }
+    });
+    if (!normalized) {
+      const sent = existing ? null : await this.issueEntryCode(examId, examTitle, userId);
+      const masked = sent?.maskedEmail ?? (await this.maskedEmailOf(userId));
+      throw new BadRequestException({
+        message: `Mã dự thi đã được gửi tới email ${masked}. Hãy nhập mã đó để bắt đầu bài thi chính thức.`,
+        errorCode: "ENTRY_CODE_REQUIRED"
+      });
+    }
+    const hashed = hashEntryCode(normalized);
+    const matches =
+      existing !== null &&
+      existing.codeHash.length === hashed.length &&
+      timingSafeEqual(Buffer.from(existing.codeHash), Buffer.from(hashed));
+    if (!matches) {
+      throw new BadRequestException("Mã dự thi không đúng. Hãy kiểm tra email hoặc bấm gửi lại mã.");
+    }
+  }
+
+  private async issueEntryCode(examId: string, examTitle: string, userId: string): Promise<{ maskedEmail: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, fullName: true } });
+    if (!user?.email) throw new BadRequestException("Tài khoản chưa có email để nhận mã dự thi.");
+    const code = randomEntryCode();
+    const codeHash = hashEntryCode(code);
+    const publicBase = (process.env.PUBLIC_WEB_URL ?? "https://congdoan.utehy.edu.vn").replace(/\/$/, "");
+    const sent = await this.mail.sendMail(
+      user.email,
+      `Mã dự thi chính thức — ${examTitle}`,
+      [
+        `Kính gửi ${user.fullName},`,
+        "",
+        `Mã dự thi chính thức "${examTitle}" của đồng chí là: ${code}`,
+        "Nhập mã này trước khi bắt đầu bài thi chính thức. Mã dùng cho đợt thi này.",
+        "Thi thử không cần mã.",
+        "",
+        `Trang phổ biến pháp luật: ${publicBase}/tien-ich-so-cong-doan/pho-bien-phap-luat`,
+        "",
+        "Trân trọng,",
+        "Công đoàn HYUTE"
+      ].join("\n")
+    );
+    if (!sent) {
+      throw new BadRequestException("Không gửi được email mã dự thi. Vui lòng thử lại hoặc liên hệ Công đoàn.");
+    }
+    await this.prisma.legalExamEntryCode.upsert({
+      where: { examId_userId: { examId, userId } },
+      create: { examId, userId, codeHash },
+      update: { codeHash, sentAt: new Date() }
+    });
+    return { maskedEmail: maskEmail(user.email) };
+  }
+
+  private async maskedEmailOf(userId: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    return user?.email ? maskEmail(user.email) : "đã đăng ký";
   }
 
   async saveAnswers(examId: string, attemptId: string, userId: string, dto: SaveLegalExamAnswersDto): Promise<{ ok: true }> {

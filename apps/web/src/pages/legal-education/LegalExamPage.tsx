@@ -25,6 +25,11 @@ export function LegalExamPage() {
   const [answers, setAnswers] = useState<Record<string, number | null>>({});
   const [remainingMs, setRemainingMs] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [entryCode, setEntryCode] = useState("");
+  const [codeMessage, setCodeMessage] = useState<string | null>(null);
+  const [examId, setExamId] = useState<string | null>(null);
+  const [isSendingCode, setIsSendingCode] = useState(false);
   const answersRef = useRef(answers);
   const attemptRef = useRef(attempt);
   const submittedRef = useRef(false);
@@ -36,30 +41,68 @@ export function LegalExamPage() {
     attemptRef.current = attempt;
   }, [attempt]);
 
+  const beginAttempt = useCallback(
+    async (code?: string) => {
+      setError(null);
+      const campaign = await apiFetch<PublicLegalCampaignDetailDto>(`/legal-education/campaigns/${slug}`);
+      if (!campaign.exam) throw new Error("Đợt này chưa có bài thi.");
+      setExamId(campaign.exam.id);
+      const started = await apiFetch<LegalExamAttemptDto>(`/legal-education/exams/${campaign.exam.id}/attempts${kindQuery}`, {
+        method: "POST",
+        body: code ? { entryCode: code } : undefined
+      });
+      setNeedsCode(false);
+      setAttempt(started);
+      const initial: Record<string, number | null> = {};
+      for (const q of started.questions) initial[q.id] = null;
+      for (const a of started.answers) initial[a.questionId] = a.selectedOptionIndex;
+      setAnswers(initial);
+      setRemainingMs(new Date(started.expiresAt).getTime() - Date.now());
+    },
+    [slug, kindQuery]
+  );
+
   useEffect(() => {
     let cancelled = false;
-    setError(null);
-    apiFetch<PublicLegalCampaignDetailDto>(`/legal-education/campaigns/${slug}`)
-      .then(async (campaign) => {
-        if (!campaign.exam) throw new Error("Đợt này chưa có bài thi.");
-        const started = await apiFetch<LegalExamAttemptDto>(`/legal-education/exams/${campaign.exam.id}/attempts${kindQuery}`, {
-          method: "POST"
-        });
-        if (cancelled) return;
-        setAttempt(started);
-        const initial: Record<string, number | null> = {};
-        for (const q of started.questions) initial[q.id] = null;
-        for (const a of started.answers) initial[a.questionId] = a.selectedOptionIndex;
-        setAnswers(initial);
-        setRemainingMs(new Date(started.expiresAt).getTime() - Date.now());
-      })
+    beginAttempt()
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Không thể bắt đầu bài thi.");
+        if (cancelled) return;
+        if (err instanceof ApiError && err.errorCode === "ENTRY_CODE_REQUIRED") {
+          setNeedsCode(true);
+          setCodeMessage(err.message);
+          return;
+        }
+        setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Không thể bắt đầu bài thi.");
       });
     return () => {
       cancelled = true;
     };
-  }, [slug, kindQuery]);
+  }, [beginAttempt]);
+
+  async function submitEntryCode() {
+    setIsSendingCode(true);
+    try {
+      await beginAttempt(entryCode.trim());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể bắt đầu bài thi.");
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
+
+  async function resendEntryCode() {
+    if (!examId) return;
+    setIsSendingCode(true);
+    setError(null);
+    try {
+      const result = await apiFetch<{ maskedEmail: string }>(`/legal-education/exams/${examId}/entry-code`, { method: "POST" });
+      setCodeMessage(`Đã gửi lại mã dự thi tới email ${result.maskedEmail}.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không gửi lại được mã dự thi.");
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
 
   const submit = useCallback(async () => {
     const current = attemptRef.current;
@@ -116,6 +159,42 @@ export function LegalExamPage() {
     () => Object.values(answers).filter((v) => v !== null && v !== undefined).length,
     [answers]
   );
+
+  if (needsCode && !attempt && !result) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-10">
+        <h1 className="text-xl font-semibold">Nhập mã dự thi</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {codeMessage ?? "Hệ thống gửi mã dự thi vào email đăng nhập. Nhập mã để bắt đầu bài thi chính thức."}
+        </p>
+        <form
+          className="mt-4 flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitEntryCode();
+          }}
+        >
+          <input
+            value={entryCode}
+            onChange={(event) => setEntryCode(event.target.value.toUpperCase())}
+            autoComplete="one-time-code"
+            placeholder="Mã dự thi"
+            className="rounded-md border bg-background px-3 py-2 text-sm tracking-widest"
+          />
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <Button type="submit" disabled={isSendingCode || entryCode.trim().length === 0}>
+            Bắt đầu thi chính thức
+          </Button>
+          <Button type="button" variant="outline" disabled={isSendingCode || !examId} onClick={() => void resendEntryCode()}>
+            Gửi lại mã vào email
+          </Button>
+        </form>
+        <Link to={slug ? `${LEGAL_EDUCATION_PATH}/${slug}` : LEGAL_EDUCATION_PATH} className="mt-4 inline-block text-sm text-primary hover:underline">
+          ← Quay lại đợt phổ biến
+        </Link>
+      </div>
+    );
+  }
 
   if (error && !attempt && !result) {
     return (

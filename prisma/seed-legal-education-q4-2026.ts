@@ -2,8 +2,9 @@
  * Seed đợt phổ biến giáo dục pháp luật Quý IV/2026 — an toàn chạy lại (upsert theo slug).
  *
  * Tài liệu nguồn: Tim_Hieu_Phap_Luat_Quy_IV/ (tóm tắt + Thông báo 1005 + PDF NĐ 328, TT 49, TT 83, Luật 93/2025/QH15, Nghị quyết 66-NQ/TW).
- * Không seed ngân hàng câu hỏi — cán bộ nhập sau trên trang quản trị. Bài thi tạo sẵn, isOpen=false.
- * Chạy lại không xóa câu hỏi đã nhập và không đóng bài thi nếu cán bộ đã mở.
+ * Ngân hàng câu hỏi lấy từ Bộ câu hỏi thi Quý 4; đáp án là phương án chữ đỏ.
+ * Chạy lại không xóa câu hỏi nếu đợt đã có lượt thi, và không đóng bài thi nếu cán bộ đã mở.
+ * Thi chính thức yêu cầu mã dự thi gửi vào email (requireEntryCode).
  *
  *   pnpm prisma:seed
  *   hoặc pnpm seed:legal-education-q4
@@ -11,6 +12,7 @@
 import { existsSync } from "fs";
 import { config as loadEnv } from "dotenv";
 import { PrismaClient } from "@prisma/client";
+import { Q4_QUESTIONS } from "./seed-legal-education-q4-2026-questions";
 
 loadEnv();
 if (!process.env.DATABASE_URL) {
@@ -28,7 +30,7 @@ export const LEGAL_EDUCATION_Q4_2026_SLUG = "quy-iv-2026";
 const CAMPAIGN_TITLE = "Phổ biến giáo dục pháp luật quý IV năm 2026";
 const PERIOD_LABEL = "Quý IV năm 2026";
 const SUMMARY =
-  "Nội dung phổ biến gồm Nghị định 328/2026/NĐ-CP (phòng, chống tin giả, tin sai sự thật), Thông tư 49/2026/TT-BGDĐT (ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp), Thông tư 83/2026/TT-BGDĐT (Chuẩn cơ sở giáo dục đại học), Luật số 93/2025/QH15 (khoa học, công nghệ và đổi mới sáng tạo) và Nghị quyết số 66-NQ/TW ngày 30/4/2025 của Bộ Chính trị (đổi mới công tác xây dựng và thi hành pháp luật). Theo Thông báo số 1005 ngày 12/10/2026, các đơn vị phổ biến từ ngày 12/10/2026 đến ngày 30/11/2026. Đoàn viên đọc tài liệu tóm tắt và tải văn bản gốc; ngân hàng câu hỏi trắc nghiệm sẽ được cập nhật sau.";
+  "Nội dung phổ biến gồm Nghị định 328/2026/NĐ-CP (phòng, chống tin giả, tin sai sự thật), Thông tư 49/2026/TT-BGDĐT (ứng dụng công nghệ trong giáo dục đại học và giáo dục nghề nghiệp), Thông tư 83/2026/TT-BGDĐT (Chuẩn cơ sở giáo dục đại học), Luật số 93/2025/QH15 (khoa học, công nghệ và đổi mới sáng tạo) và Nghị quyết số 66-NQ/TW ngày 30/4/2025 của Bộ Chính trị (đổi mới công tác xây dựng và thi hành pháp luật). Theo Thông báo số 1005 ngày 12/10/2026, các đơn vị phổ biến từ ngày 12/10/2026 đến ngày 30/11/2026. Đoàn viên đọc tài liệu tóm tắt và tải văn bản gốc; Bài thi chính thức yêu cầu mã dự thi được gửi vào email.";
 
 /** Theo Thông báo 1005: thời gian các đơn vị thực hiện. */
 const CAMPAIGN_START = new Date("2026-10-12T00:00:00.000+07:00");
@@ -350,29 +352,24 @@ const MATERIAL_NQ66 = {
 };
 
 const EXAM_DESCRIPTION =
-  "Bài trắc nghiệm kiến thức pháp luật Quý IV/2026 dựa trên Nghị định 328/2026/NĐ-CP, Thông tư 49 và 83/2026/TT-BGDĐT, Luật số 93/2025/QH15 và Nghị quyết số 66-NQ/TW. Ngân hàng câu hỏi do cán bộ nhập và rà soát trước khi mở thi. Thời gian 30 phút, 01 lần thi chính thức, đạt từ 70%. Có thể mở cửa sổ thi thử trước khi thi chính thức.";
+  "Ngân hàng trắc nghiệm Quý IV/2026 (Nghị định 328/2026/NĐ-CP, Thông tư 49 và 83/2026/TT-BGDĐT, Luật số 93/2025/QH15, Nghị quyết số 66-NQ/TW và các văn bản liên quan trong bộ câu hỏi). Thời gian 30 phút, 01 lần thi chính thức, đạt từ 70%. Thi thử không cần mã. Thi chính thức phải nhập mã dự thi đã gửi vào email.";
 
 export async function seedLegalEducationQ4_2026(prisma: PrismaClient): Promise<void> {
-  const campaign = await prisma.legalEducationCampaign.upsert({
-    where: { slug: LEGAL_EDUCATION_Q4_2026_SLUG },
-    update: {
-      title: CAMPAIGN_TITLE,
-      summary: SUMMARY,
-      periodLabel: PERIOD_LABEL,
-      startAt: CAMPAIGN_START,
-      endAt: CAMPAIGN_END,
-      isPublished: true
-    },
-    create: {
-      slug: LEGAL_EDUCATION_Q4_2026_SLUG,
-      title: CAMPAIGN_TITLE,
-      summary: SUMMARY,
-      periodLabel: PERIOD_LABEL,
-      startAt: CAMPAIGN_START,
-      endAt: CAMPAIGN_END,
-      isPublished: true
-    }
-  });
+  const bySlug = await prisma.legalEducationCampaign.findUnique({ where: { slug: LEGAL_EDUCATION_Q4_2026_SLUG } });
+  const existing = bySlug ?? (await prisma.legalEducationCampaign.findFirst({ where: { title: CAMPAIGN_TITLE } }));
+  const campaignData = {
+    title: CAMPAIGN_TITLE,
+    summary: SUMMARY,
+    periodLabel: PERIOD_LABEL,
+    startAt: CAMPAIGN_START,
+    endAt: CAMPAIGN_END,
+    isPublished: true
+  };
+  const campaign = existing
+    ? await prisma.legalEducationCampaign.update({ where: { id: existing.id }, data: campaignData })
+    : await prisma.legalEducationCampaign.create({
+        data: { slug: LEGAL_EDUCATION_Q4_2026_SLUG, ...campaignData }
+      });
 
   for (const material of [MATERIAL_ND328, MATERIAL_TT49, MATERIAL_TT83, MATERIAL_LUAT93, MATERIAL_NQ66]) {
     await prisma.legalEducationMaterial.upsert({
@@ -398,7 +395,7 @@ export async function seedLegalEducationQ4_2026(prisma: PrismaClient): Promise<v
     });
   }
 
-  await prisma.legalExam.upsert({
+  const exam = await prisma.legalExam.upsert({
     where: { campaignId: campaign.id },
     update: {
       title: `${CAMPAIGN_TITLE} — Trắc nghiệm`,
@@ -408,7 +405,8 @@ export async function seedLegalEducationQ4_2026(prisma: PrismaClient): Promise<v
       maxAttempts: 1,
       revealAnswers: false,
       shuffleQuestions: true,
-      shuffleOptions: true
+      shuffleOptions: true,
+      requireEntryCode: true
     },
     create: {
       campaignId: campaign.id,
@@ -420,9 +418,27 @@ export async function seedLegalEducationQ4_2026(prisma: PrismaClient): Promise<v
       revealAnswers: false,
       shuffleQuestions: true,
       shuffleOptions: true,
+      requireEntryCode: true,
       isOpen: false
     }
   });
+
+  const attemptCount = await prisma.legalExamAttempt.count({ where: { examId: exam.id } });
+  if (attemptCount > 0) {
+    console.log("  Bỏ qua ghi đè ngân hàng câu hỏi vì đợt đã có lượt thi.");
+    return;
+  }
+  await prisma.legalExamQuestion.deleteMany({ where: { examId: exam.id } });
+  await prisma.legalExamQuestion.createMany({
+    data: Q4_QUESTIONS.map((q) => ({
+      examId: exam.id,
+      text: q.text,
+      optionsJson: JSON.stringify(q.options),
+      correctOptionIndex: q.correctOptionIndex,
+      sortOrder: q.sortOrder
+    }))
+  });
+  console.log(`  Đã ghi ${Q4_QUESTIONS.length} câu hỏi.`);
 }
 
 async function main() {
@@ -433,21 +449,28 @@ async function main() {
   }
   const prisma = new PrismaClient();
   try {
-    console.log("Seeding phổ biến pháp luật Quý IV/2026 (không ghi ngân hàng câu hỏi)...");
+    console.log("Seeding phổ biến pháp luật Quý IV/2026...");
     await seedLegalEducationQ4_2026(prisma);
-    const campaign = await prisma.legalEducationCampaign.findUnique({
-      where: { slug: LEGAL_EDUCATION_Q4_2026_SLUG },
-      include: {
-        materials: { orderBy: { sortOrder: "asc" }, select: { slug: true, title: true } },
-        exam: { include: { _count: { select: { questions: true } } } }
-      }
-    });
+    const include = {
+      materials: { orderBy: { sortOrder: "asc" as const }, select: { slug: true, title: true } },
+      exam: { include: { _count: { select: { questions: true } } } }
+    };
+    const campaign =
+      (await prisma.legalEducationCampaign.findUnique({
+        where: { slug: LEGAL_EDUCATION_Q4_2026_SLUG },
+        include
+      })) ??
+      (await prisma.legalEducationCampaign.findFirst({
+        where: { title: CAMPAIGN_TITLE },
+        include
+      }));
     console.log(
       JSON.stringify(
         {
           slug: campaign?.slug,
           materials: campaign?.materials.map((item) => item.slug),
           examOpen: campaign?.exam?.isOpen ?? null,
+          requireEntryCode: campaign?.exam?.requireEntryCode ?? null,
           questionCount: campaign?.exam?._count.questions ?? 0
         },
         null,

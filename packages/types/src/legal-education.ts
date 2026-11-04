@@ -70,6 +70,8 @@ export interface LegalExamSettingsDto {
   practiceStartAt: string | null;
   practiceEndAt: string | null;
   practiceMaxAttempts: number;
+  /** Thi chính thức yêu cầu nhập mã đã gửi vào email. */
+  requireEntryCode: boolean;
 }
 
 export interface UpdateLegalExamRequest {
@@ -88,6 +90,7 @@ export interface UpdateLegalExamRequest {
   practiceStartAt?: string;
   practiceEndAt?: string;
   practiceMaxAttempts?: number;
+  requireEntryCode?: boolean;
 }
 
 export interface LegalExamQuestionDto {
@@ -169,6 +172,7 @@ export interface CreateLegalEducationCampaignRequest {
   practiceStartAt?: string;
   practiceEndAt?: string;
   practiceMaxAttempts?: number;
+  requireEntryCode?: boolean;
 }
 
 export interface UpdateLegalEducationCampaignRequest extends Partial<CreateLegalEducationCampaignRequest> {}
@@ -218,6 +222,7 @@ export interface PublicLegalCampaignDetailDto {
     practiceEndAt: string | null;
     startAt: string | null;
     endAt: string | null;
+    requireEntryCode: boolean;
   } | null;
 }
 

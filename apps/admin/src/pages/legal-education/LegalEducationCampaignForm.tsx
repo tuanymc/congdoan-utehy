@@ -53,6 +53,7 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
   const [practiceStartAt, setPracticeStartAt] = useState("");
   const [practiceEndAt, setPracticeEndAt] = useState("");
   const [practiceMaxAttempts, setPracticeMaxAttempts] = useState("5");
+  const [requireEntryCode, setRequireEntryCode] = useState<"true" | "false">("false");
 
   useEffect(() => {
     if (mode === "edit" && result?.data) {
@@ -76,6 +77,7 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
       setPracticeStartAt(isoToLocalInputValue(item.exam?.practiceStartAt));
       setPracticeEndAt(isoToLocalInputValue(item.exam?.practiceEndAt));
       setPracticeMaxAttempts(String(item.exam?.practiceMaxAttempts ?? 5));
+      setRequireEntryCode(item.exam?.requireEntryCode ? "true" : "false");
     }
   }, [mode, result]);
 
@@ -102,7 +104,8 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
       questionsPerAttempt: questionsPerAttempt.trim() ? Number(questionsPerAttempt) : null,
       practiceStartAt: practiceStartAt ? new Date(practiceStartAt).toISOString() : undefined,
       practiceEndAt: practiceEndAt ? new Date(practiceEndAt).toISOString() : undefined,
-      practiceMaxAttempts: Number(practiceMaxAttempts) || 5
+      practiceMaxAttempts: Number(practiceMaxAttempts) || 5,
+      requireEntryCode: requireEntryCode === "true"
     };
 
     if (mode === "create") {
@@ -240,8 +243,21 @@ export function LegalEducationCampaignForm({ mode }: LegalEducationCampaignFormP
                 <Input id="examEndAt" type="datetime-local" value={examEndAt} onChange={(event) => setExamEndAt(event.target.value)} />
               </div>
             </div>
+            <div className="grid gap-2 sm:max-w-xs">
+              <Label htmlFor="requireEntryCode">Mã dự thi</Label>
+              <Select value={requireEntryCode} onValueChange={(value) => setRequireEntryCode(value as "true" | "false")}>
+                <SelectTrigger id="requireEntryCode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Bắt buộc — hệ thống gửi mã vào email</SelectItem>
+                  <SelectItem value="false">Không cần mã</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <p className="text-xs text-muted-foreground">
               Ngoài khung giờ trên, cần bật “Đang mở thi”. Sau giờ khóa, đoàn viên không bắt đầu được lượt chính thức mới.
+              Khi bật mã dự thi, đoàn viên phải nhập mã đã gửi vào email trước mỗi lượt thi chính thức mới. Thi thử không cần mã.
             </p>
 
             <h2 className="pt-2 text-lg font-semibold">Thi thử</h2>

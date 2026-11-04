@@ -144,7 +144,10 @@ export function LegalEducationCampaignPage() {
                     <>Ngân hàng câu hỏi sẽ được cập nhật trước khi mở thi. </>
                   )}
                   {item.exam.durationMinutes} phút · đạt từ {item.exam.passingScorePercent}% · tối đa{" "}
-                  {item.exam.maxAttempts} lần thi chính thức. Dành cho công đoàn viên đã đăng nhập.
+                  {item.exam.maxAttempts} lần thi chính thức.
+                  {item.exam.requireEntryCode
+                    ? " Trước bài thi chính thức, đồng chí nhập mã dự thi được gửi vào email đăng nhập."
+                    : " Dành cho công đoàn viên đã đăng nhập."}
                 </p>
                 {formatWindow(item.exam.practiceStartAt, item.exam.practiceEndAt) ? (
                   <p className="mt-2 text-sm text-muted-foreground">

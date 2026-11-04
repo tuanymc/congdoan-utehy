@@ -12,6 +12,7 @@ import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { LegalEducationService } from "./legal-education.service";
 import { SaveLegalExamAnswersDto } from "./dto/save-answers.dto";
+import { StartLegalExamAttemptDto } from "./dto/start-attempt.dto";
 
 /**
  * Thi trắc nghiệm — bắt buộc đăng nhập (mọi vai trò), KHÔNG cần permission admin. Giống PublicAiToolsController.
@@ -31,15 +32,21 @@ export class MemberLegalExamsController {
     return this.legalEducation.listMyAttempts(user.sub);
   }
 
+  @Post("exams/:id/entry-code")
+  resendEntryCode(@Param("id") id: string, @CurrentUser() user: JwtAccessPayload): Promise<{ maskedEmail: string }> {
+    return this.legalEducation.resendEntryCode(id, user.sub);
+  }
+
   @Post("exams/:id/attempts")
   start(
     @Param("id") id: string,
     @CurrentUser() user: JwtAccessPayload,
-    @Query("kind") kind?: string
+    @Query("kind") kind?: string,
+    @Body() dto?: StartLegalExamAttemptDto
   ): Promise<LegalExamAttemptDto> {
     const requested: LegalExamAttemptKind | undefined =
       kind === "PRACTICE" || kind === "OFFICIAL" ? kind : undefined;
-    return this.legalEducation.startOrResumeAttempt(id, user.sub, requested);
+    return this.legalEducation.startOrResumeAttempt(id, user.sub, requested, dto?.entryCode);
   }
 
   @Patch("exams/:id/attempts/:attemptId")

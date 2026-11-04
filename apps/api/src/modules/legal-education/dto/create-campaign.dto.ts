@@ -117,4 +117,9 @@ export class CreateLegalEducationCampaignDto implements CreateLegalEducationCamp
   @IsInt()
   @Min(1)
   practiceMaxAttempts?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  requireEntryCode?: boolean;
 }
