@@ -9,6 +9,7 @@ import type {
   UserDetailDto,
   UserListItemDto
 } from "@congdoan/types";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
 import { MailService } from "../../common/mail.service";
@@ -25,6 +26,18 @@ function randomPassword(length = 10): string {
 function toRoleDto(role: { id: string; code: string; name: string; description: string | null }): RoleDto {
   return { id: role.id, code: role.code as RoleDto["code"], name: role.name, description: role.description };
 }
+
+/** Danh sách quản trị chỉ hiện email, họ tên, vai trò, trạng thái, ngày tạo.
+ * Không lấy passwordHash: cột đó đi theo mọi dòng khi SQL Server sort createdAt, và bảng users
+ * đã phình ra sau khi cấp tài khoản cho toàn bộ công đoàn viên. */
+const userListSelect = Prisma.validator<Prisma.UserSelect>()({
+  id: true,
+  email: true,
+  fullName: true,
+  isActive: true,
+  createdAt: true,
+  roles: { select: { role: { select: { id: true, code: true, name: true, description: true } } } }
+});
 
 @Injectable()
 export class UsersService {
@@ -48,11 +61,11 @@ export class UsersService {
         }
       : {};
 
-    const [total, users] = await this.prisma.$transaction([
+    const [total, users] = await Promise.all([
       this.prisma.user.count({ where }),
       this.prisma.user.findMany({
         where,
-        include: { roles: { include: { role: true } } },
+        select: userListSelect,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize

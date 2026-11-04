@@ -57,6 +57,9 @@ model User {
   /// Lượt thi trắc nghiệm phổ biến pháp luật — 1 user có thể thi nhiều đợt / nhiều lần (xem maxAttempts).
   legalExamAttempts LegalExamAttempt[]
 
+  /// Danh sách quản trị xếp createdAt giảm dần rồi lấy 10 dòng. Không có index thì SQL Server
+  /// sort cả bảng users (mỗi công đoàn viên một tài khoản).
+  @@index([createdAt(sort: Desc)])
   @@map("users")
 }
 
