@@ -16,11 +16,12 @@ export function ContactPage() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const payload: CreateContactMessageRequest = {
+    const payload: CreateContactMessageRequest & { website?: string } = {
       name: String(formData.get("name") ?? "").trim(),
       email: String(formData.get("email") ?? "").trim(),
       phone: String(formData.get("phone") ?? "").trim() || undefined,
-      message: String(formData.get("message") ?? "").trim()
+      message: String(formData.get("message") ?? "").trim(),
+      website: String(formData.get("website") ?? "").trim() || undefined
     };
 
     setIsSubmitting(true);
@@ -83,7 +84,11 @@ export function ContactPage() {
                 thoại bạn đã để lại trong thời gian sớm nhất.
               </p>
             ) : (
-              <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+              <form className="relative space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+                <div aria-hidden="true" className="pointer-events-none absolute -left-[9999px] h-0 w-0 overflow-hidden">
+                  <label htmlFor="contact-website">Website</label>
+                  <input id="contact-website" name="website" tabIndex={-1} autoComplete="off" />
+                </div>
                 <div className="space-y-1.5">
                   <label htmlFor="contact-name" className="text-sm font-medium">
                     Họ và tên

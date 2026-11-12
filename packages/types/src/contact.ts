@@ -31,3 +31,8 @@ export interface ReplyContactMessageRequest {
 export interface ReplyContactMessageResultDto {
   emailSent: boolean;
 }
+
+/** Kết quả xoá hàng loạt tin probe/sqlmap khỏi hộp thư Liên hệ. */
+export interface PurgeContactSpamResultDto {
+  deleted: number;
+}

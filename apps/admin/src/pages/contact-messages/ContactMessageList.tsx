@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useDelete, useTable, useUpdate } from "@refinedev/core";
 import type { CrudFilter } from "@refinedev/core";
-import type { ContactMessageDto } from "@congdoan/types";
+import type { ContactMessageDto, PurgeContactSpamResultDto } from "@congdoan/types";
+import { apiFetch } from "../../lib/api-client";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { ConfirmDeleteDialog } from "../../components/common/ConfirmDeleteDialog";
+import { pushToast } from "../../components/common/toast-store";
 import { ReplyContactMessageDialog } from "./ReplyContactMessageDialog";
 
 function formatDateTime(value: string): string {
@@ -23,6 +25,8 @@ export function ContactMessageList() {
   const [deleteTarget, setDeleteTarget] = useState<ContactMessageDto | null>(null);
   const [replyTarget, setReplyTarget] = useState<ContactMessageDto | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [purgeOpen, setPurgeOpen] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
 
   const { tableQueryResult, current, setCurrent, pageCount, setFilters } = useTable<ContactMessageDto>({
     resource: "contact-messages",
@@ -49,23 +53,58 @@ export function ContactMessageList() {
     deleteMessage({ resource: "contact-messages", id: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
   }
 
+  async function handlePurgeSpam() {
+    setIsPurging(true);
+    try {
+      const result = await apiFetch<PurgeContactSpamResultDto>("/admin/contact-messages/purge-spam", {
+        method: "POST",
+        body: {}
+      });
+      setPurgeOpen(false);
+      pushToast({
+        variant: "success",
+        message:
+          result.deleted > 0
+            ? `Đã xoá ${result.deleted} tin có dấu hiệu tấn công/quét lỗ hổng.`
+            : "Không còn tin nào khớp dấu hiệu tấn công."
+      });
+      await tableQueryResult.refetch();
+    } catch (error) {
+      pushToast({
+        variant: "error",
+        message: error instanceof Error ? error.message : "Không thể xoá tin tấn công."
+      });
+    } finally {
+      setIsPurging(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-semibold">Liên hệ</h1>
           <p className="text-muted-foreground">Tổng cộng {total} tin nhắn từ trang "Liên hệ" công khai.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Dòng có SELECT/SLEEP/testing@example.com là máy quét lỗ hổng tự động, không phải đoàn viên. Hệ thống
+            không chạy SQL từ form này.
+          </p>
         </div>
-        <Select value={readFilter} onValueChange={(value) => setReadFilter(value as "ALL" | "true" | "false")}>
-          <SelectTrigger className="sm:max-w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Tất cả</SelectItem>
-            <SelectItem value="false">Chưa đọc</SelectItem>
-            <SelectItem value="true">Đã đọc</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button variant="outline" size="sm" onClick={() => setPurgeOpen(true)}>
+            Xoá tin tấn công
+          </Button>
+          <Select value={readFilter} onValueChange={(value) => setReadFilter(value as "ALL" | "true" | "false")}>
+            <SelectTrigger className="sm:max-w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả</SelectItem>
+              <SelectItem value="false">Chưa đọc</SelectItem>
+              <SelectItem value="true">Đã đọc</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -168,6 +207,15 @@ export function ContactMessageList() {
         isPending={isDeleting}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      <ConfirmDeleteDialog
+        open={purgeOpen}
+        title="Xoá tin tấn công"
+        description="Xoá các tin chưa phản hồi có dấu hiệu máy quét lỗ hổng (SELECT, SLEEP, email giả…). Không xoá tin liên hệ thông thường."
+        isPending={isPurging}
+        onOpenChange={(open) => !open && setPurgeOpen(false)}
+        onConfirm={() => void handlePurgeSpam()}
       />
     </div>
   );

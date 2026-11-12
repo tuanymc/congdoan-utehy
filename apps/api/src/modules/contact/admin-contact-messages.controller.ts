@@ -1,9 +1,15 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { ContactMessageDto, JwtAccessPayload, PaginatedResult, ReplyContactMessageResultDto } from "@congdoan/types";
+import type {
+  ContactMessageDto,
+  JwtAccessPayload,
+  PaginatedResult,
+  PurgeContactSpamResultDto,
+  ReplyContactMessageResultDto
+} from "@congdoan/types";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
-import { RequirePermissions } from "../../common/decorators/roles.decorator";
+import { RequireAnyPermissions, RequirePermissions } from "../../common/decorators/roles.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { ContactMessagesService } from "./contact-messages.service";
 import { QueryContactMessagesDto } from "./dto/query-contact-messages.dto";
@@ -22,6 +28,12 @@ export class AdminContactMessagesController {
   @Get()
   list(@Query() query: QueryContactMessagesDto): Promise<PaginatedResult<ContactMessageDto>> {
     return this.contactMessagesService.listForAdmin(query);
+  }
+
+  @RequireAnyPermissions("contactmessage:delete", "contactmessage:update")
+  @Post("purge-spam")
+  purgeSpam(): Promise<PurgeContactSpamResultDto> {
+    return this.contactMessagesService.purgeSpam();
   }
 
   @RequirePermissions("contactmessage:update")

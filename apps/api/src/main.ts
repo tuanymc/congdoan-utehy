@@ -5,23 +5,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
-
-const DEFAULT_CORS_ORIGINS = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://congdoan.utehy.edu.vn",
-  "https://congdoan.utehy.edu.vn",
-  "http://congdoan.hyute.edu.vn",
-  "https://congdoan.hyute.edu.vn"
-];
-
-function allowedCorsOrigins(): string[] {
-  const extra = (process.env.CORS_ORIGINS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return [...new Set([...DEFAULT_CORS_ORIGINS, ...extra])];
-}
+import { allowedCorsOrigins } from "./common/utils/cors-origins";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

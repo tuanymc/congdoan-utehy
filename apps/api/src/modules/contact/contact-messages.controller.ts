@@ -1,7 +1,9 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, ForbiddenException, Post, Req } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { ApiTags } from "@nestjs/swagger";
+import type { Request } from "express";
 import type { ContactMessageDto } from "@congdoan/types";
+import { isTrustedPublicFormRequest } from "../../common/utils/cors-origins";
 import { ContactMessagesService } from "./contact-messages.service";
 import { CreateContactMessageDto } from "./dto/create-contact-message.dto";
 
@@ -16,7 +18,10 @@ export class ContactMessagesController {
   // đủ cho người dùng thật (kể cả gửi lại sau khi sửa lỗi validate) mà vẫn cản được spam thô sơ.
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post()
-  create(@Body() dto: CreateContactMessageDto): Promise<ContactMessageDto> {
+  create(@Req() req: Request, @Body() dto: CreateContactMessageDto): Promise<ContactMessageDto> {
+    if (!isTrustedPublicFormRequest(req.headers)) {
+      throw new ForbiddenException("Không thể gửi phản ánh lúc này.");
+    }
     return this.contactMessagesService.create(dto);
   }
 }

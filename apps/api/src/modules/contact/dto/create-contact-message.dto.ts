@@ -24,4 +24,11 @@ export class CreateContactMessageDto implements CreateContactMessageRequest {
   @MinLength(5)
   @MaxLength(4000)
   message!: string;
+
+  /** Honeypot — trình duyệt thật để trống; bot điền vào thì từ chối. Không lưu DB. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  website?: string;
 }

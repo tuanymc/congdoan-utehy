@@ -3,6 +3,7 @@ import type {
   ContactMessageDto,
   PaginatedResult,
   PaginationQuery,
+  PurgeContactSpamResultDto,
   ReplyContactMessageResultDto
 } from "@congdoan/types";
 import { Prisma } from "@prisma/client";
@@ -11,6 +12,7 @@ import { AuditLogService } from "../../common/audit-log.service";
 import { MailService } from "../../common/mail.service";
 import { CreateContactMessageDto } from "./dto/create-contact-message.dto";
 import { ReplyContactMessageDto } from "./dto/reply-contact-message.dto";
+import { isContactSpam } from "./contact-spam";
 
 function toDto(m: {
   id: string;
@@ -57,10 +59,33 @@ export class ContactMessagesService {
 
   /** Công khai — nhận tin nhắn từ form Liên hệ, không cần đăng nhập. */
   async create(dto: CreateContactMessageDto): Promise<ContactMessageDto> {
+    if (
+      isContactSpam({
+        name: dto.name,
+        email: dto.email,
+        phone: dto.phone,
+        message: dto.message,
+        website: dto.website
+      })
+    ) {
+      throw new BadRequestException("Nội dung không hợp lệ.");
+    }
     const message = await this.prisma.contactMessage.create({
-      data: { name: dto.name, email: dto.email, phone: dto.phone, message: dto.message }
+      data: { name: dto.name.trim(), email: dto.email.trim(), phone: dto.phone?.trim() || null, message: dto.message.trim() }
     });
     return toDto(message);
+  }
+
+  /** Xoá tin chưa phản hồi mà khớp dấu hiệu probe/sqlmap (không đụng tin người thật). */
+  async purgeSpam(): Promise<PurgeContactSpamResultDto> {
+    const candidates = await this.prisma.contactMessage.findMany({
+      where: { repliedAt: null },
+      select: { id: true, name: true, email: true, phone: true, message: true }
+    });
+    const ids = candidates.filter((row) => isContactSpam(row)).map((row) => row.id);
+    if (ids.length === 0) return { deleted: 0 };
+    const result = await this.prisma.contactMessage.deleteMany({ where: { id: { in: ids } } });
+    return { deleted: result.count };
   }
 
   async listForAdmin(query: PaginationQuery & { isRead?: boolean }): Promise<PaginatedResult<ContactMessageDto>> {
