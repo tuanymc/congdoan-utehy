@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Mail, Phone } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Building2, GraduationCap, Lock, Mail, Phone, UserRound } from "lucide-react";
 import type { PaginatedResult, UnionDepartmentDto, UnionMemberListItemDto } from "@congdoan/types";
 import { apiFetch } from "@/lib/api-client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const PAGE_SIZE = 24;
@@ -16,11 +15,28 @@ function getInitials(fullName: string): string {
   return last.slice(0, 1).toUpperCase() || "?";
 }
 
-/** Trang "Công đoàn viên" công khai (thay modules/GioiThieuCongDoanVien.aspx web cũ) — danh bạ công
- * khai, CHỈ hiển thị 6 field không nhạy cảm (xem UnionMemberListItemDto trong @congdoan/types và chú
- * thích domain block UNIONDIRECTORY trong prisma/schema.prisma). Khác /cong-doan-vien (Cổng đoàn viên
- * — yêu cầu đăng nhập), trang này công khai cho mọi người xem. */
+function MemberPortrait({ photoUrl, fullName }: { photoUrl: string | null; fullName: string }) {
+  return (
+    <div className="relative w-[5.75rem] shrink-0 sm:w-28">
+      <div className="overflow-hidden rounded-lg bg-gradient-to-b from-primary/10 via-card to-secondary/30 shadow-[0_10px_28px_rgba(0,82,48,0.14)] ring-1 ring-primary/15">
+        <div className="h-0.5 w-full bg-gradient-to-r from-primary via-secondary to-primary" />
+        <div className="aspect-[3/4] bg-muted/40">
+          {photoUrl ? (
+            <img src={photoUrl} alt={fullName} className="h-full w-full object-cover object-top" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5 text-2xl font-semibold text-primary sm:text-3xl">
+              {getInitials(fullName)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Trang danh bạ công khai. SĐT/email chỉ hiện khi đã đăng nhập (API ẩn với khách). */
 export function UnionMembersPage() {
+  const { isAuthenticated, isInitializing } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const departmentId = searchParams.get("department") ?? "";
@@ -32,7 +48,6 @@ export function UnionMembersPage() {
 
   useEffect(() => {
     apiFetch<UnionDepartmentDto[]>("/union-departments")
-      // "?? []" phòng apiFetch trả về null — departments.map bên dưới không tự chống null.
       .then((data) => setDepartments(data ?? []))
       .catch(() => {
         // Không chặn trang khi lỗi tải bộ phận — chỉ ẩn bộ lọc.
@@ -51,10 +66,11 @@ export function UnionMembersPage() {
       setSearchParams(params, { replace: true });
     }, 400);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy khi searchInput đổi (debounce); cố tình không phụ thuộc searchParams/setSearchParams để tránh vòng lặp (searchParams đổi sau mỗi lần set).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy khi searchInput đổi (debounce).
   }, [searchInput]);
 
   useEffect(() => {
+    if (isInitializing) return;
     let cancelled = false;
     setError(null);
     setResult(null);
@@ -75,8 +91,8 @@ export function UnionMembersPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchParams đọc trực tiếp field "search" bên trong, không cần liệt kê cả object.
-  }, [page, departmentId, searchParams.get("search")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchParams đọc field "search" bên trong.
+  }, [page, departmentId, searchParams.get("search"), isInitializing, isAuthenticated]);
 
   function selectDepartment(next: string) {
     const params = new URLSearchParams(searchParams);
@@ -98,10 +114,28 @@ export function UnionMembersPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-3xl font-bold">Công đoàn viên</h1>
-      <p className="mt-2 text-muted-foreground">
-        Danh bạ công khai cán bộ, giảng viên, người lao động là đoàn viên Công đoàn Trường.
-      </p>
+      <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-card to-secondary/20 px-6 py-8 sm:px-8">
+        <div className="absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(255,204,41,0.28),transparent_65%)]" />
+        <p className="relative text-sm font-medium text-primary">Danh bạ Công đoàn</p>
+        <h1 className="relative mt-1 text-3xl font-bold tracking-tight">Công đoàn viên</h1>
+        <p className="relative mt-2 max-w-2xl text-muted-foreground">
+          Cán bộ, giảng viên, người lao động là đoàn viên Công đoàn Trường Đại học Sư phạm Kỹ thuật Hưng Yên.
+        </p>
+        {!isAuthenticated && !isInitializing ? (
+          <p className="relative mt-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Lock className="size-3.5" />
+            Số điện thoại và email chỉ hiện sau khi{" "}
+            <Link
+              to="/dang-nhap"
+              state={{ from: { pathname: "/danh-ba-cong-doan-vien" } }}
+              className="font-medium text-primary hover:underline"
+            >
+              đăng nhập
+            </Link>
+            .
+          </p>
+        ) : null}
+      </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <input
@@ -129,53 +163,74 @@ export function UnionMembersPage() {
         {error ? (
           <p className="text-sm text-destructive">{error}</p>
         ) : result === null ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-28 w-full rounded-xl" />
+              <Skeleton key={index} className="h-40 w-full rounded-2xl" />
             ))}
           </div>
         ) : result.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Không tìm thấy công đoàn viên nào phù hợp.</p>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {result.items.map((member) => (
-                <Card key={member.id}>
-                  <CardContent className="flex items-start gap-3 py-4">
-                    <Avatar className="size-14 shrink-0">
-                      {member.photoUrl ? <AvatarImage src={member.photoUrl} alt={member.fullName} /> : null}
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        {getInitials(member.fullName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{member.fullName}</p>
-                      {member.positionTitle ? (
-                        <p className="text-xs text-muted-foreground">{member.positionTitle}</p>
-                      ) : null}
-                      {member.degreeLabel ? (
-                        <p className="text-xs text-muted-foreground">{member.degreeLabel}</p>
-                      ) : null}
-                      {member.department ? (
-                        <p className="mt-1 text-xs text-muted-foreground">{member.department.name}</p>
-                      ) : null}
-                      <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
+                <article
+                  key={member.id}
+                  className="flex gap-4 rounded-2xl border border-border/80 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <MemberPortrait photoUrl={member.photoUrl} fullName={member.fullName} />
+                  <div className="min-w-0 flex-1 py-0.5">
+                    <h2 className="text-base font-semibold leading-snug tracking-tight text-foreground">
+                      {member.fullName}
+                    </h2>
+                    {member.positionTitle ? (
+                      <p className="mt-1 flex items-start gap-1.5 text-sm text-primary">
+                        <UserRound className="mt-0.5 size-3.5 shrink-0" />
+                        <span>{member.positionTitle}</span>
+                      </p>
+                    ) : null}
+                    {member.degreeLabel ? (
+                      <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <GraduationCap className="mt-0.5 size-3.5 shrink-0" />
+                        <span>{member.degreeLabel}</span>
+                      </p>
+                    ) : null}
+                    {member.department ? (
+                      <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Building2 className="mt-0.5 size-3.5 shrink-0" />
+                        <span>{member.department.name}</span>
+                      </p>
+                    ) : null}
+
+                    {member.contactVisible ? (
+                      <div className="mt-3 space-y-1 border-t border-border/70 pt-2.5 text-xs">
                         {member.phone ? (
-                          <span className="flex items-center gap-1.5">
-                            <Phone className="size-3 shrink-0" />
+                          <a
+                            href={`tel:${member.phone}`}
+                            className="flex items-center gap-1.5 text-foreground/80 hover:text-primary"
+                          >
+                            <Phone className="size-3.5 shrink-0 text-primary" />
                             {member.phone}
-                          </span>
+                          </a>
                         ) : null}
                         {member.email ? (
-                          <span className="flex items-center gap-1.5 truncate">
-                            <Mail className="size-3 shrink-0" />
-                            {member.email}
-                          </span>
+                          <a
+                            href={`mailto:${member.email}`}
+                            className="flex items-center gap-1.5 truncate text-foreground/80 hover:text-primary"
+                          >
+                            <Mail className="size-3.5 shrink-0 text-primary" />
+                            <span className="truncate">{member.email}</span>
+                          </a>
                         ) : null}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    ) : (
+                      <p className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Lock className="size-3 shrink-0" />
+                        Liên hệ sau khi đăng nhập
+                      </p>
+                    )}
+                  </div>
+                </article>
               ))}
             </div>
 

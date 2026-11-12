@@ -22,6 +22,8 @@ export interface UnionMemberListItemDto {
   positionTitle: string | null;
   phone: string | null;
   email: string | null;
+  /** true = người xem đã đăng nhập, SĐT/email được trả; false = khách, luôn null. */
+  contactVisible: boolean;
   isPublic: boolean;
   sortOrder: number;
   department: UnionDepartmentDto | null;
@@ -228,16 +230,22 @@ export const UNION_MEMBER_PROFILE_CHANGE_STATUS_LABELS: Record<UnionMemberProfil
   REJECTED: "Từ chối"
 };
 
-/** Yêu cầu đổi ảnh / chức vụ / trình độ — đoàn viên gửi, admin duyệt rồi mới ghi vào danh bạ. */
+/** Yêu cầu đổi hồ sơ đoàn viên — gửi từ cổng /cong-doan-vien, admin duyệt rồi mới ghi vào danh bạ. */
 export interface UnionMemberProfileChangeRequestDto {
   id: string;
   memberId: string;
   memberFullName: string;
   memberLegacyCode: string | null;
   departmentName: string | null;
+  fullName: string | null;
+  phone: string | null;
+  email: string | null;
   photoUrl: string | null;
   positionTitle: string | null;
   degreeLabel: string | null;
+  currentFullName: string | null;
+  currentPhone: string | null;
+  currentEmail: string | null;
   currentPhotoUrl: string | null;
   currentPositionTitle: string | null;
   currentDegreeLabel: string | null;
@@ -249,6 +257,9 @@ export interface UnionMemberProfileChangeRequestDto {
 }
 
 export interface SubmitUnionMemberProfileChangeRequest {
+  fullName?: string;
+  phone?: string;
+  email?: string;
   photoUrl?: string;
   positionTitle?: string;
   degreeLabel?: string;
@@ -272,8 +283,7 @@ export interface MyUnionMemberDto {
   pendingProfileChange: UnionMemberProfileChangeRequestDto | null;
 }
 
-/** Payload tự cập nhật thông tin cá nhân — công đoàn viên CHỈ được sửa họ tên/SĐT/email ngay.
- * Ảnh, chức vụ, trình độ gửi qua SubmitUnionMemberProfileChangeRequest để admin duyệt. */
+/** @deprecated Dùng SubmitUnionMemberProfileChangeRequest — mọi sửa hồ sơ đều chờ admin duyệt. */
 export interface UpdateMyUnionMemberRequest {
   fullName?: string;
   phone?: string;

@@ -37,9 +37,15 @@ export function toChangeRequestDto(row: RequestWithRelations): UnionMemberProfil
     memberFullName: row.member.fullName,
     memberLegacyCode: row.member.legacyCode,
     departmentName: row.member.department?.name ?? null,
+    fullName: row.fullName,
+    phone: row.phone,
+    email: row.email,
     photoUrl: row.photoUrl,
     positionTitle: row.positionTitle,
     degreeLabel: row.degreeLabel,
+    currentFullName: row.currentFullName,
+    currentPhone: row.currentPhone,
+    currentEmail: row.currentEmail,
     currentPhotoUrl: row.currentPhotoUrl,
     currentPositionTitle: row.currentPositionTitle,
     currentDegreeLabel: row.currentDegreeLabel,
@@ -86,12 +92,25 @@ export class UnionMemberProfileChangeRequestsService {
       );
     }
 
+    const fullName = dto.fullName === undefined ? undefined : emptyToNull(dto.fullName);
+    const phone = dto.phone === undefined ? undefined : emptyToNull(dto.phone);
+    const email = dto.email === undefined ? undefined : emptyToNull(dto.email);
     const photoUrl = dto.photoUrl === undefined ? undefined : emptyToNull(dto.photoUrl);
     const positionTitle = dto.positionTitle === undefined ? undefined : emptyToNull(dto.positionTitle);
     const degreeLabel = dto.degreeLabel === undefined ? undefined : emptyToNull(dto.degreeLabel);
 
-    if (photoUrl === undefined && positionTitle === undefined && degreeLabel === undefined) {
-      throw new BadRequestException("Cần gửi ít nhất một thay đổi: ảnh, chức vụ hoặc trình độ.");
+    if (
+      fullName === undefined &&
+      phone === undefined &&
+      email === undefined &&
+      photoUrl === undefined &&
+      positionTitle === undefined &&
+      degreeLabel === undefined
+    ) {
+      throw new BadRequestException("Cần gửi ít nhất một thay đổi trên hồ sơ.");
+    }
+    if (fullName === null) {
+      throw new BadRequestException("Họ và tên không được để trống.");
     }
 
     const pending = await this.prisma.unionMemberProfileChangeRequest.findFirst({
@@ -99,9 +118,15 @@ export class UnionMemberProfileChangeRequestsService {
     });
 
     const data = {
+      fullName: fullName === undefined ? (pending?.fullName ?? member.fullName) : fullName,
+      phone: phone === undefined ? (pending?.phone ?? member.phone) : phone,
+      email: email === undefined ? (pending?.email ?? member.email) : email,
       photoUrl: photoUrl === undefined ? (pending?.photoUrl ?? member.photoUrl) : photoUrl,
       positionTitle: positionTitle === undefined ? (pending?.positionTitle ?? member.positionTitle) : positionTitle,
       degreeLabel: degreeLabel === undefined ? (pending?.degreeLabel ?? member.degreeLabel) : degreeLabel,
+      currentFullName: member.fullName,
+      currentPhone: member.phone,
+      currentEmail: member.email,
       currentPhotoUrl: member.photoUrl,
       currentPositionTitle: member.positionTitle,
       currentDegreeLabel: member.degreeLabel
@@ -144,10 +169,13 @@ export class UnionMemberProfileChangeRequestsService {
 
   async approve(id: string, actorUserId: string, reviewNote?: string): Promise<UnionMemberProfileChangeRequestDto> {
     const row = await this.findPendingOrThrow(id);
+    const trackedContact = row.currentFullName != null || row.fullName != null;
     await this.prisma.$transaction([
       this.prisma.unionMember.update({
         where: { id: row.memberId },
         data: {
+          ...(trackedContact && row.fullName ? { fullName: row.fullName } : {}),
+          ...(trackedContact ? { phone: row.phone, email: row.email } : {}),
           photoUrl: row.photoUrl,
           positionTitle: row.positionTitle,
           degreeLabel: row.degreeLabel

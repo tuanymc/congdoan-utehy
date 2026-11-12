@@ -3,6 +3,21 @@ import { IsOptional, IsString, Matches, ValidateIf } from "class-validator";
 import type { SubmitUnionMemberProfileChangeRequest } from "@congdoan/types";
 
 export class SubmitProfileChangeDto implements SubmitUnionMemberProfileChangeRequest {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  email?: string;
+
   @ApiPropertyOptional({ example: "/upload/images/member-uploads/xxx.jpg" })
   @IsOptional()
   @ValidateIf((_, value) => typeof value === "string" && value.trim() !== "")

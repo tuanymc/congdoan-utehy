@@ -27,15 +27,16 @@ const memberWithProfile = Prisma.validator<Prisma.UnionMemberDefaultArgs>()({
 });
 type MemberWithProfile = Prisma.UnionMemberGetPayload<typeof memberWithProfile>;
 
-function toDto(m: MemberWithRelations): UnionMemberListItemDto {
+function toDto(m: MemberWithRelations, includeContact = true): UnionMemberListItemDto {
   return {
     id: m.id,
     fullName: m.fullName,
     photoUrl: m.photoUrl,
     degreeLabel: m.degreeLabel,
     positionTitle: m.positionTitle,
-    phone: m.phone,
-    email: m.email,
+    phone: includeContact ? m.phone : null,
+    email: includeContact ? m.email : null,
+    contactVisible: includeContact,
     isPublic: m.isPublic,
     sortOrder: m.sortOrder,
     department: m.department ? { id: m.department.id, name: m.department.name, sortOrder: m.department.sortOrder } : null
@@ -208,9 +209,13 @@ export class UnionMembersService {
     private readonly profileChanges: UnionMemberProfileChangeRequestsService
   ) {}
 
-  /** Công khai — CHỈ trả công đoàn viên isPublic=true (khớp NHANVIEN.STATUS=1 ở web cũ). */
-  async listPublic(query: PaginationQuery & { departmentId?: string }): Promise<PaginatedResult<UnionMemberListItemDto>> {
-    return this.queryList({ ...query, isPublic: true });
+  /** Công khai — CHỈ trả công đoàn viên isPublic=true (khớp NHANVIEN.STATUS=1 ở web cũ).
+   * includeContact = đã đăng nhập: mới trả SĐT/email. */
+  async listPublic(
+    query: PaginationQuery & { departmentId?: string },
+    includeContact = false
+  ): Promise<PaginatedResult<UnionMemberListItemDto>> {
+    return this.queryList({ ...query, isPublic: true }, includeContact);
   }
 
   /** Quản trị — trả toàn bộ, không lọc isPublic, để admin có thể bật lại người đang bị ẩn. */
@@ -246,7 +251,8 @@ export class UnionMembersService {
   }
 
   private async queryList(
-    query: PaginationQuery & { departmentId?: string; isPublic?: boolean }
+    query: PaginationQuery & { departmentId?: string; isPublic?: boolean },
+    includeContact = true
   ): Promise<PaginatedResult<UnionMemberListItemDto>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 24;
@@ -267,15 +273,21 @@ export class UnionMembersService {
       })
     ]);
 
-    return { items: members.map(toDto), total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+    return {
+      items: members.map((m) => toDto(m, includeContact)),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize)
+    };
   }
 
   /** Dùng chung cho endpoint công khai VÀ endpoint admin trước đây — CHỈ trả field an toàn công khai,
    * KHÔNG bao giờ include profile (xem findOneForAdmin bên dưới cho màn hình quản trị). */
-  async findOne(id: string): Promise<UnionMemberListItemDto> {
+  async findOne(id: string, includeContact = false): Promise<UnionMemberListItemDto> {
     const member = await this.prisma.unionMember.findUnique({ where: { id }, ...memberWithRelations });
     if (!member) throw new NotFoundException("Không tìm thấy công đoàn viên.");
-    return toDto(member);
+    return toDto(member, includeContact);
   }
 
   /** CHỈ dùng cho AdminUnionMembersController — có kèm hồ sơ nội bộ (profile, có thể null nếu chưa
@@ -404,20 +416,8 @@ export class UnionMembersService {
     return this.profileChanges.toMyDto(member.id);
   }
 
-  /** Self-service cập nhật — CHỈ họ tên/SĐT/email (áp ngay). Ảnh/chức vụ/trình độ qua yêu cầu duyệt. */
+  /** Self-service cập nhật — mọi field chuyển thành yêu cầu chờ duyệt, không ghi thẳng danh bạ. */
   async updateMyUnionMember(userId: string, dto: UpdateMyUnionMemberDto): Promise<MyUnionMemberDto> {
-    const existing = await this.prisma.unionMember.findFirst({ where: { userId }, select: { id: true } });
-    if (!existing) {
-      throw new NotFoundException("Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ quản trị viên.");
-    }
-    await this.prisma.unionMember.update({
-      where: { id: existing.id },
-      data: {
-        fullName: dto.fullName,
-        phone: dto.phone,
-        email: dto.email
-      }
-    });
-    return this.profileChanges.toMyDto(existing.id);
+    return this.profileChanges.submit(userId, dto);
   }
 }

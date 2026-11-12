@@ -5,7 +5,6 @@ import type {
   ChangePasswordRequest,
   MyUnionMemberDto,
   SubmitUnionMemberProfileChangeRequest,
-  UpdateMyUnionMemberRequest,
   UploadImageResponseDto
 } from "@congdoan/types";
 import {
@@ -113,8 +112,7 @@ function FieldMessage({ error, success }: { error: string | null; success: strin
   return null;
 }
 
-/** Hồ sơ công đoàn viên liên kết với tài khoản — tự sửa họ tên/SĐT/email ngay; ảnh/chức vụ/trình độ
- * gửi yêu cầu để Văn phòng Công đoàn duyệt. 404 = chưa liên kết, hiện hướng dẫn thay vì lỗi trắng. */
+/** Hồ sơ công đoàn viên — mọi thay đổi gửi yêu cầu để Văn phòng Công đoàn duyệt. */
 function ProfilePanel({
   member,
   notLinked,
@@ -128,36 +126,6 @@ function ProfilePanel({
   loadError: string | null;
   onUpdated: (member: MyUnionMemberDto) => void;
 }) {
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!member) return;
-    setFullName(member.fullName);
-    setPhone(member.phone ?? "");
-    setEmail(member.email ?? "");
-  }, [member]);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setSuccessMessage(null);
-    setIsSaving(true);
-    try {
-      const payload: UpdateMyUnionMemberRequest = { fullName, phone, email };
-      const updated = await apiFetch<MyUnionMemberDto>("/me/union-member", { method: "PATCH", body: payload });
-      onUpdated(updated);
-      setSuccessMessage("Đã lưu thông tin liên hệ.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể lưu thông tin. Vui lòng thử lại.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
 
   if (isLoading) {
     return (
@@ -206,8 +174,8 @@ function ProfilePanel({
       <CardHeader>
         <CardTitle className="text-lg">Hồ sơ công đoàn viên</CardTitle>
         <CardDescription>
-          Họ tên và liên hệ lưu ngay. Ảnh đại diện, chức vụ và trình độ gửi đến Văn phòng Công đoàn để duyệt trước
-          khi hiện trên danh bạ.
+          Mọi thay đổi (họ tên, liên hệ, ảnh, chức vụ, trình độ) gửi đến Văn phòng Công đoàn để duyệt trước khi
+          hiện trên danh bạ. Công đoàn bộ phận do Văn phòng cập nhật.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -220,71 +188,17 @@ function ProfilePanel({
           </div>
           <div className="rounded-lg border bg-muted/40 px-3 py-3">
             <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <UserRound className="size-3.5" /> Chức vụ
+              <UserRound className="size-3.5" /> Chức vụ đang hiển thị
             </dt>
             <dd className="mt-1 text-sm font-medium">{member?.positionTitle ?? "—"}</dd>
           </div>
           <div className="rounded-lg border bg-muted/40 px-3 py-3">
             <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <GraduationCap className="size-3.5" /> Trình độ
+              <GraduationCap className="size-3.5" /> Trình độ đang hiển thị
             </dt>
             <dd className="mt-1 text-sm font-medium">{member?.degreeLabel ?? "—"}</dd>
           </div>
         </dl>
-
-        <Separator />
-
-        <form className="grid gap-4 sm:grid-cols-2" onSubmit={(event) => void handleSubmit(event)}>
-          <div className="space-y-1.5 sm:col-span-2">
-            <label htmlFor="member-fullName" className="text-sm font-medium">
-              Họ và tên
-            </label>
-            <input
-              id="member-fullName"
-              type="text"
-              required
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
-              className={inputClassName}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="member-phone" className="text-sm font-medium">
-              Số điện thoại
-            </label>
-            <input
-              id="member-phone"
-              type="tel"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className={inputClassName}
-              placeholder="Số di động liên hệ"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="member-email" className="text-sm font-medium">
-              Email liên hệ
-            </label>
-            <input
-              id="member-email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className={inputClassName}
-              placeholder="email@hyute.edu.vn"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <FieldMessage error={error} success={successMessage} />
-          </div>
-
-          <div className="sm:col-span-2">
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Đang lưu..." : "Lưu thông tin liên hệ"}
-            </Button>
-          </div>
-        </form>
 
         <Separator />
 
@@ -302,6 +216,9 @@ function ProfileChangeSection({
   onUpdated: (member: MyUnionMemberDto) => void;
 }) {
   const pending = member.pendingProfileChange;
+  const [fullName, setFullName] = useState(pending?.fullName ?? member.fullName);
+  const [phone, setPhone] = useState(pending?.phone ?? member.phone ?? "");
+  const [email, setEmail] = useState(pending?.email ?? member.email ?? "");
   const [photoUrl, setPhotoUrl] = useState(pending?.photoUrl ?? member.photoUrl ?? "");
   const [positionTitle, setPositionTitle] = useState(pending?.positionTitle ?? member.positionTitle ?? "");
   const [degreeLabel, setDegreeLabel] = useState(pending?.degreeLabel ?? member.degreeLabel ?? "");
@@ -312,6 +229,9 @@ function ProfileChangeSection({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    setFullName(pending?.fullName ?? member.fullName);
+    setPhone(pending?.phone ?? member.phone ?? "");
+    setEmail(pending?.email ?? member.email ?? "");
     setPhotoUrl(pending?.photoUrl ?? member.photoUrl ?? "");
     setPositionTitle(pending?.positionTitle ?? member.positionTitle ?? "");
     setDegreeLabel(pending?.degreeLabel ?? member.degreeLabel ?? "");
@@ -343,6 +263,9 @@ function ProfileChangeSection({
     setIsSaving(true);
     try {
       const payload: SubmitUnionMemberProfileChangeRequest = {
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
         photoUrl: photoUrl.trim() || undefined,
         positionTitle: positionTitle.trim(),
         degreeLabel: degreeLabel.trim()
@@ -382,9 +305,9 @@ function ProfileChangeSection({
   return (
     <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
       <div>
-        <h3 className="text-sm font-semibold">Ảnh, chức vụ và trình độ</h3>
+        <h3 className="text-sm font-semibold">Cập nhật hồ sơ</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Thay đổi các mục này sẽ chờ duyệt. Công đoàn bộ phận vẫn do Văn phòng Công đoàn cập nhật.
+          Gửi yêu cầu duyệt. Thông tin chỉ lên danh bạ sau khi Văn phòng Công đoàn xác nhận.
         </p>
       </div>
 
@@ -397,12 +320,15 @@ function ProfileChangeSection({
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="flex items-center gap-4">
-          <Avatar className="size-20 shrink-0">
-            {previewUrl ? <AvatarImage src={previewUrl} alt={member.fullName} /> : null}
-            <AvatarFallback className="bg-primary text-lg text-primary-foreground">
-              {getInitials(member.fullName)}
-            </AvatarFallback>
-          </Avatar>
+          <div className="h-24 w-[4.5rem] overflow-hidden rounded-lg bg-muted shadow-sm ring-1 ring-primary/15 sm:h-28 sm:w-[5.25rem]">
+            {previewUrl ? (
+              <img src={previewUrl} alt={member.fullName} className="h-full w-full object-cover object-top" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-primary/10 text-lg font-semibold text-primary">
+                {getInitials(member.fullName)}
+              </div>
+            )}
+          </div>
           <div className="space-y-2">
             <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary hover:underline">
               <ImagePlus className="size-4" />
@@ -415,12 +341,51 @@ function ProfileChangeSection({
                 onChange={(event) => void handlePhotoChange(event)}
               />
             </label>
-            <p className="text-xs text-muted-foreground">JPEG, PNG, GIF hoặc WebP — tối đa 5MB.</p>
+            <p className="text-xs text-muted-foreground">JPEG, PNG, GIF hoặc WebP — tối đa 5MB. Ảnh chữ nhật, rõ mặt.</p>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <label htmlFor="member-fullName" className="text-sm font-medium">
+            Họ và tên
+          </label>
+          <input
+            id="member-fullName"
+            type="text"
+            required
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            className={inputClassName}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="member-phone" className="text-sm font-medium">
+            Số điện thoại
+          </label>
+          <input
+            id="member-phone"
+            type="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            className={inputClassName}
+            placeholder="Số di động liên hệ"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="member-email" className="text-sm font-medium">
+            Email liên hệ
+          </label>
+          <input
+            id="member-email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className={inputClassName}
+            placeholder="email@hyute.edu.vn"
+          />
+        </div>
         <div className="space-y-1.5">
           <label htmlFor="member-position" className="text-sm font-medium">
             Chức vụ

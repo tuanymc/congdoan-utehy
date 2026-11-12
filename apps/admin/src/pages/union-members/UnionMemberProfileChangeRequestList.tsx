@@ -98,7 +98,8 @@ export function UnionMemberProfileChangeRequestList() {
         <div>
           <h1 className="text-2xl font-semibold">Duyệt hồ sơ đoàn viên</h1>
           <p className="text-muted-foreground">
-            Yêu cầu đổi ảnh, chức vụ, trình độ từ cổng đoàn viên. Duyệt xong mới hiện trên danh bạ công khai.
+            Yêu cầu đổi hồ sơ từ cổng đoàn viên (họ tên, liên hệ, ảnh, chức vụ, trình độ). Duyệt xong mới hiện trên
+            danh bạ.
           </p>
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -198,6 +199,9 @@ export function UnionMemberProfileChangeRequestList() {
                               )}
                             </div>
                           </div>
+                          <FieldDiff label="Họ và tên" current={item.currentFullName} proposed={item.fullName} />
+                          <FieldDiff label="Số điện thoại" current={item.currentPhone} proposed={item.phone} />
+                          <FieldDiff label="Email" current={item.currentEmail} proposed={item.email} />
                           <FieldDiff label="Chức vụ" current={item.currentPositionTitle} proposed={item.positionTitle} />
                           <FieldDiff label="Trình độ" current={item.currentDegreeLabel} proposed={item.degreeLabel} />
                           {item.reviewedByName ? (

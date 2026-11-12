@@ -495,9 +495,10 @@ model UnionMember {
   @@map("union_members")
 }
 
-/// Yêu cầu đoàn viên tự cập nhật ảnh đại diện, chức vụ, trình độ trên cổng /cong-doan-vien.
-/// Không ghi thẳng vào UnionMember — Văn phòng Công đoàn duyệt (APPROVED) rồi mới áp vào danh bạ
-/// công khai. String status (không Prisma enum) vì SQL Server connector không hỗ trợ native enum.
+/// Yêu cầu đoàn viên tự cập nhật hồ sơ (họ tên, SĐT, email, ảnh, chức vụ, trình độ) trên cổng
+/// /cong-doan-vien. Không ghi thẳng vào UnionMember — Văn phòng Công đoàn duyệt (APPROVED) rồi mới
+/// áp vào danh bạ công khai. String status (không Prisma enum) vì SQL Server connector không hỗ trợ
+/// native enum.
 model UnionMemberProfileChangeRequest {
   id       String @id @default(uuid())
   memberId String
@@ -508,11 +509,17 @@ model UnionMemberProfileChangeRequest {
   requestedByUserId String
   requestedBy       User   @relation("ProfileChangeRequestedBy", fields: [requestedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  /// Giá trị đề xuất (form gửi cả 3 field; admin so với snapshot hiện tại lúc gửi).
+  /// Giá trị đề xuất (form gửi đủ field tự sửa; admin so với snapshot hiện tại lúc gửi).
+  fullName      String?
+  phone         String?
+  email         String?
   photoUrl      String?
   positionTitle String?
   degreeLabel   String?
 
+  currentFullName      String?
+  currentPhone         String?
+  currentEmail         String?
   currentPhotoUrl      String?
   currentPositionTitle String?
   currentDegreeLabel   String?
