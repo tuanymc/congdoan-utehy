@@ -15,6 +15,7 @@ import { AuditLogService } from "../../common/audit-log.service";
 import { CreateUnionMemberDto } from "./dto/create-union-member.dto";
 import { UpdateUnionMemberDto } from "./dto/update-union-member.dto";
 import { UpdateMyUnionMemberDto } from "./dto/update-my-union-member.dto";
+import { UnionMemberProfileChangeRequestsService } from "./union-member-profile-change-requests.service";
 
 const memberWithRelations = Prisma.validator<Prisma.UnionMemberDefaultArgs>()({
   include: { department: true }
@@ -41,20 +42,6 @@ function toDto(m: MemberWithRelations): UnionMemberListItemDto {
   };
 }
 
-/** Dùng cho self-service "/cong-doan-vien" — CHỈ field an toàn tự sửa, không có isPublic/sortOrder
- * (admin-managed) và không bao giờ có profile nội bộ. */
-function toMyDto(m: MemberWithRelations): MyUnionMemberDto {
-  return {
-    id: m.id,
-    fullName: m.fullName,
-    photoUrl: m.photoUrl,
-    degreeLabel: m.degreeLabel,
-    positionTitle: m.positionTitle,
-    phone: m.phone,
-    email: m.email,
-    department: m.department ? { id: m.department.id, name: m.department.name, sortOrder: m.department.sortOrder } : null
-  };
-}
 
 /** ISO string hoặc null — dùng cho mọi field DateTime? của UnionMemberProfile khi map ra DTO. */
 function toIso(d: Date | null): string | null {
@@ -217,7 +204,8 @@ function toProfileUpdateData(
 export class UnionMembersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditLog: AuditLogService
+    private readonly auditLog: AuditLogService,
+    private readonly profileChanges: UnionMemberProfileChangeRequestsService
   ) {}
 
   /** Công khai — CHỈ trả công đoàn viên isPublic=true (khớp NHANVIEN.STATUS=1 ở web cũ). */
@@ -399,37 +387,37 @@ export class UnionMembersService {
 
   async remove(id: string, actorUserId: string): Promise<void> {
     await this.findOne(id);
-    await this.prisma.unionMember.delete({ where: { id } });
+    await this.prisma.$transaction([
+      this.prisma.unionMemberProfileChangeRequest.deleteMany({ where: { memberId: id } }),
+      this.prisma.unionMember.delete({ where: { id } })
+    ]);
     await this.auditLog.record({ actorUserId, action: "delete", entityType: "UnionMember", entityId: id });
   }
 
   /** Self-service — công đoàn viên tự xem thông tin của mình ở "/cong-doan-vien", tra theo userId liên
    * kết (xem UnionMember.userId). KHÔNG bao giờ trả hồ sơ nội bộ (profile). */
   async findMyUnionMember(userId: string): Promise<MyUnionMemberDto> {
-    const member = await this.prisma.unionMember.findFirst({ where: { userId }, ...memberWithRelations });
+    const member = await this.prisma.unionMember.findFirst({ where: { userId }, select: { id: true } });
     if (!member) {
       throw new NotFoundException("Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ quản trị viên.");
     }
-    return toMyDto(member);
+    return this.profileChanges.toMyDto(member.id);
   }
 
-  /** Self-service cập nhật — CHỈ 4 field an toàn (xem UpdateMyUnionMemberDto), không đụng được tới
-   * profile/isPublic/sortOrder/department (admin-only). */
+  /** Self-service cập nhật — CHỈ họ tên/SĐT/email (áp ngay). Ảnh/chức vụ/trình độ qua yêu cầu duyệt. */
   async updateMyUnionMember(userId: string, dto: UpdateMyUnionMemberDto): Promise<MyUnionMemberDto> {
     const existing = await this.prisma.unionMember.findFirst({ where: { userId }, select: { id: true } });
     if (!existing) {
       throw new NotFoundException("Tài khoản của bạn chưa được liên kết với hồ sơ công đoàn viên nào. Vui lòng liên hệ quản trị viên.");
     }
-    const member = await this.prisma.unionMember.update({
+    await this.prisma.unionMember.update({
       where: { id: existing.id },
       data: {
         fullName: dto.fullName,
         phone: dto.phone,
-        email: dto.email,
-        photoUrl: dto.photoUrl
-      },
-      ...memberWithRelations
+        email: dto.email
+      }
     });
-    return toMyDto(member);
+    return this.profileChanges.toMyDto(existing.id);
   }
 }

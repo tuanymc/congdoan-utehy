@@ -63,7 +63,8 @@ type ResourceName =
   | "public-service-links"
   | "public-service-notices"
   | "public-service-support-requests"
-  | "legal-education-campaigns";
+  | "legal-education-campaigns"
+  | "union-member-profile-change-requests";
 
 /** Resource nhỏ, không phân trang ở BE — getList trả về toàn bộ mảng (giống "categories"/"document-types"). */
 const UNPAGINATED_RESOURCES: ResourceName[] = [
@@ -80,7 +81,8 @@ const UNPAGINATED_RESOURCES: ResourceName[] = [
   "public-service-links",
   "public-service-notices",
   "public-service-support-requests",
-  "legal-education-campaigns"
+  "legal-education-campaigns",
+  "union-member-profile-change-requests"
 ];
 
 interface ResourcePaths {
@@ -239,6 +241,13 @@ const RESOURCE_PATHS: Record<ResourceName, ResourcePaths> = {
     create: "/admin/legal-education/campaigns",
     update: (id) => `/admin/legal-education/campaigns/${id}`,
     remove: (id) => `/admin/legal-education/campaigns/${id}`
+  },
+  "union-member-profile-change-requests": {
+    list: "/admin/union-member-profile-change-requests",
+    one: (id) => `/admin/union-member-profile-change-requests/${id}`,
+    create: "/admin/union-member-profile-change-requests",
+    update: (id) => `/admin/union-member-profile-change-requests/${id}`,
+    remove: (id) => `/admin/union-member-profile-change-requests/${id}`
   }
 };
 

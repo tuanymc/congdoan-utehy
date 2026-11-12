@@ -43,6 +43,7 @@ const ALLOWED_DOCUMENT_EXTS = new Set([".pdf", ".doc", ".docx"]);
 
 /** Thư mục con dưới UPLOAD_IMAGES_DIR — tách ảnh upload mới khỏi cây ảnh nhập từ web cũ. */
 const ADMIN_UPLOADS_SUBDIR = "admin-uploads";
+const MEMBER_UPLOADS_SUBDIR = "member-uploads";
 const LEGAL_FILES_SUBDIR = "legal-education";
 
 function sanitizeFileNameForDisk(name: string): string {
@@ -64,7 +65,7 @@ export class UploadsService {
     join(this.uploadImagesDir, "..", LEGAL_FILES_SUBDIR)
   );
 
-  saveImage(file: UploadedImageFile | undefined): UploadImageResponseDto {
+  saveImage(file: UploadedImageFile | undefined, subdir: string = ADMIN_UPLOADS_SUBDIR): UploadImageResponseDto {
     if (!file) {
       throw new BadRequestException("Chưa chọn ảnh để tải lên.");
     }
@@ -81,14 +82,19 @@ export class UploadsService {
     const baseName = sanitizeFileNameForDisk(file.originalname.replace(/\.[^.]+$/, ""));
     const diskName = `${randomUUID()}-${baseName}${ext === ".jpeg" ? ".jpg" : ext}`;
 
-    const targetDir = join(this.uploadImagesDir, ADMIN_UPLOADS_SUBDIR);
+    const targetDir = join(this.uploadImagesDir, subdir);
     mkdirSync(targetDir, { recursive: true });
     writeFileSync(join(targetDir, diskName), file.buffer);
 
     return {
-      url: `/upload/images/${ADMIN_UPLOADS_SUBDIR}/${diskName}`,
+      url: `/upload/images/${subdir}/${diskName}`,
       fileName: file.originalname
     };
+  }
+
+  /** Ảnh đoàn viên tự tải trên cổng /cong-doan-vien — thư mục riêng, chưa ghi vào danh bạ cho tới khi admin duyệt. */
+  saveMemberImage(file: UploadedImageFile | undefined): UploadImageResponseDto {
+    return this.saveImage(file, MEMBER_UPLOADS_SUBDIR);
   }
 
   saveDocument(file: UploadedDocumentFile | undefined): UploadFileResponseDto {

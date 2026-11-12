@@ -34,6 +34,7 @@ import { UnionDepartmentList } from "./pages/union-departments/UnionDepartmentLi
 import { UnionDepartmentForm } from "./pages/union-departments/UnionDepartmentForm";
 import { UnionMemberList } from "./pages/union-members/UnionMemberList";
 import { UnionMemberForm } from "./pages/union-members/UnionMemberForm";
+import { UnionMemberProfileChangeRequestList } from "./pages/union-members/UnionMemberProfileChangeRequestList";
 import { UnionTermList } from "./pages/union-terms/UnionTermList";
 import { UnionTermForm } from "./pages/union-terms/UnionTermForm";
 import { UnionCommitteeMemberList } from "./pages/union-committee-members/UnionCommitteeMemberList";
@@ -139,6 +140,11 @@ export function App() {
             create: "/union-members/create",
             edit: "/union-members/edit/:id",
             meta: { label: "Công đoàn viên" }
+          },
+          {
+            name: "union-member-profile-change-requests",
+            list: "/union-member-profile-change-requests",
+            meta: { label: "Duyệt hồ sơ đoàn viên" }
           },
           {
             name: "union-terms",
@@ -343,6 +349,15 @@ export function App() {
               <Route path="create" element={<UnionMemberForm mode="create" />} />
               <Route path="edit/:id" element={<UnionMemberForm mode="edit" />} />
             </Route>
+
+            <Route
+              path="/union-member-profile-change-requests"
+              element={
+                <RequireDocumentAccess>
+                  <UnionMemberProfileChangeRequestList />
+                </RequireDocumentAccess>
+              }
+            />
 
             <Route
               path="/union-terms"

@@ -5,6 +5,7 @@ import {
   BarChart3,
   BellRing,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   FolderTree,
@@ -59,6 +60,7 @@ const SITE_CONTENT_NAV_ITEMS: NavItem[] = [
 
 const UNION_NAV_ITEMS: NavItem[] = [
   { to: "/union-members", label: "Công đoàn viên", icon: UsersRound },
+  { to: "/union-member-profile-change-requests", label: "Duyệt hồ sơ đoàn viên", icon: ClipboardCheck },
   { to: "/union-departments", label: "Công đoàn bộ phận", icon: FolderTree },
   { to: "/union-terms", label: "Nhiệm kỳ Ban chấp hành", icon: History },
   { to: "/union-committee-members", label: "Ban chấp hành", icon: Landmark }

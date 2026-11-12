@@ -219,6 +219,45 @@ export interface CreateUnionMemberRequest {
 
 export interface UpdateUnionMemberRequest extends Partial<CreateUnionMemberRequest> {}
 
+export const UNION_MEMBER_PROFILE_CHANGE_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
+export type UnionMemberProfileChangeStatus = (typeof UNION_MEMBER_PROFILE_CHANGE_STATUSES)[number];
+
+export const UNION_MEMBER_PROFILE_CHANGE_STATUS_LABELS: Record<UnionMemberProfileChangeStatus, string> = {
+  PENDING: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Từ chối"
+};
+
+/** Yêu cầu đổi ảnh / chức vụ / trình độ — đoàn viên gửi, admin duyệt rồi mới ghi vào danh bạ. */
+export interface UnionMemberProfileChangeRequestDto {
+  id: string;
+  memberId: string;
+  memberFullName: string;
+  memberLegacyCode: string | null;
+  departmentName: string | null;
+  photoUrl: string | null;
+  positionTitle: string | null;
+  degreeLabel: string | null;
+  currentPhotoUrl: string | null;
+  currentPositionTitle: string | null;
+  currentDegreeLabel: string | null;
+  status: UnionMemberProfileChangeStatus;
+  reviewNote: string | null;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface SubmitUnionMemberProfileChangeRequest {
+  photoUrl?: string;
+  positionTitle?: string;
+  degreeLabel?: string;
+}
+
+export interface ReviewUnionMemberProfileChangeRequest {
+  reviewNote?: string;
+}
+
 /** Thông tin công đoàn viên tự xem/sửa ở "/cong-doan-vien" — CHỈ field an toàn tự sửa, không có toàn
  * bộ hồ sơ nội bộ (xem UnionMemberProfileDto, chỉ admin mới đụng tới). */
 export interface MyUnionMemberDto {
@@ -230,15 +269,15 @@ export interface MyUnionMemberDto {
   phone: string | null;
   email: string | null;
   department: UnionDepartmentDto | null;
+  pendingProfileChange: UnionMemberProfileChangeRequestDto | null;
 }
 
-/** Payload tự cập nhật thông tin cá nhân — công đoàn viên CHỈ được sửa 4 field này, không đụng được
- * tới degreeLabel/positionTitle/department/isPublic/sortOrder (do admin quản lý). */
+/** Payload tự cập nhật thông tin cá nhân — công đoàn viên CHỈ được sửa họ tên/SĐT/email ngay.
+ * Ảnh, chức vụ, trình độ gửi qua SubmitUnionMemberProfileChangeRequest để admin duyệt. */
 export interface UpdateMyUnionMemberRequest {
   fullName?: string;
   phone?: string;
   email?: string;
-  photoUrl?: string;
 }
 
 /** 1 dòng bị lỗi khi import Excel — 1-indexed theo số dòng thật trong file (dòng 1 là header, nên dòng

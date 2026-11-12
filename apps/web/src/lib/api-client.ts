@@ -242,3 +242,57 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   return payload as T;
 }
+
+/** Upload multipart — không JSON.stringify, để trình duyệt tự gắn boundary. Dùng cho ảnh hồ sơ đoàn viên. */
+export async function apiFetchUpload<T>(path: string, formData: FormData, options: { _isRetry?: boolean } = {}): Promise<T> {
+  const headers = new Headers();
+  if (currentAccessToken) {
+    headers.set("Authorization", `Bearer ${currentAccessToken}`);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: formData });
+  } catch {
+    throw new Error(FALLBACK_ERROR_MESSAGE);
+  }
+
+  if (response.status === 401 && !options._isRetry && getStoredRefreshToken()) {
+    try {
+      await refreshAccessToken();
+    } catch (refreshError) {
+      clearSessionTokens();
+      if (refreshError instanceof ApiError) throw refreshError;
+      throw new ApiError({
+        statusCode: 401,
+        errorCode: "AUTH_SESSION_EXPIRED",
+        message: SESSION_EXPIRED_MESSAGE,
+        timestamp: new Date().toISOString(),
+        path
+      });
+    }
+    return apiFetchUpload<T>(path, formData, { _isRetry: true });
+  }
+
+  const rawText = await response.text();
+  let payload: unknown = null;
+  if (rawText) {
+    try {
+      payload = JSON.parse(rawText);
+    } catch {
+      payload = null;
+    }
+  }
+
+  if (!response.ok) {
+    throw toApiError(response.status, payload as Partial<ApiErrorBody> | null, path);
+  }
+
+  if (payload === null && (response.status === 201 || response.status === 204 || response.status === 200)) {
+    return undefined as T;
+  }
+  if (payload === null) {
+    throw new Error(`Máy chủ trả về dữ liệu không hợp lệ cho ${path} (response ok nhưng thiếu nội dung JSON).`);
+  }
+  return payload as T;
+}

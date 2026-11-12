@@ -59,6 +59,11 @@ model User {
   /// Mã dự thi chính thức đã gửi email — một mã cho mỗi đoàn viên trong một bài thi.
   legalExamEntryCodes LegalExamEntryCode[]
 
+  /// Yêu cầu đổi ảnh/chức vụ/trình độ do chính tài khoản này gửi (cổng /cong-doan-vien).
+  profileChangeRequestsSubmitted UnionMemberProfileChangeRequest[] @relation("ProfileChangeRequestedBy")
+  /// Yêu cầu đổi hồ sơ mà tài khoản này đã duyệt/từ chối (admin/UNION_CLERK).
+  profileChangeRequestsReviewed UnionMemberProfileChangeRequest[] @relation("ProfileChangeReviewedBy")
+
   /// Danh sách quản trị xếp createdAt giảm dần rồi lấy 10 dòng. Không có index thì SQL Server
   /// sort cả bảng users (mỗi công đoàn viên một tài khoản).
   @@index([createdAt(sort: Desc)])
@@ -481,10 +486,51 @@ model UnionMember {
   /// đoàn viên có thể xuất hiện ở nhiều nhiệm kỳ/nhiều bộ phận khác nhau.
   committeeMemberships UnionCommitteeMember[]
 
+  /// Yêu cầu tự cập nhật ảnh/chức vụ/trình độ — chờ admin duyệt rồi mới ghi vào các field công khai.
+  profileChangeRequests UnionMemberProfileChangeRequest[]
+
   @@index([departmentId])
   @@index([legacyCode])
   @@index([userId])
   @@map("union_members")
+}
+
+/// Yêu cầu đoàn viên tự cập nhật ảnh đại diện, chức vụ, trình độ trên cổng /cong-doan-vien.
+/// Không ghi thẳng vào UnionMember — Văn phòng Công đoàn duyệt (APPROVED) rồi mới áp vào danh bạ
+/// công khai. String status (không Prisma enum) vì SQL Server connector không hỗ trợ native enum.
+model UnionMemberProfileChangeRequest {
+  id       String @id @default(uuid())
+  memberId String
+  /// SQL Server không cho nhiều đường cascade về cùng bảng (User → UnionMember → request, và User →
+  /// request). Mọi FK NoAction; UnionMembersService.remove xoá request trước khi xoá đoàn viên.
+  member   UnionMember @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  requestedByUserId String
+  requestedBy       User   @relation("ProfileChangeRequestedBy", fields: [requestedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  /// Giá trị đề xuất (form gửi cả 3 field; admin so với snapshot hiện tại lúc gửi).
+  photoUrl      String?
+  positionTitle String?
+  degreeLabel   String?
+
+  currentPhotoUrl      String?
+  currentPositionTitle String?
+  currentDegreeLabel   String?
+
+  /// PENDING | APPROVED | REJECTED
+  status     String  @default("PENDING") @db.VarChar(20)
+  reviewNote String? @db.NVarChar(Max)
+
+  reviewedByUserId String?
+  reviewedBy       User?     @relation("ProfileChangeReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reviewedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId, status])
+  @@index([status, createdAt])
+  @@map("union_member_profile_change_requests")
 }
 
 /// Hồ sơ nội bộ đầy đủ của công đoàn viên — bổ sung phần còn lại của NHANVIEN (~90 cột gốc) mà

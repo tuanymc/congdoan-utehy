@@ -1,6 +1,13 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { AuthUser, ChangePasswordRequest, MyUnionMemberDto, UpdateMyUnionMemberRequest } from "@congdoan/types";
+import type {
+  AuthUser,
+  ChangePasswordRequest,
+  MyUnionMemberDto,
+  SubmitUnionMemberProfileChangeRequest,
+  UpdateMyUnionMemberRequest,
+  UploadImageResponseDto
+} from "@congdoan/types";
 import {
   ArrowRight,
   BookOpen,
@@ -10,6 +17,7 @@ import {
   FileText,
   GraduationCap,
   HandHeart,
+  ImagePlus,
   Lock,
   Mail,
   Phone,
@@ -18,7 +26,7 @@ import {
   UserRound
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, apiFetchUpload, ApiError } from "@/lib/api-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -105,8 +113,8 @@ function FieldMessage({ error, success }: { error: string | null; success: strin
   return null;
 }
 
-/** Hồ sơ công đoàn viên liên kết với tài khoản — tự sửa họ tên/SĐT/email; bộ phận, chức vụ, trình độ
- * chỉ xem (admin quản lý). 404 = chưa liên kết, hiện hướng dẫn thay vì lỗi trắng. */
+/** Hồ sơ công đoàn viên liên kết với tài khoản — tự sửa họ tên/SĐT/email ngay; ảnh/chức vụ/trình độ
+ * gửi yêu cầu để Văn phòng Công đoàn duyệt. 404 = chưa liên kết, hiện hướng dẫn thay vì lỗi trắng. */
 function ProfilePanel({
   member,
   notLinked,
@@ -198,8 +206,8 @@ function ProfilePanel({
       <CardHeader>
         <CardTitle className="text-lg">Hồ sơ công đoàn viên</CardTitle>
         <CardDescription>
-          Bạn có thể cập nhật họ tên và thông tin liên hệ. Chức vụ, trình độ và công đoàn bộ phận do Văn phòng
-          Công đoàn quản lý.
+          Họ tên và liên hệ lưu ngay. Ảnh đại diện, chức vụ và trình độ gửi đến Văn phòng Công đoàn để duyệt trước
+          khi hiện trên danh bạ.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -277,8 +285,183 @@ function ProfilePanel({
             </Button>
           </div>
         </form>
+
+        <Separator />
+
+        {member ? <ProfileChangeSection member={member} onUpdated={onUpdated} /> : null}
       </CardContent>
     </Card>
+  );
+}
+
+function ProfileChangeSection({
+  member,
+  onUpdated
+}: {
+  member: MyUnionMemberDto;
+  onUpdated: (member: MyUnionMemberDto) => void;
+}) {
+  const pending = member.pendingProfileChange;
+  const [photoUrl, setPhotoUrl] = useState(pending?.photoUrl ?? member.photoUrl ?? "");
+  const [positionTitle, setPositionTitle] = useState(pending?.positionTitle ?? member.positionTitle ?? "");
+  const [degreeLabel, setDegreeLabel] = useState(pending?.degreeLabel ?? member.degreeLabel ?? "");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPhotoUrl(pending?.photoUrl ?? member.photoUrl ?? "");
+    setPositionTitle(pending?.positionTitle ?? member.positionTitle ?? "");
+    setDegreeLabel(pending?.degreeLabel ?? member.degreeLabel ?? "");
+  }, [member, pending]);
+
+  async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError(null);
+    setSuccessMessage(null);
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await apiFetchUpload<UploadImageResponseDto>("/me/union-member/photo", formData);
+      setPhotoUrl(result.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể tải ảnh lên. Vui lòng thử lại.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setIsSaving(true);
+    try {
+      const payload: SubmitUnionMemberProfileChangeRequest = {
+        photoUrl: photoUrl.trim() || undefined,
+        positionTitle: positionTitle.trim(),
+        degreeLabel: degreeLabel.trim()
+      };
+      const updated = await apiFetch<MyUnionMemberDto>("/me/union-member/profile-change-requests", {
+        method: "POST",
+        body: payload
+      });
+      onUpdated(updated);
+      setSuccessMessage("Đã gửi yêu cầu. Văn phòng Công đoàn sẽ duyệt trước khi cập nhật danh bạ.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể gửi yêu cầu. Vui lòng thử lại.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleCancel() {
+    setError(null);
+    setSuccessMessage(null);
+    setIsCancelling(true);
+    try {
+      const updated = await apiFetch<MyUnionMemberDto>("/me/union-member/profile-change-requests/pending", {
+        method: "DELETE"
+      });
+      onUpdated(updated);
+      setSuccessMessage("Đã huỷ yêu cầu đang chờ duyệt.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể huỷ yêu cầu. Vui lòng thử lại.");
+    } finally {
+      setIsCancelling(false);
+    }
+  }
+
+  const previewUrl = photoUrl || member.photoUrl;
+
+  return (
+    <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+      <div>
+        <h3 className="text-sm font-semibold">Ảnh, chức vụ và trình độ</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Thay đổi các mục này sẽ chờ duyệt. Công đoàn bộ phận vẫn do Văn phòng Công đoàn cập nhật.
+        </p>
+      </div>
+
+      {pending ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Đang có yêu cầu chờ duyệt (gửi {new Date(pending.createdAt).toLocaleString("vi-VN")}). Gửi lại sẽ ghi đè
+          yêu cầu cũ.
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex items-center gap-4">
+          <Avatar className="size-20 shrink-0">
+            {previewUrl ? <AvatarImage src={previewUrl} alt={member.fullName} /> : null}
+            <AvatarFallback className="bg-primary text-lg text-primary-foreground">
+              {getInitials(member.fullName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="space-y-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary hover:underline">
+              <ImagePlus className="size-4" />
+              {isUploading ? "Đang tải ảnh..." : "Chọn ảnh đại diện"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="sr-only"
+                disabled={isUploading}
+                onChange={(event) => void handlePhotoChange(event)}
+              />
+            </label>
+            <p className="text-xs text-muted-foreground">JPEG, PNG, GIF hoặc WebP — tối đa 5MB.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor="member-position" className="text-sm font-medium">
+            Chức vụ
+          </label>
+          <input
+            id="member-position"
+            type="text"
+            value={positionTitle}
+            onChange={(event) => setPositionTitle(event.target.value)}
+            className={inputClassName}
+            placeholder="Ví dụ: Giảng viên, Chuyên viên..."
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="member-degree" className="text-sm font-medium">
+            Trình độ
+          </label>
+          <input
+            id="member-degree"
+            type="text"
+            value={degreeLabel}
+            onChange={(event) => setDegreeLabel(event.target.value)}
+            className={inputClassName}
+            placeholder="Ví dụ: Thạc sĩ, Tiến sĩ..."
+          />
+        </div>
+      </div>
+
+      <FieldMessage error={error} success={successMessage} />
+
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={isSaving || isUploading}>
+          {isSaving ? "Đang gửi..." : pending ? "Gửi lại yêu cầu duyệt" : "Gửi yêu cầu duyệt"}
+        </Button>
+        {pending ? (
+          <Button type="button" variant="outline" disabled={isCancelling} onClick={() => void handleCancel()}>
+            {isCancelling ? "Đang huỷ..." : "Huỷ yêu cầu chờ duyệt"}
+          </Button>
+        ) : null}
+      </div>
+    </form>
   );
 }
 
