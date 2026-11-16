@@ -10,6 +10,14 @@ import { ImagePlus, Pencil, UsersRound } from "lucide-react";
 import { apiFetch, apiFetchUpload } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const inputClassName =
@@ -105,20 +113,24 @@ export function DepartmentMembersPanel({ scope }: { scope: DepartmentMemberScope
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-        {editing ? (
-          <DepartmentMemberEditForm
-            member={editing}
-            onCancel={() => setEditing(null)}
-            onSaved={(updated) => {
-              setEditing(null);
-              setResult((prev) =>
-                prev
-                  ? { ...prev, items: prev.items.map((item) => (item.id === updated.id ? updated : item)) }
-                  : prev
-              );
-            }}
-          />
-        ) : null}
+        <Dialog open={editing !== null} onOpenChange={(open) => { if (!open) setEditing(null); }}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+            {editing ? (
+              <DepartmentMemberEditForm
+                member={editing}
+                onCancel={() => setEditing(null)}
+                onSaved={(updated) => {
+                  setEditing(null);
+                  setResult((prev) =>
+                    prev
+                      ? { ...prev, items: prev.items.map((item) => (item.id === updated.id ? updated : item)) }
+                      : prev
+                  );
+                }}
+              />
+            ) : null}
+          </DialogContent>
+        </Dialog>
 
         {result === null ? (
           <div className="space-y-2">
@@ -221,7 +233,6 @@ function DepartmentMemberEditForm({
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setFullName(member.fullName);
@@ -231,7 +242,6 @@ function DepartmentMemberEditForm({
     setDegreeLabel(member.degreeLabel ?? "");
     setPhotoUrl(member.photoUrl ?? "");
     setError(null);
-    setSuccessMessage(null);
   }, [member]);
 
   async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
@@ -255,7 +265,6 @@ function DepartmentMemberEditForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setSuccessMessage(null);
     setIsSaving(true);
     try {
       const payload: UpdateDepartmentMemberRequest = {
@@ -270,7 +279,6 @@ function DepartmentMemberEditForm({
         method: "PATCH",
         body: payload
       });
-      setSuccessMessage("Đã lưu thông tin đoàn viên.");
       onSaved(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể lưu. Vui lòng thử lại.");
@@ -280,16 +288,14 @@ function DepartmentMemberEditForm({
   }
 
   return (
-    <form className="space-y-4 rounded-lg border bg-muted/20 p-4" onSubmit={(event) => void handleSubmit(event)}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">Sửa hồ sơ: {member.fullName}</h3>
-          <p className="text-xs text-muted-foreground">Công đoàn bộ phận không đổi tại đây.</p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-          Đóng
-        </Button>
-      </div>
+    <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+      <DialogHeader>
+        <DialogTitle>Sửa hồ sơ đoàn viên</DialogTitle>
+        <DialogDescription>
+          {member.fullName}
+          {member.department ? ` · ${member.department.name}` : ""}. Công đoàn bộ phận không đổi tại đây.
+        </DialogDescription>
+      </DialogHeader>
 
       <div className="flex items-center gap-4">
         <div className="h-24 w-[4.5rem] overflow-hidden rounded-lg bg-muted ring-1 ring-primary/15">
@@ -375,16 +381,15 @@ function DepartmentMemberEditForm({
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {successMessage ? <p className="text-sm text-emerald-700">{successMessage}</p> : null}
 
-      <div className="flex flex-wrap gap-2">
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
+          Huỷ
+        </Button>
         <Button type="submit" disabled={isSaving || isUploading}>
           {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Huỷ
-        </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 }
