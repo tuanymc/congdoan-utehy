@@ -152,47 +152,44 @@ export class DepartmentMembersService {
     return departments.map((d) => d.id);
   }
 
+  private addDepartment(
+    byId: Map<string, UnionDepartmentDto>,
+    department: { id: string; name: string; sortOrder: number } | null | undefined
+  ) {
+    if (!department) return;
+    byId.set(department.id, { id: department.id, name: department.name, sortOrder: department.sortOrder });
+  }
+
   private async resolveManagedDepartments(user: JwtAccessPayload): Promise<UnionDepartmentDto[]> {
     const byId = new Map<string, UnionDepartmentDto>();
 
-    const currentTerm =
-      (await this.prisma.unionTerm.findFirst({ where: { isCurrent: true }, select: { id: true } })) ??
-      (await this.prisma.unionTerm.findFirst({
-        orderBy: [{ sortOrder: "desc" }, { startYear: "desc" }],
-        select: { id: true }
-      }));
-
-    if (currentTerm) {
-      const seats = await this.prisma.unionCommitteeMember.findMany({
-        where: {
-          termId: currentTerm.id,
-          departmentId: { not: null },
-          member: { userId: user.sub }
-        },
-        include: { department: true }
-      });
-      for (const seat of seats) {
-        if (!seat.department || !isDepartmentChairTitle(seat.positionTitle)) continue;
-        byId.set(seat.department.id, {
-          id: seat.department.id,
-          name: seat.department.name,
-          sortOrder: seat.department.sortOrder
-        });
-      }
+    const seats = await this.prisma.unionCommitteeMember.findMany({
+      where: {
+        departmentId: { not: null },
+        member: { userId: user.sub }
+      },
+      include: { department: true }
+    });
+    const chairSeats = seats.filter((seat) => seat.department && isDepartmentChairTitle(seat.positionTitle));
+    const currentTermId = (await this.prisma.unionTerm.findFirst({ where: { isCurrent: true }, select: { id: true } }))
+      ?.id;
+    const preferredSeats =
+      currentTermId && chairSeats.some((seat) => seat.termId === currentTermId)
+        ? chairSeats.filter((seat) => seat.termId === currentTermId)
+        : chairSeats;
+    for (const seat of preferredSeats) {
+      this.addDepartment(byId, seat.department);
     }
 
+    const mine = await this.prisma.unionMember.findFirst({
+      where: { userId: user.sub },
+      include: { department: true, profile: true }
+    });
+    if (mine?.department && isDepartmentChairTitle(mine.profile?.unionPosition)) {
+      this.addDepartment(byId, mine.department);
+    }
     if (user.roles.includes("DEPARTMENT_OFFICER")) {
-      const mine = await this.prisma.unionMember.findFirst({
-        where: { userId: user.sub },
-        include: { department: true }
-      });
-      if (mine?.department) {
-        byId.set(mine.department.id, {
-          id: mine.department.id,
-          name: mine.department.name,
-          sortOrder: mine.department.sortOrder
-        });
-      }
+      this.addDepartment(byId, mine?.department);
     }
 
     return [...byId.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "vi"));

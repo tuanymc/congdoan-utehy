@@ -72,7 +72,7 @@ export function DepartmentMembersPanel({ scope }: { scope: DepartmentMemberScope
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <UsersRound className="size-5 text-primary" />
-          Đoàn viên bộ phận
+          Công đoàn bộ phận
         </CardTitle>
         <CardDescription>
           Xem và cập nhật hồ sơ đoàn viên thuộc {departmentLabel}. Không được thêm mới hoặc xoá.

@@ -712,7 +712,7 @@ export function MemberPortalPage() {
               }`}
             >
               <UsersRound className="size-4" />
-              Đoàn viên bộ phận
+              Công đoàn bộ phận
             </button>
           ) : null}
         </div>

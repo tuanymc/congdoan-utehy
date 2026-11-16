@@ -5,11 +5,15 @@ describe("isDepartmentChairTitle", () => {
     expect(isDepartmentChairTitle("Chủ tịch")).toBe(true);
     expect(isDepartmentChairTitle("Chủ tịch Công đoàn bộ phận")).toBe(true);
     expect(isDepartmentChairTitle("CHỦ TỊCH CĐBP")).toBe(true);
+    expect(isDepartmentChairTitle("CT CĐBP")).toBe(true);
+    expect(isDepartmentChairTitle("Tổ trưởng")).toBe(true);
   });
 
   it("loại Phó Chủ tịch", () => {
     expect(isDepartmentChairTitle("Phó Chủ tịch")).toBe(false);
     expect(isDepartmentChairTitle("Phó chủ tịch Công đoàn bộ phận")).toBe(false);
+    expect(isDepartmentChairTitle("PCT CĐBP")).toBe(false);
+    expect(isDepartmentChairTitle("Tổ phó")).toBe(false);
   });
 
   it("loại chức vụ khác", () => {
