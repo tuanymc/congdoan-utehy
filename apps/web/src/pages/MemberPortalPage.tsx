@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type {
   AuthUser,
   ChangePasswordRequest,
+  DepartmentMemberScopeDto,
   MyUnionMemberDto,
   SubmitUnionMemberProfileChangeRequest,
   UploadImageResponseDto
@@ -22,7 +23,8 @@ import {
   Phone,
   Scale,
   Sparkles,
-  UserRound
+  UserRound,
+  UsersRound
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch, apiFetchUpload, ApiError } from "@/lib/api-client";
@@ -32,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DepartmentMembersPanel } from "./DepartmentMembersPanel";
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Quản trị viên",
@@ -596,8 +599,9 @@ function WelcomeBanner({ user, member }: { user: AuthUser; member: MyUnionMember
  * đang hoạt động (không còn placeholder "sắp ra mắt"). */
 export function MemberPortalPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"profile" | "security">("profile");
+  const [tab, setTab] = useState<"profile" | "security" | "department">("profile");
   const [member, setMember] = useState<MyUnionMemberDto | null>(null);
+  const [departmentScope, setDepartmentScope] = useState<DepartmentMemberScopeDto | null>(null);
   const [notLinked, setNotLinked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -621,6 +625,13 @@ export function MemberPortalPage() {
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
+      });
+    apiFetch<DepartmentMemberScopeDto>("/me/department-members/scope")
+      .then((data) => {
+        if (!cancelled) setDepartmentScope(data);
+      })
+      .catch(() => {
+        if (!cancelled) setDepartmentScope({ canManage: false, departments: [] });
       });
     return () => {
       cancelled = true;
@@ -692,6 +703,18 @@ export function MemberPortalPage() {
             <Lock className="size-4" />
             Bảo mật
           </button>
+          {departmentScope?.canManage ? (
+            <button
+              type="button"
+              onClick={() => setTab("department")}
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors sm:flex-none sm:px-4 ${
+                tab === "department" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <UsersRound className="size-4" />
+              Đoàn viên bộ phận
+            </button>
+          ) : null}
         </div>
 
         {tab === "profile" ? (
@@ -702,6 +725,8 @@ export function MemberPortalPage() {
             loadError={loadError}
             onUpdated={setMember}
           />
+        ) : tab === "department" && departmentScope?.canManage ? (
+          <DepartmentMembersPanel scope={departmentScope} />
         ) : (
           <SecurityPanel />
         )}

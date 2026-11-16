@@ -290,6 +290,22 @@ export interface UpdateMyUnionMemberRequest {
   email?: string;
 }
 
+/** Bộ phận mà chủ tịch / cán bộ công đoàn bộ phận được phép xem-sửa đoàn viên (không thêm, không xoá). */
+export interface DepartmentMemberScopeDto {
+  canManage: boolean;
+  departments: UnionDepartmentDto[];
+}
+
+/** Payload chủ tịch bộ phận sửa hồ sơ đoàn viên thuộc bộ phận mình — không đổi bộ phận / không xoá. */
+export interface UpdateDepartmentMemberRequest {
+  fullName?: string;
+  photoUrl?: string;
+  degreeLabel?: string;
+  positionTitle?: string;
+  phone?: string;
+  email?: string;
+}
+
 /** 1 dòng bị lỗi khi import Excel — 1-indexed theo số dòng thật trong file (dòng 1 là header, nên dòng
  * dữ liệu đầu tiên là dòng 2) để admin dễ đối chiếu lại trong Excel. */
 export interface UnionMemberImportRowError {
