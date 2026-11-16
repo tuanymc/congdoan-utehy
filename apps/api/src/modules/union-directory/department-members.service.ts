@@ -10,7 +10,7 @@ import type {
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditLogService } from "../../common/audit-log.service";
-import { isDepartmentChairTitle } from "./department-chair";
+import { isDepartmentChairTitle, matchDepartmentFromTitles } from "./department-chair";
 import { UpdateDepartmentMemberDto } from "./dto/update-department-member.dto";
 
 const memberWithRelations = Prisma.validator<Prisma.UnionMemberDefaultArgs>()({
@@ -185,8 +185,22 @@ export class DepartmentMembersService {
       where: { userId: user.sub },
       include: { department: true, profile: true }
     });
-    if (mine?.department && isDepartmentChairTitle(mine.profile?.unionPosition)) {
-      this.addDepartment(byId, mine.department);
+    const chairByProfile =
+      isDepartmentChairTitle(mine?.positionTitle) || isDepartmentChairTitle(mine?.profile?.unionPosition);
+    if (mine && chairByProfile) {
+      if (mine.department) {
+        this.addDepartment(byId, mine.department);
+      } else {
+        const departments = await this.prisma.unionDepartment.findMany();
+        this.addDepartment(
+          byId,
+          matchDepartmentFromTitles(departments, [
+            mine.positionTitle,
+            mine.profile?.unionPosition,
+            mine.profile?.unionSectionLabel
+          ])
+        );
+      }
     }
     if (user.roles.includes("DEPARTMENT_OFFICER")) {
       this.addDepartment(byId, mine?.department);

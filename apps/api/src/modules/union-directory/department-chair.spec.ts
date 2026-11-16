@@ -1,4 +1,4 @@
-import { isDepartmentChairTitle } from "./department-chair";
+import { isDepartmentChairTitle, matchDepartmentFromTitles } from "./department-chair";
 
 describe("isDepartmentChairTitle", () => {
   it("nhận Chủ tịch bộ phận", () => {
@@ -7,6 +7,15 @@ describe("isDepartmentChairTitle", () => {
     expect(isDepartmentChairTitle("CHỦ TỊCH CĐBP")).toBe(true);
     expect(isDepartmentChairTitle("CT CĐBP")).toBe(true);
     expect(isDepartmentChairTitle("Tổ trưởng")).toBe(true);
+    expect(isDepartmentChairTitle("Chủ tịch CĐBP Khoa Điện - Điện tử")).toBe(true);
+  });
+
+  it("ghép chức vụ với tên bộ phận", () => {
+    const departments = [
+      { id: "ck", name: "CĐBP Khoa Cơ khí" },
+      { id: "dt", name: "CĐBP Khoa Điện - Điện tử" }
+    ];
+    expect(matchDepartmentFromTitles(departments, ["Chủ tịch CĐBP Khoa Điện - Điện tử"])?.id).toBe("dt");
   });
 
   it("loại Phó Chủ tịch", () => {

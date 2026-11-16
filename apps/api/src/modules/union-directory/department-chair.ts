@@ -1,4 +1,4 @@
-function foldTitle(positionTitle: string): string {
+export function foldTitle(positionTitle: string): string {
   return positionTitle
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -30,4 +30,25 @@ export function isDepartmentChairTitle(positionTitle: string | null | undefined)
     return true;
   }
   return false;
+}
+
+/** Ghép chức vụ (vd "Chủ tịch CĐBP Khoa Điện - Điện tử") với tên công đoàn bộ phận. */
+export function matchDepartmentFromTitles<T extends { name: string }>(
+  departments: T[],
+  titles: Array<string | null | undefined>
+): T | undefined {
+  const haystacks = titles.filter((value): value is string => Boolean(value?.trim())).map((value) => foldTitle(value));
+  if (haystacks.length === 0) return undefined;
+
+  let best: T | undefined;
+  let bestLength = 0;
+  for (const department of departments) {
+    const needle = foldTitle(department.name);
+    if (needle.length < 8) continue;
+    if (haystacks.some((haystack) => haystack.includes(needle)) && needle.length > bestLength) {
+      best = department;
+      bestLength = needle.length;
+    }
+  }
+  return best;
 }

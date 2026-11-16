@@ -597,6 +597,15 @@ function WelcomeBanner({ user, member }: { user: AuthUser; member: MyUnionMember
 
 /** Cổng đoàn viên — khu vực sau đăng nhập: hồ sơ cá nhân, đổi mật khẩu, lối tắt sang tiện ích số
  * đang hoạt động (không còn placeholder "sắp ra mắt"). */
+function isVisibleDepartmentChair(member: MyUnionMemberDto | null): boolean {
+  const title = member?.positionTitle ?? "";
+  if (!title) return false;
+  const lower = title.toLowerCase();
+  if (!lower.includes("chủ tịch") || lower.includes("phó chủ tịch")) return false;
+  if (member?.department) return true;
+  return lower.includes("cđbp") || lower.includes("bộ phận");
+}
+
 export function MemberPortalPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<"profile" | "security" | "department">("profile");
@@ -641,6 +650,8 @@ export function MemberPortalPage() {
   if (!user) {
     return null;
   }
+
+  const canManageDepartment = Boolean(departmentScope?.canManage || isVisibleDepartmentChair(member));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -703,7 +714,7 @@ export function MemberPortalPage() {
             <Lock className="size-4" />
             Bảo mật
           </button>
-          {departmentScope?.canManage ? (
+          {canManageDepartment ? (
             <button
               type="button"
               onClick={() => setTab("department")}
@@ -725,8 +736,10 @@ export function MemberPortalPage() {
             loadError={loadError}
             onUpdated={setMember}
           />
-        ) : tab === "department" && departmentScope?.canManage ? (
-          <DepartmentMembersPanel scope={departmentScope} />
+        ) : tab === "department" && canManageDepartment ? (
+          <DepartmentMembersPanel
+            scope={departmentScope ?? { canManage: true, departments: member?.department ? [member.department] : [] }}
+          />
         ) : (
           <SecurityPanel />
         )}
